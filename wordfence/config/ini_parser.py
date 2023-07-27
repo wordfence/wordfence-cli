@@ -1,18 +1,19 @@
-from configparser import ConfigParser
 import errno
 import json
-from .config_items import definitions, Context, ConfigItemDefinition, CanonicalValueExtractorInterface, not_set_token, \
-    ArgumentType
-from .cli_parser import cli_values
+from configparser import ConfigParser
 from typing import List, Set, Any
+
 from wordfence.logging import log
+from .cli_parser import cli_values
+from .config_items import Context, ConfigItemDefinition, CanonicalValueExtractorInterface, not_set_token, \
+    get_config_map_for_subcommand, subcommand_module_map
 
 INI_DEFAULT_FILENAME = 'wordfence-cli.ini'
 INI_DEFAULT_PATH = f"/etc/wordfence/{INI_DEFAULT_FILENAME}"
-CONFIG_ENCODING = 'utf_8'
-CONFIG_SECTION_NAME = 'SCAN'
-
+CONFIG_SECTION_NAME = subcommand_module_map[cli_values.subcommand].CONFIG_SECTION_NAME
 valid_contexts: Set[Context] = {Context.ALL, Context.CONFIG}
+
+definitions = get_config_map_for_subcommand(cli_values.subcommand)
 
 
 class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
@@ -32,7 +33,7 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
         elif definition.get_value_type() == int:
             value = source.getint(CONFIG_SECTION_NAME, definition.property_name, fallback=not_set_token)
         elif definition.get_value_type() != str:
-            raise ValueError("Only int and string types are currently known to the INI parser")
+            raise ValueError("Only string, bool, and int types are currently known to the INI parser")
         else:
             value = source.get(CONFIG_SECTION_NAME, definition.property_name, fallback=not_set_token)
         if isinstance(value, str) and definition.has_ini_separator():
@@ -40,7 +41,7 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
             if definition.get_value_type() == int:
                 value = [int(string_int) for string_int in value]
             elif definition.get_value_type() != str:
-                raise ValueError("Only lists of strings and ints are currently supported in INI files")
+                raise ValueError("INI files currently support lists of strings and ints, no other types")
         return value
 
 
@@ -66,17 +67,18 @@ def load_ini() -> ConfigParser:
     all_section_names: List[str] = config.sections()
     all_section_names.append("DEFAULT")
     invalid_settings: bool = False
-    invalid_sections: bool = False
     for section_name in all_section_names:
         if section_name != CONFIG_SECTION_NAME:
             config.remove_section(section_name)
-            log.warning(
-                f"Ignoring invalid config section {json.dumps(section_name)}.")
-            invalid_sections = True
     # remove values that are in the incorrect context or are entirely unknown
     for property_name, value in config.items(CONFIG_SECTION_NAME):
         # arguments are stored in the lookup by name (kebab-case), but written out in snake_case in the INI
         key = property_name.replace('_', '-')
+        # detect unknown definitions and definitions written in kebab-case instead of snake_case
+        if key not in definitions or (key == property_name and '-' in property_name):
+            log.warning(f"Ignoring unknown config setting {json.dumps(property_name)}")
+            config.remove_option(CONFIG_SECTION_NAME, key)
+            invalid_settings = True
         if key in definitions:
             valid_ini_value: bool = definitions[key].context in valid_contexts
             if not valid_ini_value:
@@ -85,16 +87,9 @@ def load_ini() -> ConfigParser:
                 invalid_settings = True
                 config.remove_option(CONFIG_SECTION_NAME, key)
                 continue
-        else:
-            log.warning(f"Ignoring unknown config setting {json.dumps(key)}")
-            config.remove_option(CONFIG_SECTION_NAME, key)
-            invalid_settings = True
-    if invalid_sections:
-        log.warning("*** Invalid sections were encountered and skipped when processing the config file. No config "
-                    "sections should be specified in the INI file. ***")
     if invalid_settings:
-        log.warning("*** Invalid settings that are not known to wordfence-cli or are not meant for the config file "
-                    "context were encountered and skipped. ***")
+        log.warning("*** Invalid settings that are not known to wordfence-cli or are not intended for use in INI "
+                    "config files were discarded. ***")
 
     return config
 

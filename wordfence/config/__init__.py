@@ -1,14 +1,12 @@
-from argparse import Namespace
-from configparser import ConfigParser
-
-from .config_items import definitions, ConfigValue, ConfigItemDefinition, AlwaysInvalidExtractor, \
-    CanonicalValueExtractorInterface, not_set_token
-from .cli_parser import cli_values
-from .cli_parser import CliCanonicalValueExtractor
-from .ini_parser import ini_values
-from .ini_parser import IniCanonicalValueExtractor
 from typing import Any, Type, List, Dict
+
 from wordfence.logging import log
+from .cli_parser import CliCanonicalValueExtractor
+from .cli_parser import cli_values
+from .config_items import ConfigValue, ConfigItemDefinition, AlwaysInvalidExtractor, \
+    CanonicalValueExtractorInterface, not_set_token, valid_subcommands, get_config_map_for_subcommand
+from .ini_parser import IniCanonicalValueExtractor
+from .ini_parser import ini_values
 
 
 class Config:
@@ -31,7 +29,7 @@ value_extractors: List = [
 ]
 
 
-def load_canonical_values(definitions: Dict[str, ConfigItemDefinition], *ordered_sources):
+def init_config(definitions: Dict[str, ConfigItemDefinition], *ordered_sources):
     if len(ordered_sources) < 1:
         raise ValueError("At least one configuration source must be passed in")
     for source in ordered_sources:
@@ -50,11 +48,13 @@ def load_canonical_values(definitions: Dict[str, ConfigItemDefinition], *ordered
                 setattr(Config, item_definition.property_name, new_value)
             elif not hasattr(Config, item_definition.property_name):
                 setattr(Config, item_definition.property_name, item_definition.default)
+    validate_config()
 
 
 def validate_config() -> None:
     log.warn("Validation not implemented")
 
 
-load_canonical_values(definitions, ini_values, cli_values)
-validate_config()
+init_config(get_config_map_for_subcommand(cli_values.subcommand), ini_values, cli_values)
+
+setattr(Config, 'subcommand', cli_values.subcommand)

@@ -1,16 +1,12 @@
+import abc
 import base64
-import inspect
+import importlib
 import json
 from dataclasses import dataclass, fields
 from enum import Enum
-from os import path
-from typing import Optional, Any, Dict, List, Iterable, Set, FrozenSet
 from functools import lru_cache
-import abc
-
-CONFIG_DEFINITIONS_FILENAME = 'config_definitions.json'
-CONFIG_DEFINITIONS_PATH: str = path.dirname(
-    inspect.getfile(inspect.currentframe())) + path.sep + CONFIG_DEFINITIONS_FILENAME
+from types import ModuleType
+from typing import Optional, Any, Dict, Set, Tuple
 
 KIBIBYTE = 1024
 MEBIBYTE = 1024 * 1024
@@ -26,6 +22,9 @@ sizings_map = {
 }
 """maps suffixes to byte multipliers; k/kb/kib are synonyms, as are m/mb/mib"""
 
+valid_subcommands: Set[str] = {'scan'}
+
+invalid_config_item_names: Set[str] = {'subcommand'}
 
 class Context(Enum):
     ALL = 1
@@ -61,7 +60,7 @@ not_set_token = ReferenceToken()
 
 @dataclass(frozen=True)
 class ConfigItemMeta:
-    valid_options: Optional[FrozenSet[str]] = None
+    valid_options: Optional[Tuple[str]] = None
     multiple: Optional[bool] = None
     ini_separator: Optional[str] = None
     value_type: str = 'str'
@@ -192,21 +191,39 @@ def get_data_item_fields() -> Set[str]:
     return set([x.name for x in fields(ConfigItemDefinition)])
 
 
-def get_config_definitions_map() -> Dict[str, ConfigItemDefinition]:
+def assert_is_valid_subcommand(subcommand: str) -> None:
+    if subcommand not in valid_subcommands:
+        raise ValueError(f"Unsupported subcommand {subcommand}")
+
+
+def get_config_map_from_definition_file(config_path: str) -> Dict[str, ConfigItemDefinition]:
     result: Dict[str, ConfigItemDefinition] = {}
     used_short_names: Set[str] = set()
-    with open(CONFIG_DEFINITIONS_PATH) as json_file:
+    with open(config_path) as json_file:
         for value in json.load(json_file):
             config_item = ConfigItemDefinition.from_dict(value)
             if config_item.name in result:
-                raise KeyError(f"The name {config_item.name} has already been loaded")
+                raise KeyError(f"The name {json.dumps(config_item.name)} has already been loaded")
             if config_item.short_name:
                 if config_item.short_name in used_short_names:
-                    raise KeyError(f"The short name {config_item.short_name} has already been loaded")
+                    raise KeyError(f"The short name {json.dumps(config_item.short_name)} has already been loaded")
                 else:
                     used_short_names.add(config_item.short_name)
+            if config_item.name in invalid_config_item_names:
+                raise KeyError(f"The name {json.dumps(config_item.name)} is reserved")
             result[config_item.name] = config_item
     return result
 
 
-definitions = get_config_definitions_map()
+subcommand_module_map: Dict[str, ModuleType] = dict()
+
+for subcommand in valid_subcommands:
+    module = importlib.import_module(f"wordfence.{subcommand}.config")
+    subcommand_module_map[subcommand] = module
+
+
+@lru_cache(maxsize=len(valid_subcommands))
+def get_config_map_for_subcommand(subcommand: str) -> Dict[str, ConfigItemDefinition]:
+    assert_is_valid_subcommand(subcommand)
+
+    return get_config_map_from_definition_file(subcommand_module_map[subcommand].CONFIG_DEFINITIONS_PATH)

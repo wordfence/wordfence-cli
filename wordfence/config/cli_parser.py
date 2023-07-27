@@ -3,11 +3,11 @@ import json
 from typing import Set, List, Dict, Any
 from wordfence.logging import log
 
-from .config_items import definitions, ConfigItemDefinition, CanonicalValueExtractorInterface, Context, ArgumentType, \
-    not_set_token
+from .config_items import ConfigItemDefinition, CanonicalValueExtractorInterface, Context, ArgumentType, \
+    not_set_token, valid_subcommands, get_config_map_for_subcommand, subcommand_module_map
 
 NAME = "Wordfence CLI"
-DESCRIPTION = "Scan files for signs of intrusion"
+DESCRIPTION = "Multifunction commandline tool for Wordfence"
 
 parser: ArgumentParser = ArgumentParser(
     prog=NAME,
@@ -37,7 +37,7 @@ class CliCanonicalValueExtractor(CanonicalValueExtractorInterface):
         return value
 
 
-def add_to_parser(target_parser: ArgumentParser, config_definition: ConfigItemDefinition) -> None:
+def add_to_parser(target_parser, config_definition: ConfigItemDefinition) -> None:
     if config_definition.context not in valid_contexts:
         log.warning(f"Config value {json.dumps(config_definition.name)} is not a valid CLI argument. Should it be "
                     f"specified in the INI file instead?")
@@ -70,7 +70,13 @@ def add_to_parser(target_parser: ArgumentParser, config_definition: ConfigItemDe
     target_parser.add_argument(*names, **named_params)
 
 
-for name, definition in definitions.items():
-    add_to_parser(parser, definition)
+subparsers = parser.add_subparsers(title="subcommands", help="subcommand help", dest="subcommand")
+for subcommand in valid_subcommands:
+    definitions = get_config_map_for_subcommand(subcommand)
+    subparser = subparsers.add_parser(subcommand,
+                                      prog=subcommand_module_map[subcommand].CLI_TITLE,
+                                      help=f'{subcommand} help')
+    for definition in definitions.values():
+        add_to_parser(subparser, definition)
 
-cli_values, unknown_arguments = parser.parse_known_args()
+cli_values, unknown_args = parser.parse_known_args()
