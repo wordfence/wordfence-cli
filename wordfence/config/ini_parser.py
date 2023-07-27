@@ -24,7 +24,10 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
     def get_canonical_value(cls, definition: ConfigItemDefinition, source: ConfigParser) -> Any:
         cls.assert_is_valid_source(source)
 
-        if definition.argument_type == ArgumentType.FLAG:
+        if definition.has_ini_separator():
+            # always return separated values as a string
+            value = source.get(CONFIG_SECTION_NAME, definition.property_name, fallback=not_set_token)
+        elif definition.get_value_type() == bool:
             value = source.getboolean(CONFIG_SECTION_NAME, definition.property_name, fallback=not_set_token)
         elif definition.get_value_type() == int:
             value = source.getint(CONFIG_SECTION_NAME, definition.property_name, fallback=not_set_token)
@@ -34,7 +37,10 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
             value = source.get(CONFIG_SECTION_NAME, definition.property_name, fallback=not_set_token)
         if isinstance(value, str) and definition.has_ini_separator():
             value = value.split(definition.meta.ini_separator)
-
+            if definition.get_value_type() == int:
+                value = [int(string_int) for string_int in value]
+            elif definition.get_value_type() != str:
+                raise ValueError("Only lists of strings and ints are currently supported in INI files")
         return value
 
 

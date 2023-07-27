@@ -70,7 +70,8 @@ class ConfigItemMeta:
 valid_types = {
     'str': str,
     'string': str,
-    'int': int
+    'int': int,
+    'bool': bool
 }
 
 
@@ -97,10 +98,10 @@ class ConfigItemDefinition:
 
     def get_value_type(self):
         if not self.meta:
-            return str
+            return str if self.argument_type != ArgumentType.FLAG else bool
         return_type = valid_types.get(self.meta.value_type, False)
         if not return_type:
-            raise ValueError(f"Specified not in the allow list: {self.meta.value_type}")
+            raise ValueError(f"Specified type not in the allow list: {self.meta.value_type}")
         return return_type
 
     @classmethod
@@ -127,7 +128,10 @@ class ConfigItemDefinition:
             # convert lists to tuples to make them hashable
             if source['meta'].get('valid_options', False):
                 source['meta']['valid_options'] = tuple(source['meta']['valid_options'])
-
+            # set flags to booleans types if another type is not already defined
+            if not_set_token is source['meta'].get('value_type', not_set_token) and source['argument_type'] \
+                    == ArgumentType.FLAG:
+                source['meta']['value_type'] = 'bool'
             source['meta'] = ConfigItemMeta(**source['meta'])
 
         # sanity check
