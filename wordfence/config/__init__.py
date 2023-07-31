@@ -2,7 +2,7 @@ from typing import Any, Type, List, Dict
 
 from wordfence.logging import log
 from .cli_parser import CliCanonicalValueExtractor
-from .cli_parser import cli_values
+from .cli_parser import cli_values, trailing_arguments
 from .config_items import ConfigValue, ConfigItemDefinition, AlwaysInvalidExtractor, \
     CanonicalValueExtractorInterface, not_set_token, valid_subcommands, get_config_map_for_subcommand
 from .ini_parser import IniCanonicalValueExtractor
@@ -57,4 +57,6 @@ def validate_config() -> None:
 
 init_config(get_config_map_for_subcommand(cli_values.subcommand), ini_values, cli_values)
 
+# set config values that require special handling
 setattr(Config, 'subcommand', cli_values.subcommand)
+setattr(Config, 'trailing_arguments', trailing_arguments)

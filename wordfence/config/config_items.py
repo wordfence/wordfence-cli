@@ -24,7 +24,11 @@ sizings_map = {
 
 valid_subcommands: Set[str] = {'scan'}
 
-invalid_config_item_names: Set[str] = {'subcommand'}
+# see wordfence/config/__init__.py for special handling of reserved config property names
+invalid_config_item_names: Set[str] = {
+    'subcommand',
+    'trailing_arguments'
+}
 
 class Context(Enum):
     ALL = 1

@@ -1,6 +1,7 @@
 import sys
 from argparse import ArgumentParser, Namespace
 import json
+from itertools import dropwhile
 from typing import Set, List, Dict, Any
 from wordfence.logging import log
 
@@ -80,7 +81,8 @@ for subcommand in valid_subcommands:
     for definition in definitions.values():
         add_to_parser(subparser, definition)
 
-cli_values, unknown_args = parser.parse_known_args()
+cli_values, trailing_arguments = parser.parse_known_args()
 if not cli_values.subcommand:
     parser.print_help()
     sys.exit()
+trailing_arguments = list(dropwhile(lambda arg: arg != '--', trailing_arguments))[1:]
