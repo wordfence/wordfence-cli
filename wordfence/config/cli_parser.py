@@ -4,7 +4,6 @@ import json
 from itertools import dropwhile
 from typing import Set, List, Dict, Any
 from wordfence.logging import log
-
 from .config_items import ConfigItemDefinition, CanonicalValueExtractorInterface, Context, ArgumentType, \
     not_set_token, valid_subcommands, get_config_map_for_subcommand, subcommand_module_map
 
@@ -85,6 +84,7 @@ def add_to_parser(target_parser, config_definition: ConfigItemDefinition) -> Non
         named_params['dest'] = config_definition.name
         target_parser.add_argument(*names, **named_params)
 
+
 subparsers = parser.add_subparsers(title="Wordfence CLI subcommands", dest="subcommand")
 for subcommand in valid_subcommands:
     definitions = get_config_map_for_subcommand(subcommand)
@@ -97,4 +97,18 @@ cli_values, trailing_arguments = parser.parse_known_args()
 if not cli_values.subcommand:
     parser.print_help()
     sys.exit()
-trailing_arguments = list(dropwhile(lambda arg: arg != '--', trailing_arguments))[1:]
+
+
+class DropWhilePredicate:
+    def __init__(self):
+        self.drop_next: bool = True
+
+    def __call__(self, entry: str) -> bool:
+        if not self.drop_next:
+            return False
+        if '--' == entry:
+            self.drop_next = False
+        return True
+
+
+trailing_arguments = list(dropwhile(DropWhilePredicate(), trailing_arguments))
