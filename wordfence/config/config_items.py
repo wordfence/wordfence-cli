@@ -203,16 +203,25 @@ def assert_is_valid_subcommand(subcommand: str) -> None:
 def get_config_map_from_definition_file(config_path: str) -> Dict[str, ConfigItemDefinition]:
     result: Dict[str, ConfigItemDefinition] = {}
     used_short_names: Set[str] = set()
+    implied_names: Set[str] = set()
     with open(config_path) as json_file:
         for value in json.load(json_file):
             config_item = ConfigItemDefinition.from_dict(value)
             if config_item.name in result:
                 raise KeyError(f"The name {json.dumps(config_item.name)} has already been loaded")
+            if config_item.name in implied_names:
+                raise KeyError(f"A configured flag has already claimed {json.dumps(config_item.name)} as an implied name")
             if config_item.short_name:
                 if config_item.short_name in used_short_names:
                     raise KeyError(f"The short name {json.dumps(config_item.short_name)} has already been loaded")
                 else:
                     used_short_names.add(config_item.short_name)
+            if config_item.argument_type == ArgumentType.FLAG:
+                implied_name = f'no-{config_item.name}'
+                if implied_name in implied_names:
+                    raise KeyError(f"Another option has already taken the implied name {json.dumps(implied_name)}")
+                implied_names.add(implied_name)
+
             if config_item.name in invalid_config_item_names:
                 raise KeyError(f"The name {json.dumps(config_item.name)} is reserved")
             result[config_item.name] = config_item

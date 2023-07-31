@@ -64,13 +64,26 @@ def add_to_parser(target_parser, config_definition: ConfigItemDefinition) -> Non
     # special handling
     if config_definition.argument_type == ArgumentType.FLAG:
         # store the opposite of the default boolean
-        named_params['action'] = 'store_false' if config_definition.default else 'store_true'
+        named_params['action'] = 'store_true'
+        # adjust the provided help message
+        defaults_to = f'true (--{config_definition.name})' if config_definition.default else f'false (--no-{config_definition.name})'
+        named_params['help'] += f' If not specified, defaults to {defaults_to}.'
     elif config_definition.argument_type == ArgumentType.OPTION_REPEATABLE:
         named_params['action'] = 'append'
         named_params['default'] = [not_set_token]
         named_params['type'] = config_definition.get_value_type()
     target_parser.add_argument(*names, **named_params)
 
+    # register the negation of a flag
+    if config_definition.argument_type == ArgumentType.FLAG:
+        named_params['action'] = 'store_false'
+        names = [f"--no-{config_definition.name}"]
+        # use the basic config option
+        del named_params['help']
+        #named_params['help'] = f'Inverts --{config_definition.name}.'
+        # set it to override the `unprefixed` command
+        named_params['dest'] = config_definition.name
+        target_parser.add_argument(*names, **named_params)
 
 subparsers = parser.add_subparsers(title="Wordfence CLI subcommands", dest="subcommand")
 for subcommand in valid_subcommands:
