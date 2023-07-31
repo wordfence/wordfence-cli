@@ -30,6 +30,7 @@ invalid_config_item_names: Set[str] = {
     'trailing_arguments'
 }
 
+
 class Context(Enum):
     ALL = 1
     """a config item that is available in both the CLI and INI contexts"""
@@ -210,7 +211,8 @@ def get_config_map_from_definition_file(config_path: str) -> Dict[str, ConfigIte
             if config_item.name in result:
                 raise KeyError(f"The name {json.dumps(config_item.name)} has already been loaded")
             if config_item.name in implied_names:
-                raise KeyError(f"A configured flag has already claimed {json.dumps(config_item.name)} as an implied name")
+                raise KeyError(
+                    f"A configured flag has already claimed {json.dumps(config_item.name)} as an implied name")
             if config_item.short_name:
                 if config_item.short_name in used_short_names:
                     raise KeyError(f"The short name {json.dumps(config_item.short_name)} has already been loaded")
