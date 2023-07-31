@@ -105,9 +105,8 @@
     "default": 1
   },
   {
-    "short_name": "o",
     "name": "output",
-    "description": "Writes results to stdout when present.",
+    "description": "Write results to stdout.",
     "context": "ALL",
     "argument_type": "FLAG",
     "default": false
@@ -200,11 +199,10 @@
     }
   },
   {
-    "short_name": "b",
-    "name": "exclude-banner",
-    "description": "Prevent banner display in command output.",
+    "name": "banner",
+    "description": "Include to display the banner in command output.",
     "context": "ALL",
     "argument_type": "FLAG",
-    "default": false
+    "default": true
   }
 ]
