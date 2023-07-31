@@ -54,7 +54,8 @@ def get_ini_path() -> str:
 def load_ini() -> ConfigParser:
     config = ConfigParser()
     try:
-        config.read(get_ini_path())
+        with open(get_ini_path()) as file:
+            config.read_file(file)
     except OSError as e:
         if e.errno == errno.EACCES:
             raise PermissionError(
@@ -64,6 +65,7 @@ def load_ini() -> ConfigParser:
         # config file does not exist -- proceed with default values + CLI values
         log.warning(
             f"Config file not found or not readable: {json.dumps(get_ini_path())}. Merging default config values.")
+        return config
     all_section_names: List[str] = config.sections()
     all_section_names.append("DEFAULT")
     invalid_settings: bool = False
