@@ -72,12 +72,11 @@ def add_to_parser(target_parser, config_definition: ConfigItemDefinition) -> Non
     target_parser.add_argument(*names, **named_params)
 
 
-subparsers = parser.add_subparsers(title="subcommands", help="subcommand help", dest="subcommand")
+subparsers = parser.add_subparsers(title="Wordfence CLI subcommands", dest="subcommand")
 for subcommand in valid_subcommands:
     definitions = get_config_map_for_subcommand(subcommand)
     subparser = subparsers.add_parser(subcommand,
-                                      prog=subcommand_module_map[subcommand].CLI_TITLE,
-                                      help=f'{subcommand} help')
+                                      prog=subcommand_module_map[subcommand].CLI_TITLE)
     for definition in definitions.values():
         add_to_parser(subparser, definition)
 
