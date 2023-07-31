@@ -1,8 +1,9 @@
+import json
 import sys
 from argparse import ArgumentParser, Namespace
-import json
 from itertools import dropwhile
 from typing import Set, List, Dict, Any
+
 from wordfence.logging import log
 from .config_items import ConfigItemDefinition, CanonicalValueExtractorInterface, Context, ArgumentType, \
     not_set_token, valid_subcommands, get_config_map_for_subcommand, subcommand_module_map
@@ -79,7 +80,6 @@ def add_to_parser(target_parser, config_definition: ConfigItemDefinition) -> Non
         names = [f"--no-{config_definition.name}"]
         # use the basic config option
         del named_params['help']
-        #named_params['help'] = f'Inverts --{config_definition.name}.'
         # set it to override the `unprefixed` command
         named_params['dest'] = config_definition.name
         target_parser.add_argument(*names, **named_params)
