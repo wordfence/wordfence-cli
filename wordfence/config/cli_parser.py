@@ -1,3 +1,4 @@
+import sys
 from argparse import ArgumentParser, Namespace
 import json
 from typing import Set, List, Dict, Any
@@ -80,3 +81,6 @@ for subcommand in valid_subcommands:
         add_to_parser(subparser, definition)
 
 cli_values, unknown_args = parser.parse_known_args()
+if not cli_values.subcommand:
+    parser.print_help()
+    sys.exit()
