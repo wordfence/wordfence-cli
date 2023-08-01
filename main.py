@@ -1,5 +1,6 @@
 import json
 
-from wordfence.config import Config
+from wordfence.config import load_config
 
-print(f'Values passed to subcommand {json.dumps(Config.subcommand)}: {Config.values()}')
+config = load_config()
+print(f'Values passed to subcommand {json.dumps(config.subcommand)}:\n\n{config.values()}')
