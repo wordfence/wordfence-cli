@@ -1,8 +1,7 @@
 from typing import Any, Type, List, Dict
 
 from wordfence.logging import log
-from .cli_parser import CliCanonicalValueExtractor
-from .cli_parser import cli_values, trailing_arguments
+from .cli_parser import CliCanonicalValueExtractor, cli_values, trailing_arguments
 from .config_items import ConfigValue, ConfigItemDefinition, AlwaysInvalidExtractor, \
     CanonicalValueExtractorInterface, not_set_token, valid_subcommands, get_config_map_for_subcommand
 from .ini_parser import IniCanonicalValueExtractor
