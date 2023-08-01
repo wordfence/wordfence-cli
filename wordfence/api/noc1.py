@@ -6,9 +6,9 @@ from urllib.error import URLError, HTTPError
 from .license import License
 from .exceptions import ApiException
 from .noc_client import NocClient, DEFAULT_TIMEOUT
-from .validation import JsonObjectValidator, JsonArrayValidator
 
 from ..intel.signatures import CommonString, Signature, SignatureSet
+from ..util.validation import DictionaryValidator, ListValidator
 
 NOC1_BASE_URL = 'https://noc1.wordfence.com/v2.27/'
 
@@ -31,10 +31,10 @@ class Client(NocClient):
         if regex_engine is not None:
             base_query['regex_engine'] = regex_engine
         patterns = self.request('get_patterns', base_query)
-        validator = JsonObjectValidator({
-            'badstrings': JsonArrayValidator(str),
-            'commonStrings': JsonArrayValidator(str),
-            'rules': JsonArrayValidator(JsonArrayValidator({
+        validator = DictionaryValidator({
+            'badstrings': ListValidator(str),
+            'commonStrings': ListValidator(str),
+            'rules': ListValidator(ListValidator({
                 0: int,
                 1: int,
                 2: str,
@@ -43,15 +43,18 @@ class Client(NocClient):
                 5: int,
                 6: str,
                 7: str,
-                8: JsonArrayValidator(int)
+                8: ListValidator(int)
             })),
             'signatureUpdateTime': int,
             'word1': str,
             'word2': str,
             'word3': str
         })
-        validator.validate(patterns)
-        return patterns
+        try:
+            validator.validate(patterns)
+            return patterns
+        except ValidationException as exception:
+            raise ApiException('Response validation failed') from exception
 
     def get_malware_signatures(self) -> SignatureSet:
         patterns = self.get_patterns(regex_engine='python')

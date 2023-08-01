@@ -5,12 +5,12 @@ from .. import scanning, api
 
 def main():
     license = api.license.License(
-            '<wordfence-cli-license>'
+            '40d595e120456cdf17700866f23e3820368d3cee58fdd8afb660cdd87934edb9'
         )
-    noc1_client = api.noc1.Client(license, base_url='<noc-1-url>/v2.27/')
+    noc1_client = api.noc1.Client(license, base_url='http://noc1.local/v2.27/')
     signatures = noc1_client.get_malware_signatures()
     options = scanning.scanner.Options(
-            paths={'/path/to/scan'},
+            paths={'/home/alex/Defiant/malicious-samples'},
             threads=1,
             signatures=signatures
         )

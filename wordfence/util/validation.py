@@ -1,7 +1,4 @@
-from .exceptions import ValidationException
-
-
-class JsonValidationException(ValidationException):
+class ValidationException(BaseException):
 
     def __init__(self, key: list, message: str, value=None):
         self.key = key
@@ -18,30 +15,30 @@ class JsonValidationException(ValidationException):
         return '.'.join([str(component) for component in self.key])
 
 
-class JsonValidator:
+class Validator:
 
     def validate(self, data, parent_key: list = []):
         pass
 
     def validate_type(self, key, value, expected_type) -> None:
-        if isinstance(expected_type, JsonValidator):
+        if isinstance(expected_type, Validator):
             expected_type.validate(value, key)
         elif not isinstance(value, expected_type):
-            raise JsonValidationException(
+            raise ValidationException(
                     key,
                     'Value must be of type ' + str(expected_type),
                     value
                 )
 
 
-class JsonObjectValidator(JsonValidator):
+class DictionaryValidator(Validator):
 
     def __init__(self, expected: dict = {}):
         self.expected = expected
 
     def validate(self, data, parent_key: list = []) -> None:
         if not isinstance(data, dict):
-            raise JsonValidationException(
+            raise ValidationException(
                     parent_key,
                     'Element must be a JSON object',
                     data
@@ -52,17 +49,17 @@ class JsonObjectValidator(JsonValidator):
                 value = data[key]
                 self.validate_type(aggregate_key, value, expected_type)
             except KeyError:
-                raise JsonValidationException(aggregate_key, 'Key not present')
+                raise ValidationException(aggregate_key, 'Key not present')
 
 
-class JsonArrayValidator(JsonValidator):
+class ListValidator(Validator):
 
     def __init__(self, expected):
         self.expected = expected
 
     def validate(self, data, parent_key: list = []) -> None:
         if not isinstance(data, list):
-            raise JsonValidationException(
+            raise ValidationException(
                     parent_key,
                     'Element must be a JSON array',
                     data
@@ -74,7 +71,7 @@ class JsonArrayValidator(JsonValidator):
                     value = data[index]
                     self.validate_type(key, data[index], expected_type)
                 except IndexError:
-                    raise JsonValidationException(
+                    raise ValidationException(
                             key,
                             'Index does not exist in array'
                         )
