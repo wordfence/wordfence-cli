@@ -1,8 +1,7 @@
 import json
-import sys
 from argparse import ArgumentParser, Namespace
 from itertools import dropwhile
-from typing import Set, List, Dict, Any
+from typing import Set, List, Dict, Any, Tuple
 
 from wordfence.logging import log
 from .config_items import ConfigItemDefinition, CanonicalValueExtractorInterface, Context, ArgumentType, \
@@ -19,13 +18,11 @@ valid_contexts: Set[Context] = {Context.ALL, Context.CLI}
 
 
 class CliCanonicalValueExtractor(CanonicalValueExtractorInterface):
-    @classmethod
-    def is_valid_source(cls, source: Any) -> bool:
+    def is_valid_source(self, source: Any) -> bool:
         return isinstance(source, Namespace)
 
-    @classmethod
-    def get_canonical_value(cls, definition: ConfigItemDefinition, source: Namespace) -> Any:
-        cls.assert_is_valid_source(source)
+    def get_canonical_value(self, definition: ConfigItemDefinition, source: Namespace) -> Any:
+        self.assert_is_valid_source(source)
         value = getattr(source, definition.property_name, not_set_token)
 
         # Unset repeatable options are returned as lists with a single not_set_token entry. Other repeatable options
@@ -85,20 +82,6 @@ def add_to_parser(target_parser, config_definition: ConfigItemDefinition) -> Non
         target_parser.add_argument(*names, **named_params)
 
 
-subparsers = parser.add_subparsers(title="Wordfence CLI subcommands", dest="subcommand")
-for subcommand in valid_subcommands:
-    definitions = get_config_map_for_subcommand(subcommand)
-    subparser = subparsers.add_parser(subcommand,
-                                      prog=subcommand_module_map[subcommand].CLI_TITLE)
-    for definition in definitions.values():
-        add_to_parser(subparser, definition)
-
-cli_values, trailing_arguments = parser.parse_known_args()
-if not cli_values.subcommand:
-    parser.print_help()
-    sys.exit()
-
-
 class DropWhilePredicate:
     def __init__(self):
         self.drop_next: bool = True
@@ -111,4 +94,15 @@ class DropWhilePredicate:
         return True
 
 
-trailing_arguments = list(dropwhile(DropWhilePredicate(), trailing_arguments))
+def get_cli_values() -> Tuple[Namespace, List[str]]:
+    subparsers = parser.add_subparsers(title="Wordfence CLI subcommands", dest="subcommand")
+    for subcommand in valid_subcommands:
+        definitions = get_config_map_for_subcommand(subcommand)
+        subparser = subparsers.add_parser(subcommand,
+                                          prog=subcommand_module_map[subcommand].CLI_TITLE)
+        for definition in definitions.values():
+            add_to_parser(subparser, definition)
+
+    cli_values, trailing_arguments = parser.parse_known_args()
+    trailing_arguments = list(dropwhile(DropWhilePredicate(), trailing_arguments))
+    return cli_values, trailing_arguments

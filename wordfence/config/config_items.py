@@ -161,20 +161,17 @@ class CanonicalValueExtractorInterface(metaclass=abc.ABCMeta):
                 callable(subclass.is_valid_source),
                 callable(subclass.assert_is_valid_source))
 
-    @classmethod
     @abc.abstractmethod
-    def is_valid_source(cls, source: Any) -> bool:
+    def is_valid_source(self, source: Any) -> bool:
         """Validate the source is supported"""
         raise NotImplementedError
 
-    @classmethod
-    def assert_is_valid_source(cls, source: Any) -> None:
-        if not cls.is_valid_source(source):
+    def assert_is_valid_source(self, source: Any) -> None:
+        if not self.is_valid_source(source):
             raise ValueError(f"Invalid configuration source: {type(source)}")
 
-    @classmethod
     @abc.abstractmethod
-    def get_canonical_value(cls, definition: ConfigItemDefinition, source: Any) -> Any:
+    def get_canonical_value(self, definition: ConfigItemDefinition, source: Any) -> Any:
         """Return the canonical configuration value as stored in the configuration source"""
         raise NotImplementedError
 
@@ -182,13 +179,11 @@ class CanonicalValueExtractorInterface(metaclass=abc.ABCMeta):
 class AlwaysInvalidExtractor(CanonicalValueExtractorInterface):
     """Always throws an exception when a value is extracted"""
 
-    @classmethod
-    def is_valid_source(cls, source: Any) -> bool:
+    def is_valid_source(self, source: Any) -> bool:
         return False
 
-    @classmethod
-    def get_canonical_value(cls, definition: ConfigItemDefinition, source: Any) -> Any:
-        cls.assert_is_valid_source(source)
+    def get_canonical_value(self, definition: ConfigItemDefinition, source: Any) -> Any:
+        self.assert_is_valid_source(source)
 
 
 @lru_cache(maxsize=1)

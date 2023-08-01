@@ -1,12 +1,14 @@
+import sys
+from argparse import Namespace
+from configparser import ConfigParser
 from types import SimpleNamespace
-from typing import Any, Type, List, Dict
+from typing import Any, Type, List, Dict, Optional
 
 from wordfence.logging import log
-from .cli_parser import CliCanonicalValueExtractor, cli_values, trailing_arguments
+from .cli_parser import CliCanonicalValueExtractor, get_cli_values, parser
 from .config_items import ConfigValue, ConfigItemDefinition, AlwaysInvalidExtractor, \
     CanonicalValueExtractorInterface, not_set_token, valid_subcommands, get_config_map_for_subcommand
-from .ini_parser import IniCanonicalValueExtractor
-from .ini_parser import ini_values
+from .ini_parser import load_ini, get_ini_value_extractor
 
 
 class Config(SimpleNamespace):
@@ -15,6 +17,7 @@ class Config(SimpleNamespace):
         super().__init__()
         self.__definitions = definitions
         self.subcommand = subcommand
+        self.trailing_arguments = None
 
     def values(self) -> Dict[str, Any]:
         result: Dict[str, Any] = dict()
@@ -31,16 +34,17 @@ class Config(SimpleNamespace):
         return self.__definitions[property_name]
 
 
-value_extractors: List = [
-    IniCanonicalValueExtractor,
-    CliCanonicalValueExtractor
-]
+__instance: Optional[Config] = None
+__ini_values: Optional[ConfigParser] = None
+__cli_values: Optional[Namespace] = None
+
+value_extractors: List = []
 
 
-def create_config_object(definitions: Dict[str, ConfigItemDefinition], *ordered_sources):
+def create_config_object(definitions: Dict[str, ConfigItemDefinition], trailing_arguments: List[str], *ordered_sources):
     if len(ordered_sources) < 1:
         raise ValueError("At least one configuration source must be passed in")
-    target = Config(definitions, cli_values.subcommand)
+    target = Config(definitions, __cli_values.subcommand)
     for source in ordered_sources:
         # if an appropriate extractor isn't found, an exception will be thrown
         extractor_class: Type[CanonicalValueExtractorInterface] = AlwaysInvalidExtractor
@@ -57,6 +61,7 @@ def create_config_object(definitions: Dict[str, ConfigItemDefinition], *ordered_
                 setattr(target, item_definition.property_name, new_value)
             elif not hasattr(target, item_definition.property_name):
                 setattr(target, item_definition.property_name, item_definition.default)
+    setattr(target, 'trailing_arguments', trailing_arguments)
     return target
 
 
@@ -64,11 +69,21 @@ def validate_config() -> None:
     log.warn("Validation not implemented")
 
 
-__instance = None
-
-
 def load_config():
     global __instance
+    global __ini_values
+    global __cli_values
     if not __instance:
-        __instance = create_config_object(get_config_map_for_subcommand(cli_values.subcommand), ini_values, cli_values)
+        __cli_values, trailing_arguments = get_cli_values()
+        if not __cli_values.subcommand:
+            parser.print_help()
+            sys.exit()
+        __ini_values = load_ini(__cli_values)
+
+        value_extractors.append(get_ini_value_extractor(__cli_values))
+        value_extractors.append(CliCanonicalValueExtractor())
+
+        __instance = create_config_object(get_config_map_for_subcommand(__cli_values.subcommand), trailing_arguments,
+                                          __ini_values,
+                                          __cli_values)
     return __instance
