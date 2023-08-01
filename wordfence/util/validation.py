@@ -40,7 +40,7 @@ class DictionaryValidator(Validator):
         if not isinstance(data, dict):
             raise ValidationException(
                     parent_key,
-                    'Element must be a JSON object',
+                    'Element must be a dictionary',
                     data
                 )
         for key, expected_type in self.expected.items():
@@ -61,7 +61,7 @@ class ListValidator(Validator):
         if not isinstance(data, list):
             raise ValidationException(
                     parent_key,
-                    'Element must be a JSON array',
+                    'Element must be a list',
                     data
                 )
         if isinstance(self.expected, dict):
@@ -73,7 +73,7 @@ class ListValidator(Validator):
                 except IndexError:
                     raise ValidationException(
                             key,
-                            'Index does not exist in array'
+                            'Index does not exist in list'
                         )
         else:
             for index, value in enumerate(data):
