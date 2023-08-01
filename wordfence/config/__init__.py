@@ -4,7 +4,6 @@ from configparser import ConfigParser
 from types import SimpleNamespace
 from typing import Any, Type, List, Dict, Optional
 
-from wordfence.logging import log
 from .cli_parser import CliCanonicalValueExtractor, get_cli_values, parser
 from .config_items import ConfigValue, ConfigItemDefinition, AlwaysInvalidExtractor, \
     CanonicalValueExtractorInterface, not_set_token, valid_subcommands, get_config_map_for_subcommand
@@ -63,10 +62,6 @@ def create_config_object(definitions: Dict[str, ConfigItemDefinition], trailing_
                 setattr(target, item_definition.property_name, item_definition.default)
     setattr(target, 'trailing_arguments', trailing_arguments)
     return target
-
-
-def validate_config() -> None:
-    log.warn("Validation not implemented")
 
 
 def load_config():
