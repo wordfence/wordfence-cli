@@ -88,7 +88,7 @@ def add_to_parser(target_parser,
         # use the basic config option
         del named_params['help']
         # set the value to override the un-prefixed command
-        named_params['dest'] = config_definition.name
+        named_params['dest'] = config_definition.property_name
         target_parser.add_argument(*names, **named_params)
 
 
