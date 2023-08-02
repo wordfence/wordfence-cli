@@ -24,7 +24,7 @@ sizings_map = {
 
 valid_subcommands: Set[str] = {'scan'}
 
-# see wordfence/config/__init__.py for special handling of reserved config property names
+# see wordfence/config/__init__.py for special handling of reserved names
 invalid_config_item_names: Set[str] = {
     'subcommand',
     'trailing_arguments'
@@ -44,7 +44,8 @@ class ArgumentType(Enum):
     ARGUMENT = 1
     """No names, just ordered CLI values"""
     FLAG = 2
-    """boolean values set by name (no value) -- inverts the default value when provided"""
+    """boolean values set by name (no value) -- inverts the default value when
+    provided"""
     # FLAG: argument name + value
     OPTION = 3
     """required the option name plus a value"""
@@ -54,9 +55,8 @@ class ArgumentType(Enum):
 
 @dataclass(frozen=True)
 class ReferenceToken:
-    """Instantiate a new instance to use the `x is y` language construct to determine if other instances point to the
-    same token"""
-    # TODO add required label; keep track of instantiations and throw error if same label is instantiated twice in __new__ or __init__
+    """Instantiate a new instance to use the `x is y` language construct to
+    determine if other instances point to the same token"""
     pass
 
 
@@ -92,7 +92,8 @@ class ConfigItemDefinition:
 
     @staticmethod
     def clean_argument_dict(source: Dict[str, Any]) -> Dict[str, Any]:
-        return {key: value for key, value in source.items() if key in get_data_item_fields()}
+        return {key: value for key, value in source.items() if
+                key in get_data_item_fields()}
 
     def has_options_list(self) -> bool:
         return True if self.meta and self.meta.valid_options else False
@@ -105,42 +106,55 @@ class ConfigItemDefinition:
             return str if self.argument_type != ArgumentType.FLAG else bool
         return_type = valid_types.get(self.meta.value_type, False)
         if not return_type:
-            raise ValueError(f"Specified type not in the allow list: {self.meta.value_type}")
+            raise ValueError(
+                f"Specified type not in the allow list: {self.meta.value_type}")
         return return_type
 
     @classmethod
     def from_dict(cls, source: dict):
-        # The property name is always derived from the configuration's "name" value. Any "property_name" value specified
-        # in the configuration is ignored.
+        # The property name is always derived from the configuration's "name"
+        # value. Any "property_name" value specified in the configuration is
+        # ignored.
         source['property_name'] = source['name'].replace('-', '_')
 
         if source.get('default_type', None) == 'base64':
             if 'default' not in source:
-                raise ValueError("When base64 default type is specified, a default value must be present")
+                raise ValueError(
+                    "When base64 default type is specified, a default value "
+                    "must be present")
             source['default'] = base64.b64decode(source['default'])
 
         if 'default' not in source:
             source['default'] = not_set_token
         # convert enums
-        source['context'] = source['context'] if isinstance(source['context'], Context) else Context[source['context']]
-        source['argument_type'] = source['argument_type'] if isinstance(source['argument_type'], ArgumentType) else \
+        source['context'] = source['context'] if isinstance(source['context'],
+                                                            Context) else \
+            Context[source['context']]
+        source['argument_type'] = source['argument_type'] if isinstance(
+            source['argument_type'], ArgumentType) else \
             ArgumentType[
                 source['argument_type']]
 
-        # convert the meta dict to a meta object to make it hashable
+        # convert the meta dict to an object to make it hashable
         if source.get('meta', False):
             # convert lists to tuples to make them hashable
             if source['meta'].get('valid_options', False):
-                source['meta']['valid_options'] = tuple(source['meta']['valid_options'])
+                source['meta']['valid_options'] = tuple(
+                    source['meta']['valid_options'])
             # set flags to booleans types if another type is not already defined
-            if not_set_token is source['meta'].get('value_type', not_set_token) and source['argument_type'] \
+            if not_set_token is source['meta'].get('value_type',
+                                                   not_set_token) and source[
+                'argument_type'] \
                     == ArgumentType.FLAG:
                 source['meta']['value_type'] = 'bool'
             source['meta'] = ConfigItemMeta(**source['meta'])
 
         # sanity check
-        if ArgumentType.FLAG == source['argument_type'] and not isinstance(source['default'], bool):
-            raise ValueError(f"Flag {source['name']} has a non-boolean value type defined: {type(source['default'])}")
+        if ArgumentType.FLAG == source['argument_type'] and not isinstance(
+                source['default'], bool):
+            raise ValueError(
+                f"Flag {source['name']} has a non-boolean value type defined: "
+                f"{type(source['default'])}")
         return cls(**ConfigItemDefinition.clean_argument_dict(source))
 
     @classmethod
@@ -171,8 +185,10 @@ class CanonicalValueExtractorInterface(metaclass=abc.ABCMeta):
             raise ValueError(f"Invalid configuration source: {type(source)}")
 
     @abc.abstractmethod
-    def get_canonical_value(self, definition: ConfigItemDefinition, source: Any) -> Any:
-        """Return the canonical configuration value as stored in the configuration source"""
+    def get_canonical_value(self, definition: ConfigItemDefinition,
+                            source: Any) -> Any:
+        """Return the canonical configuration value as stored in the
+        configuration source"""
         raise NotImplementedError
 
 
@@ -182,7 +198,8 @@ class AlwaysInvalidExtractor(CanonicalValueExtractorInterface):
     def is_valid_source(self, source: Any) -> bool:
         return False
 
-    def get_canonical_value(self, definition: ConfigItemDefinition, source: Any) -> Any:
+    def get_canonical_value(self, definition: ConfigItemDefinition,
+                            source: Any) -> Any:
         self.assert_is_valid_source(source)
 
 
@@ -191,12 +208,14 @@ def get_data_item_fields() -> Set[str]:
     return set([x.name for x in fields(ConfigItemDefinition)])
 
 
-def assert_is_valid_subcommand(subcommand: str) -> None:
-    if subcommand not in valid_subcommands:
-        raise ValueError(f"Unsupported subcommand {subcommand}")
+def assert_is_valid_subcommand(command_name: str) -> None:
+    if command_name not in valid_subcommands:
+        raise ValueError(f"Unsupported subcommand {command_name}")
 
 
-def config_definitions_to_config_map(config_definitions: Dict[str, Dict[str, Any]]) -> Dict[str, ConfigItemDefinition]:
+def config_definitions_to_config_map(
+        config_definitions: Dict[str, Dict[str, Any]]) -> Dict[
+        str, ConfigItemDefinition]:
     result: Dict[str, ConfigItemDefinition] = {}
     used_short_names: Set[str] = set()
     implied_names: Set[str] = set()
@@ -204,23 +223,31 @@ def config_definitions_to_config_map(config_definitions: Dict[str, Dict[str, Any
         value['name'] = name
         config_item = ConfigItemDefinition.from_dict(value)
         if config_item.name in result:
-            raise KeyError(f"The name {json.dumps(config_item.name)} has already been loaded")
+            raise KeyError(
+                f"The name {json.dumps(config_item.name)} has already been "
+                f"loaded")
         if config_item.name in implied_names:
             raise KeyError(
-                f"A configured flag has already claimed {json.dumps(config_item.name)} as an implied name")
+                f"A configured flag has already claimed "
+                f"{json.dumps(config_item.name)} as an implied name")
         if config_item.short_name:
             if config_item.short_name in used_short_names:
-                raise KeyError(f"The short name {json.dumps(config_item.short_name)} has already been loaded")
+                raise KeyError(
+                    f"The short name {json.dumps(config_item.short_name)} "
+                    f"has already been loaded")
             else:
                 used_short_names.add(config_item.short_name)
         if config_item.argument_type == ArgumentType.FLAG:
             implied_name = f'no-{config_item.name}'
             if implied_name in implied_names:
-                raise KeyError(f"Another option has already taken the implied name {json.dumps(implied_name)}")
+                raise KeyError(
+                    f"Another option has already taken the implied name "
+                    f"{json.dumps(implied_name)}")
             implied_names.add(implied_name)
 
         if config_item.name in invalid_config_item_names:
-            raise KeyError(f"The name {json.dumps(config_item.name)} is reserved")
+            raise KeyError(
+                f"The name {json.dumps(config_item.name)} is reserved")
         result[config_item.name] = config_item
     return result
 
@@ -233,7 +260,9 @@ for subcommand in valid_subcommands:
 
 
 @lru_cache(maxsize=len(valid_subcommands))
-def get_config_map_for_subcommand(subcommand: str) -> Dict[str, ConfigItemDefinition]:
-    assert_is_valid_subcommand(subcommand)
+def get_config_map_for_subcommand(command_name: str) -> Dict[
+        str, ConfigItemDefinition]:
+    assert_is_valid_subcommand(command_name)
 
-    return config_definitions_to_config_map(subcommand_module_map[subcommand].get_config_definitions())
+    return config_definitions_to_config_map(
+        subcommand_module_map[command_name].get_config_definitions())
