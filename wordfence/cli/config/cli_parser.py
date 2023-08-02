@@ -114,7 +114,7 @@ def get_cli_values() -> Tuple[Namespace, List[str]]:
     if '--' in trailing_arguments:
         if trailing_arguments[0] != '--':
             unknowns = trailing_arguments[0:trailing_arguments.index('--')]
-            unknown = ', '.join(map(lambda x: json.dumps(x), unknowns))
+            unknowns = ', '.join(map(lambda x: json.dumps(x), unknowns))
             raise ValueError(f"Encountered unknown command arguments: "
                              f"{unknowns}")
         trailing_arguments = trailing_arguments[1:]
