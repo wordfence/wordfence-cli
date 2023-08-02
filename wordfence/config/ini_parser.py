@@ -70,12 +70,12 @@ def load_ini(cli_values) -> ConfigParser:
     except OSError as e:
         if e.errno == errno.EACCES:
             raise PermissionError(
-                f"The current user cannot read the config file: {json.dumps(get_ini_path())}") from e
+                f"The current user cannot read the config file: {json.dumps(get_ini_path(cli_values))}") from e
         elif e.errno != errno.ENOENT:
             raise
         # config file does not exist -- proceed with default values + CLI values
         log.warning(
-            f"Config file not found or not readable: {json.dumps(get_ini_path())}. Merging default config values.")
+            f"Config file not found or not readable: {json.dumps(get_ini_path(cli_values))}. Merging default config values.")
         return config
     config_section_name = get_config_section_name(cli_values)
     definitions = get_definitions(cli_values)
