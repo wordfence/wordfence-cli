@@ -1,21 +1,18 @@
-#!/usr/bin/env python3
+import json
+import importlib
+import sys
 
-from .. import scanning, api
+from .config import load_config
 
 
 def main():
-    license = api.license.License(
-            '40d595e120456cdf17700866f23e3820368d3cee58fdd8afb660cdd87934edb9'
+    config = load_config()
+    subcommand_module = importlib.import_module(
+            f'.{config.subcommand}.{config.subcommand}',
+            package='wordfence.cli'
         )
-    noc1_client = api.noc1.Client(license, base_url='http://noc1.local/v2.27/')
-    signatures = noc1_client.get_malware_signatures()
-    options = scanning.scanner.Options(
-            paths={'/home/alex/Defiant/malicious-samples'},
-            threads=1,
-            signatures=signatures
-        )
-    scanner = scanning.scanner.Scanner(options)
-    scanner.scan()
+    exit_code = subcommand_module.main(config)
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':

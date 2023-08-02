@@ -18,7 +18,9 @@ class NocClient:
                 timeout: int = DEFAULT_TIMEOUT
             ):
         self.license = license
-        self.base_url = base_url
+        self.base_url = base_url \
+            if base_url is not None \
+            else self.get_default_base_url()
         self.timeout = timeout
 
     def get_default_base_url(self) -> str:
