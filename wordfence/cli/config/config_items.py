@@ -228,7 +228,7 @@ def config_definitions_to_config_map(config_definitions: Dict[str, Dict[str, Any
 subcommand_module_map: Dict[str, ModuleType] = dict()
 
 for subcommand in valid_subcommands:
-    module = importlib.import_module(f"wordfence.{subcommand}.config")
+    module = importlib.import_module(f"wordfence.cli.{subcommand}.config")
     subcommand_module_map[subcommand] = module
 
 
