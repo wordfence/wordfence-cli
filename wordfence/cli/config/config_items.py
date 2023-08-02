@@ -6,7 +6,7 @@ from dataclasses import dataclass, fields
 from enum import Enum
 from functools import lru_cache
 from types import ModuleType
-from typing import Optional, Any, Dict, Set, Tuple, Type
+from typing import Optional, Any, Dict, Set, Tuple, Type, Callable, Union
 
 valid_subcommands: Set[str] = {'scan'}
 
@@ -54,7 +54,7 @@ class ConfigItemMeta:
     valid_options: Optional[Tuple[str]] = None
     multiple: Optional[bool] = None
     ini_separator: Optional[str] = None
-    value_type: Type = str
+    value_type: Union[Type, Callable] = str
 
 
 @dataclass(frozen=True)
