@@ -6,7 +6,7 @@ def main(config) -> int:
     if config.license is None:
         print('A license must be specified')
         return 1
-    noc1_client = api.noc1.Client(license, base_url='http://noc1.local/v2.27')
+    noc1_client = api.noc1.Client(license)
     signatures = noc1_client.get_malware_signatures()
     paths = set()
     for argument in config.trailing_arguments:
