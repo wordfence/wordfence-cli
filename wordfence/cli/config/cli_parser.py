@@ -99,18 +99,6 @@ def add_to_parser(target_parser,
         target_parser.add_argument(*names, **named_params)
 
 
-class DropWhilePredicate:
-    def __init__(self):
-        self.drop_next: bool = True
-
-    def __call__(self, entry: str) -> bool:
-        if not self.drop_next:
-            return False
-        if '--' == entry:
-            self.drop_next = False
-        return True
-
-
 def get_cli_values() -> Tuple[Namespace, List[str]]:
     subparsers = parser.add_subparsers(title="Wordfence CLI subcommands",
                                        dest="subcommand")
@@ -124,6 +112,10 @@ def get_cli_values() -> Tuple[Namespace, List[str]]:
 
     cli_values, trailing_arguments = parser.parse_known_args()
     if '--' in trailing_arguments:
-        trailing_arguments = list(
-            dropwhile(DropWhilePredicate(), trailing_arguments))
+        if trailing_arguments[0] != '--':
+            unknowns = trailing_arguments[0:trailing_arguments.index('--')]
+            unknowns = ', '.join(map(lambda x: json.dumps(x), unknowns))
+            raise ValueError(f"Encountered unknown command arguments: "
+                             f"{unknowns}")
+        trailing_arguments = trailing_arguments[1:]
     return cli_values, trailing_arguments
