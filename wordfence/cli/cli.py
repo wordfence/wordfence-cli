@@ -2,13 +2,13 @@ import json
 import importlib
 import sys
 
-from wordfence.cli.banner import welcome_banner
+from wordfence.cli.banner import *
 from .config import load_config
 
 
 def main():
     config = load_config()
-    if config.banner:
+    if should_show_welcome_banner(config.banner):
         welcome_banner()
 
     subcommand_module = importlib.import_module(

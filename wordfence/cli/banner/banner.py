@@ -1,4 +1,5 @@
 import os
+import sys
 
 FULL_BANNER_FILENAME = 'full_banner.txt'
 TEXT_BANNER_FILENAME = 'text_banner.txt'
@@ -14,3 +15,10 @@ def welcome_banner():
     with open(os.path.dirname(__file__) + '/' + file, 'r') as stream:
         print(stream.read())
         stream.close()
+
+
+def should_show_welcome_banner(banner_enabled):
+    if not banner_enabled or not sys.stdout.isatty():
+        return False
+
+    return True
