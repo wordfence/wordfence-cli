@@ -9,17 +9,6 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION",
         "default": "/etc/wordfence/wordfence-cli.ini"
     },
-    "directory": {
-        "short_name": "d",
-        "description": "Specify a directory to scan. Can be used multiple "
-                       "times.",
-        "context": "ALL",
-        "argument_type": "OPTION_REPEATABLE",
-        "default": None,
-        "meta": {
-            "ini_separator": ","
-        }
-    },
     "exclude-signatures": {
         "short_name": "i",
         "description": "Specify a rule ID to exclude from the scan. Can be "
@@ -39,16 +28,6 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "context": "ALL",
         "argument_type": "OPTION",
         "default": None
-    },
-    "file": {
-        "short_name": "f",
-        "description": "Specific file to scan (can be used multiple times).",
-        "context": "ALL",
-        "argument_type": "OPTION_REPEATABLE",
-        "default": None,
-        "meta": {
-            "ini_separator": ","
-        }
     },
     "ignore-stdin": {
         "short_name": "I",
