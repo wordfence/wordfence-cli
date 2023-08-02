@@ -13,7 +13,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "description": "Specify a directory to scan. Can be used multiple times.",
         "context": "ALL",
         "argument_type": "OPTION_REPEATABLE",
-        "default": ".",
+        "default": None,
         "meta": {
             "ini_separator": ","
         }
