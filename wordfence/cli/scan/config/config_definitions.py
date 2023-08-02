@@ -29,22 +29,11 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION",
         "default": None
     },
-    "ignore-stdin": {
-        "short_name": "I",
-        "description": "Stops the default behavior or reading files to scan "
-                       "from stdin. If this is set, then -f|--file-list or "
-                       "-d|--directory must be specified.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": True
-    },
     "read-stdin": {
-        "short_name": "S",
-        "description": "Sets default behavior of reading files to scan from "
-                       "stdin. Allows the CLI to override the INI "
-                       "configuration file if ignore-stdin is set in the INI.",
+        "description": "Sets default behavior of reading paths to scan from "
+                       "stdin.",
         "context": "ALL",
-        "argument_type": "OPTION",
+        "argument_type": "FLAG",
         "default": True
     },
     "file-list-separator": {
