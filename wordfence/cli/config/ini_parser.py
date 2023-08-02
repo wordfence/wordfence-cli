@@ -89,7 +89,7 @@ def load_ini(cli_values) -> ConfigParser:
         elif e.errno != errno.ENOENT:
             raise
         # config file does not exist -- proceed with default values + CLI values
-        log.warning(
+        log.info(
             f"Config file not found or not readable: "
             f"{json.dumps(get_ini_path(cli_values))}. Merging default config "
             f"values.")

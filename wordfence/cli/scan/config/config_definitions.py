@@ -178,5 +178,12 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True
-    }
+    },
+    "noc1-url": {
+        "description": "URL to use for accessing the NOC1 API.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": "https://noc1.wordfence.com/v2.27/",
+        "hidden": True
+    },
 }

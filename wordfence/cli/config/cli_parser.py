@@ -1,3 +1,4 @@
+import argparse
 import json
 from argparse import ArgumentParser, Namespace
 from itertools import dropwhile
@@ -79,14 +80,20 @@ def add_to_parser(target_parser,
         named_params['action'] = 'append'
         named_params['default'] = [not_set_token]
         named_params['type'] = config_definition.get_value_type()
+
+    if config_definition.hidden:
+        named_params['help'] = argparse.SUPPRESS
+
     target_parser.add_argument(*names, **named_params)
 
     # register the negation of a flag
     if config_definition.argument_type == ArgumentType.FLAG:
         named_params['action'] = 'store_false'
         names = [f"--no-{config_definition.name}"]
-        # use the basic config option
-        del named_params['help']
+        if config_definition.hidden:
+            named_params['help'] = argparse.SUPPRESS
+        else:
+            del named_params['help']
         # set the value to override the un-prefixed command
         named_params['dest'] = config_definition.property_name
         target_parser.add_argument(*names, **named_params)
@@ -116,6 +123,7 @@ def get_cli_values() -> Tuple[Namespace, List[str]]:
             add_to_parser(subparser, definition)
 
     cli_values, trailing_arguments = parser.parse_known_args()
-    trailing_arguments = list(
-        dropwhile(DropWhilePredicate(), trailing_arguments))
+    if '--' in trailing_arguments:
+        trailing_arguments = list(
+            dropwhile(DropWhilePredicate(), trailing_arguments))
     return cli_values, trailing_arguments
