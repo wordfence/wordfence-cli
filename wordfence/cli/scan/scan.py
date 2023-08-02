@@ -1,7 +1,8 @@
-from wordfence import scanning, api
+from wordfence import scanning, api, util
 
 
 def main(config) -> int:
+    util.updater.Updater.check_version()
     license = api.license.License(config.license)
     if config.license is None:
         print('A license must be specified')

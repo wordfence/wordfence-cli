@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 from distutils.core import setup
+from wordfence import version
 
 setup(name='Wordfence CLI',
-      version='0.0.1',
+      version=version.__version__,
       description='Command-line malware scanner powered by Wordfence',
       py_modules=[],
       )

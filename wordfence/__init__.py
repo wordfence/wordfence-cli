@@ -1,0 +1,1 @@
+from wordfence.version import __version__
