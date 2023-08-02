@@ -6,21 +6,7 @@ from dataclasses import dataclass, fields
 from enum import Enum
 from functools import lru_cache
 from types import ModuleType
-from typing import Optional, Any, Dict, Set, Tuple
-
-KIBIBYTE = 1024
-MEBIBYTE = 1024 * 1024
-
-sizings_map = {
-    'b': 1,
-    'k': KIBIBYTE,
-    'kb': KIBIBYTE,
-    'kib': KIBIBYTE,
-    'm': MEBIBYTE,
-    'mb': MEBIBYTE,
-    'mib': MEBIBYTE
-}
-"""maps suffixes to byte multipliers; k/kb/kib are synonyms, as are m/mb/mib"""
+from typing import Optional, Any, Dict, Set, Tuple, Type
 
 valid_subcommands: Set[str] = {'scan'}
 
@@ -68,15 +54,7 @@ class ConfigItemMeta:
     valid_options: Optional[Tuple[str]] = None
     multiple: Optional[bool] = None
     ini_separator: Optional[str] = None
-    value_type: str = 'str'
-
-
-valid_types = {
-    'str': str,
-    'string': str,
-    'int': int,
-    'bool': bool
-}
+    value_type: Type = str
 
 
 @dataclass(frozen=True)
@@ -105,7 +83,7 @@ class ConfigItemDefinition:
     def get_value_type(self):
         if not self.meta:
             return str if self.argument_type != ArgumentType.FLAG else bool
-        return_type = valid_types.get(self.meta.value_type, False)
+        return_type = self.meta.value_type
         if not return_type:
             raise ValueError(
                 f"Specified type not in the allow list: {self.meta.value_type}")

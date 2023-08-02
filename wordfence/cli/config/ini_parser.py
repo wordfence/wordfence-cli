@@ -2,12 +2,12 @@ import errno
 import json
 from argparse import Namespace
 from configparser import ConfigParser
-from typing import List, Set, Any, Dict
+from typing import List, Set, Any, Dict, Callable
 
 from wordfence.logging import log
 from .config_items import Context, ConfigItemDefinition, \
     CanonicalValueExtractorInterface, not_set_token, \
-    get_config_map_for_subcommand, subcommand_module_map
+    get_config_map_for_subcommand, subcommand_module_map, ReferenceToken
 
 INI_DEFAULT_FILENAME = 'wordfence-cli.ini'
 INI_DEFAULT_PATH = f"/etc/wordfence/{INI_DEFAULT_FILENAME}"
@@ -29,7 +29,8 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
         if definition.has_ini_separator():
             # always return separated values as a string
             value = source.get(self.config_section_name,
-                               definition.property_name, fallback=not_set_token)
+                               definition.property_name,
+                               fallback=not_set_token)
         elif definition.get_value_type() == bool:
             value = source.getboolean(self.config_section_name,
                                       definition.property_name,
@@ -38,13 +39,21 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
             value = source.getint(self.config_section_name,
                                   definition.property_name,
                                   fallback=not_set_token)
+        elif isinstance(definition.get_value_type(), Callable):
+            value = source.get(self.config_section_name,
+                               definition.property_name,
+                               fallback=not_set_token)
+            # convert using the type method
+            value = value if isinstance(value, ReferenceToken) else (
+                (definition.get_value_type())(value))
         elif definition.get_value_type() != str:
             raise ValueError(
                 "Only string, bool, and int types are currently known to the "
                 "INI parser")
         else:
             value = source.get(self.config_section_name,
-                               definition.property_name, fallback=not_set_token)
+                               definition.property_name,
+                               fallback=not_set_token)
         if isinstance(value, str) and definition.has_ini_separator():
             value = value.split(definition.meta.ini_separator)
             if definition.get_value_type() == int:

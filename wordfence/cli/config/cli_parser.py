@@ -1,7 +1,6 @@
 import argparse
 import json
 from argparse import ArgumentParser, Namespace
-from itertools import dropwhile
 from typing import Set, List, Dict, Any, Tuple
 
 from wordfence.logging import log
@@ -61,11 +60,11 @@ def add_to_parser(target_parser,
     # common arguments
     named_params: Dict[str, Any] = {
         'help': config_definition.description,
-        'default': not_set_token
+        'default': not_set_token,
+        'action': 'store'
     }
     if config_definition.has_options_list():
         named_params['choices'] = config_definition.meta.valid_options
-        named_params['type'] = config_definition.get_value_type()
 
     # special handling
     if config_definition.argument_type == ArgumentType.FLAG:
@@ -75,10 +74,15 @@ def add_to_parser(target_parser,
         defaults_to = f'true (--{config_definition.name})' if (
             config_definition.default) else \
             f'false (--no-{config_definition.name})'
-        named_params['help'] += f' If not specified, defaults to {defaults_to}.'
+        named_params['help'] += (f' If not specified, defaults to '
+                                 f'{defaults_to}.')
     elif config_definition.argument_type == ArgumentType.OPTION_REPEATABLE:
         named_params['action'] = 'append'
         named_params['default'] = [not_set_token]
+
+    # store_true and store_false do not have the same options as other actions,
+    # and will throw an error if type is specified
+    if not named_params['action'].startswith('store_'):
         named_params['type'] = config_definition.get_value_type()
 
     if config_definition.hidden:
