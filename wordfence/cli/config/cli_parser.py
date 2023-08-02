@@ -123,6 +123,7 @@ def get_cli_values() -> Tuple[Namespace, List[str]]:
             add_to_parser(subparser, definition)
 
     cli_values, trailing_arguments = parser.parse_known_args()
-    trailing_arguments = list(
-        dropwhile(DropWhilePredicate(), trailing_arguments))
+    if '--' in trailing_arguments:
+        trailing_arguments = list(
+            dropwhile(DropWhilePredicate(), trailing_arguments))
     return cli_values, trailing_arguments
