@@ -1,0 +1,2 @@
+class ApiException(Exception):
+    pass
