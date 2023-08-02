@@ -87,6 +87,7 @@ class ConfigItemDefinition:
     context: Context
     argument_type: ArgumentType
     default: Any
+    hidden: bool = False
     short_name: Optional[str] = None
     meta: Optional[ConfigItemMeta] = None
 
