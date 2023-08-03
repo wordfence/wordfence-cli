@@ -1,4 +1,30 @@
+import re
 from typing import Dict, Any
+
+KIBIBYTE = 1024
+MEBIBYTE = 1024 * 1024
+
+sizings_map = {
+    'b': 1,
+    'k': KIBIBYTE,
+    'kb': KIBIBYTE,
+    'kib': KIBIBYTE,
+    'm': MEBIBYTE,
+    'mb': MEBIBYTE,
+    'mib': MEBIBYTE
+}
+"""maps suffixes to byte multipliers; k/kb/kib are synonyms, as are m/mb/mib"""
+
+
+def byte_length(conversion_value: str) -> int:
+    match = re.search(r"(\d+)([^0-9].*)", conversion_value)
+    if not match:
+        raise ValueError("Invalid format for byte length type")
+    suffix = match.group(2).lower()
+    if not sizings_map.get(suffix, False):
+        raise ValueError("Unrecognized byte length suffix")
+    return int(match.group(1)) * sizings_map.get(suffix)
+
 
 config_definitions: Dict[str, Dict[str, Any]] = {
     "configuration": {
@@ -18,7 +44,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": None,
         "meta": {
             "ini_separator": ",",
-            "value_type": "int"
+            "value_type": int
         }
     },
     "license": {
@@ -139,10 +165,13 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "short_name": "z",
         "description": "Size of file chunks that will be scanned. Use a whole "
                        "number followed by one of the following suffixes: b "
-                       "(byte), k (kibibyte), m (mebibyte).",
+                       "(byte), k (kibibyte), m (mebibyte). Defaults to 3m.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": "3m"
+        "default": 3145728,
+        "meta": {
+            "value_type": byte_length
+        }
     },
     "max-file-size": {
         "short_name": "M",
