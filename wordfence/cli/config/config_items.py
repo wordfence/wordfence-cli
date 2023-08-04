@@ -129,8 +129,8 @@ class ConfigItemDefinition:
             source['meta'] = ConfigItemMeta(**source['meta'])
 
         # sanity check
-        if ArgumentType.FLAG == source['argument_type'] and not isinstance(
-                source['default'], bool):
+        if ArgumentType.FLAG == source['argument_type'] and not (isinstance(
+                source['default'], bool) or source['default'] is None):
             raise ValueError(
                 f"Flag {source['name']} has a non-boolean value type defined: "
                 f"{type(source['default'])}")

@@ -1,3 +1,3 @@
-from . import license, exceptions, noc4, noc1
+from . import licensing, exceptions, noc4, noc1
 
-__all__ = ['license', 'exceptions', 'noc4', 'noc1']
+__all__ = ['licensing', 'exceptions', 'noc4', 'noc1']

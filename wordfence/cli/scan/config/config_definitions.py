@@ -60,7 +60,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
                        "stdin.",
         "context": "ALL",
         "argument_type": "FLAG",
-        "default": True
+        "default": None
     },
     "file-list-separator": {
         "short_name": "s",
@@ -147,8 +147,8 @@ config_definitions: Dict[str, Dict[str, Any]] = {
     },
     "include-files-pattern": {
         "short_name": "N",
-        "description": "PCRE regex allow pattern. Only matching filenames will "
-                       "be scanned.",
+        "description": "PCRE regex allow pattern. Only matching filenames will"
+                       " be scanned.",
         "context": "ALL",
         "argument_type": "OPTION",
         "default": None
@@ -175,10 +175,10 @@ config_definitions: Dict[str, Dict[str, Any]] = {
     },
     "max-file-size": {
         "short_name": "M",
-        "description": "Files above this limit will not be scanned. Defaults "
-                       "to 50 mebibytes. Use a whole number followed by one of "
-                       "the following suffixes: b (byte), k (kibibyte), m "
-                       "(mebibyte).",
+        "description": "Files above this limit will not be scanned. Defaults"
+                       " to 50 mebibytes. Use a whole number followed by one"
+                       " config the following suffixes: b (byte), k (kibibyte)"
+                       ", m (mebibyte).",
         "context": "ALL",
         "argument_type": "OPTION",
         "default": "50m"
@@ -208,11 +208,17 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": True
     },
+    "cache-directory": {
+        "description": "A path to use for cache files.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": "/var/cache/wordfence"
+    },
     "noc1-url": {
         "description": "URL to use for accessing the NOC1 API.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": "https://noc1.wordfence.com/v2.27/",
+        "default": None,
         "hidden": True
     },
 }

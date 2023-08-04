@@ -2,14 +2,14 @@ import os
 import queue
 from ctypes import c_bool, c_uint
 from enum import IntEnum
-from multiprocessing import Queue, Process, Pool, Value
+from multiprocessing import Queue, Process, Value
 from dataclasses import dataclass
-from typing import Set
+from typing import Set, Optional
 
-from . import matcher
 from .exceptions import ScanningException
 from .matcher import Matcher, RegexMatcher
 from ..util import timing
+from ..util.io import StreamReader
 from ..intel.signatures import SignatureSet
 
 MAX_PENDING_FILES = 1000  # Arbitrary limit
@@ -28,6 +28,7 @@ class Options:
     signatures: SignatureSet
     threads: int = 1
     chunk_size: int = DEFAULT_CHUNK_SIZE
+    path_source: Optional[StreamReader] = None
 
 
 class Status(IntEnum):
@@ -75,13 +76,20 @@ class FileLocatorProcess(Process):
             ):
         self._input_queue = Queue(input_queue_size)
         self.output_queue = Queue(output_queue_size)
+        self._path_count = 0
         super().__init__(name='file-locator')
 
     def add_path(self, path: str):
+        self._path_count += 1
+        print(f'Path: {path}')
         self._input_queue.put(path)
 
     def finalize_paths(self):
         self._input_queue.put(None)
+        if self._path_count < 1:
+            raise ScanConfigurationException(
+                    'At least one scan path must be specified'
+                )
 
     def get_next_file(self):
         return self.output_queue.get()
@@ -159,7 +167,9 @@ class ScanWorker(Process):
                 if self._status.value == Status.PROCESSING_FILES:
                     self._complete()
 
-    def _put_event(self, event_type: ScanEventType, data: dict = {}) -> None:
+    def _put_event(self, event_type: ScanEventType, data: dict = None) -> None:
+        if data is None:
+            data = {}
         self._result_queue.put(ScanEvent(self.index, event_type, data))
 
     def _complete(self):
@@ -299,7 +309,7 @@ class ScanWorkerPool:
                 matches = event.data['matches']
                 if len(matches):
                     print('File at ' + event.data['path'] + ' has matches')
-                    for signature_id, state in matches.items():
+                    for signature_id in matches:
                         print(
                                 event.data['path'] +
                                 ' matched signature ' +
@@ -344,16 +354,11 @@ class Scanner:
 
     def scan(self):
         """Run a scan"""
-        if len(self.options.paths) == 0:
-            raise ScanConfigurationException(
-                    'At least one scan path must be specified'
-                )
         timer = timing.Timer()
         file_locator_process = FileLocatorProcess()
         file_locator_process.start()
         for path in self.options.paths:
             file_locator_process.add_path(path)
-        file_locator_process.finalize_paths()
         worker_count = self.options.threads
         print("Using " + str(worker_count) + " workers")
         matcher = RegexMatcher(self.options.signatures)
@@ -365,6 +370,14 @@ class Scanner:
                     metrics,
                     self.options.chunk_size
                 ) as worker_pool:
+            if self.options.path_source is not None:
+                while True:
+                    path = self.options.path_source.read_entry()
+                    if path is None:
+                        break
+                    file_locator_process.add_path(path)
+            file_locator_process.finalize_paths()
+            print('Awaiting results...')
             worker_pool.await_results()
         timer.stop()
         print(

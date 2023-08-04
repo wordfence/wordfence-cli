@@ -3,7 +3,7 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 from urllib.error import URLError, HTTPError
 
-from .license import License
+from .licensing import License
 from .exceptions import ApiException
 
 DEFAULT_TIMEOUT = 30
@@ -43,5 +43,5 @@ class NocClient:
             with urlopen(request, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode('utf-8'))
                 return data
-        except URLError as error:
+        except (URLError, HTTPError) as error:
             raise ApiException('Request failed') from error

@@ -1,14 +1,11 @@
 import json
-from urllib.request import Request, urlopen
-from urllib.parse import urlencode
-from urllib.error import URLError, HTTPError
 
-from .license import License
 from .exceptions import ApiException
-from .noc_client import NocClient, DEFAULT_TIMEOUT
+from .noc_client import NocClient
 
 from ..intel.signatures import CommonString, Signature, SignatureSet
-from ..util.validation import DictionaryValidator, ListValidator
+from ..util.validation import DictionaryValidator, ListValidator, \
+        ValidationException
 
 NOC1_BASE_URL = 'https://noc1.wordfence.com/v2.27/'
 
