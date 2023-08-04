@@ -28,24 +28,12 @@ class RegexMatcherContext(MatcherContext):
 
     def __init__(self, matcher):
         self.matcher = matcher
-        self.signatures_without_common_strings = \
-            self._extract_signatures_without_common_strings(matcher)
         self.common_string_states = self._initialize_common_string_states()
         self.matches = {}
 
-    def _extract_signatures_without_common_strings(
-                self,
-                matcher: Matcher
-            ) -> list:
-        signatures = []
-        for identifier, signature in matcher.signatures.items():
-            if not signature.signature.has_common_strings():
-                signatures.append(signature)
-        return signatures
-
     def _initialize_common_string_states(self) -> list:
         states = []
-        for common_string in self.matcher.common_strings:
+        for _common_string in self.matcher.common_strings:
             states.append(False)
         return states
 
@@ -57,7 +45,6 @@ class RegexMatcherContext(MatcherContext):
                 if match is not None:
                     self.common_string_states[index] = True
             if self.common_string_states[index]:
-                sig_count = len(common_string.common_string.signature_ids)
                 for identifier in common_string.common_string.signature_ids:
                     if identifier in self.matches:
                         continue
@@ -82,7 +69,7 @@ class RegexMatcherContext(MatcherContext):
     def process_chunk(self, chunk: bytes) -> None:
         chunk = chunk.decode('utf-8', 'ignore')
         possible_signatures = self._check_common_strings(chunk)
-        for signature in self.signatures_without_common_strings:
+        for signature in self.matcher.signatures_without_common_strings:
             self._match_signature(signature, chunk)
         for signature in possible_signatures:
             self._match_signature(signature, chunk)
@@ -135,6 +122,15 @@ class RegexMatcher(Matcher):
     def __init__(self, signature_set: SignatureSet):
         super().__init__(signature_set)
         self._compile_regexes()
+        self.signatures_without_common_strings = \
+            self._extract_signatures_without_common_strings()
+
+    def _extract_signatures_without_common_strings(self) -> list:
+        signatures = []
+        for signature in self.signatures.values():
+            if not signature.signature.has_common_strings():
+                signatures.append(signature)
+        return signatures
 
     def _compile_common_strings(self) -> None:
         self.common_strings = [
