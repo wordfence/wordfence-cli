@@ -4,10 +4,11 @@ from ctypes import c_bool, c_uint
 from enum import IntEnum
 from multiprocessing import Queue, Process, Value
 from dataclasses import dataclass
-from typing import Set, Optional
+from typing import Set, Optional, Callable
 
 from .exceptions import ScanningException
-from .matcher import Matcher, RegexMatcher
+from .matching import Matcher, RegexMatcher
+from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader
 from ..intel.signatures import SignatureSet
@@ -29,6 +30,8 @@ class Options:
     threads: int = 1
     chunk_size: int = DEFAULT_CHUNK_SIZE
     path_source: Optional[StreamReader] = None
+    max_file_size: Optional[int] = None
+    file_filter: Optional[FileFilter] = None
 
 
 class Status(IntEnum):
@@ -40,15 +43,18 @@ class Status(IntEnum):
 
 class FileLocator:
 
-    def __init__(self, path: str, queue: Queue):
+    def __init__(self, path: str, queue: Queue, file_filter: FileFilter):
         self.path = path
         self.queue = queue
+        self.file_filter = file_filter
         self.located_count = 0
 
     def search_directory(self, path: str):
         try:
             contents = os.scandir(path)
             for item in contents:
+                if not self.file_filter.filter(item.path):
+                    continue
                 if item.is_dir():
                     yield from self.search_directory(item.path)
                 elif item.is_file():
@@ -72,10 +78,14 @@ class FileLocatorProcess(Process):
     def __init__(
                 self,
                 input_queue_size: int = 10,
-                output_queue_size: int = MAX_PENDING_FILES
+                output_queue_size: int = MAX_PENDING_FILES,
+                file_filter: FileFilter = None
             ):
         self._input_queue = Queue(input_queue_size)
         self.output_queue = Queue(output_queue_size)
+        self.file_filter = file_filter \
+            if file_filter is not None \
+            else FileFilter([filter_any])
         self._path_count = 0
         super().__init__(name='file-locator')
 
@@ -97,7 +107,11 @@ class FileLocatorProcess(Process):
     def run(self):
         try:
             while (path := self._input_queue.get()) is not None:
-                locator = FileLocator(path, self.output_queue)
+                locator = FileLocator(
+                        path=path,
+                        file_filter=self.file_filter,
+                        queue=self.output_queue
+                    )
                 locator.locate()
             self.output_queue.put(None)
         except ScanningException as exception:
@@ -132,7 +146,8 @@ class ScanWorker(Process):
                 work_queue: Queue,
                 result_queue: Queue,
                 matcher: Matcher,
-                chunk_size: int = DEFAULT_CHUNK_SIZE
+                chunk_size: int = DEFAULT_CHUNK_SIZE,
+                max_file_size: Optional[int] = None
             ):
         self.index = index
         self._status = status
@@ -141,6 +156,7 @@ class ScanWorker(Process):
         self._matcher = matcher
         self._chunk_size = chunk_size
         self._working = True
+        self._max_file_size = max_file_size
         self.complete = Value(c_bool, False)
         super().__init__(name=self._generate_name())
 
@@ -180,6 +196,11 @@ class ScanWorker(Process):
     def is_complete(self) -> bool:
         return self.complete.value
 
+    def _has_exceeded_file_size_limit(self, length: int) -> bool:
+        if self._max_file_size is None:
+            return False
+        return length > self._max_file_size
+
     def _process_file(self, path: str):
         try:
             with open(path, mode='rb') as file:
@@ -187,6 +208,8 @@ class ScanWorker(Process):
                 length = 0
                 while (chunk := file.read(self._chunk_size)):
                     length += len(chunk)
+                    if self._has_exceeded_file_size_limit(length):
+                        break
                     context.process_chunk(chunk)
                 matches = context.get_matches()
                 self._put_event(
@@ -290,7 +313,7 @@ class ScanWorkerPool:
                 return False
         return True
 
-    def await_results(self):
+    def await_results(self, result_processor: Callable[[str, list], None]):
         self._assert_started()
         while True:
             event = self._result_queue.get()
@@ -306,15 +329,7 @@ class ScanWorkerPool:
                         event.worker_index,
                         event.data['length']
                     )
-                matches = event.data['matches']
-                if len(matches):
-                    print('File at ' + event.data['path'] + ' has matches')
-                    for signature_id in matches:
-                        print(
-                                event.data['path'] +
-                                ' matched signature ' +
-                                str(signature_id)
-                            )
+                result_processor(event.data['path'], event.data['matches'])
             elif event.type == ScanEventType.FILE_QUEUE_EMPTIED:
                 self._status.value = Status.PROCESSING_FILES
             elif event.type == ScanEventType.EXCEPTION:
@@ -335,8 +350,6 @@ class Scanner:
 
     def __init__(self, options: Options):
         self.options = options
-        self.processed = 0
-        self.bytes_read = 0
         self.failed = 0
 
     def _handle_worker_error(self, error: Exception):
@@ -352,10 +365,12 @@ class Scanner:
         worker = ScanWorker(status, work_queue, result_queue)
         worker.work()
 
-    def scan(self):
+    def scan(self, result_processor: Callable[[str, list], None]):
         """Run a scan"""
         timer = timing.Timer()
-        file_locator_process = FileLocatorProcess()
+        file_locator_process = FileLocatorProcess(
+                file_filter=self.options.file_filter
+            )
         file_locator_process.start()
         for path in self.options.paths:
             file_locator_process.add_path(path)
@@ -378,7 +393,7 @@ class Scanner:
                     file_locator_process.add_path(path)
             file_locator_process.finalize_paths()
             print('Awaiting results...')
-            worker_pool.await_results()
+            worker_pool.await_results(result_processor)
         timer.stop()
         print(
                 "Processed " +

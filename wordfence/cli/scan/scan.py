@@ -4,6 +4,7 @@ import os
 from multiprocessing import parent_process
 
 from wordfence import scanning, api
+from wordfence.scanning import filtering
 from wordfence.util import caching
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
@@ -26,18 +27,21 @@ class ScanCommand:
     def _get_license(self) -> api.licensing.License:
         if self.license is None:
             if self.config.license is None:
-                raise ValueError('A Wordfence CLI license is required')
+                raise api.licensing.LicenseRequiredException()
             self.license = api.licensing.License(self.config.license)
         return self.license
 
     def _initialize_cache(self) -> caching.Cache:
-        try:
-            return caching.CacheDirectory(
-                    self.config.cache_directory,
-                    self.CACHEABLE_TYPES
-                )
-        except caching.CacheException:
-            return caching.RuntimeCache()
+        if self.config.cache:
+            try:
+                return caching.CacheDirectory(
+                        self.config.cache_directory,
+                        self.CACHEABLE_TYPES
+                    )
+            except caching.CacheException:
+                # TODO: Should cache failures trigger some kind of notice?
+                pass
+        return caching.RuntimeCache()
 
     def filter_signatures(self, signatures: SignatureSet) -> None:
         if self.config.exclude_signatures is None:
@@ -75,6 +79,29 @@ class ScanCommand:
             return self.config.file_list_separator.decode('utf-8')
         return self.config.file_list_separator
 
+    def _initialize_file_filter(self) -> filtering.FileFilter:
+        filter = filtering.FileFilter()
+        has_include_overrides = False
+        if self.config.include_files is not None:
+            has_include_overrides = True
+            for name in self.config.include_files:
+                filter.add(filtering.filter_filename(name))
+        if self.config.include_files_pattern is not None:
+            has_include_overrides = True
+            for pattern in self.config.include_files_pattern:
+                filter.add(filtering.filter_pattern(pattern))
+        if self.config.exclude_files is not None:
+            for name in self.config.exclude_files:
+                filter.add(filtering.filter_filename(name), False)
+        if self.config.exclude_files_pattern is not None:
+            for pattern in self.config.exclude_files_pattern:
+                filter.add(filtering.filter_pattern(pattern), False)
+        if not has_include_overrides:
+            filter.add(filtering.filter_php)
+            filter.add(filtering.filter_html)
+            filter.add(filtering.filter_js)
+        return filter
+
     def execute(self) -> int:
         paths = set()
         for argument in self.config.trailing_arguments:
@@ -83,7 +110,9 @@ class ScanCommand:
                 paths=paths,
                 threads=int(self.config.threads),
                 signatures=self._get_signatures(),
-                chunk_size=self.config.chunk_size
+                chunk_size=self.config.chunk_size,
+                max_file_size=self.config.max_file_size,
+                file_filter=self._initialize_file_filter()
             )
         if self._should_read_stdin():
             options.path_source = StreamReader(
@@ -91,7 +120,13 @@ class ScanCommand:
                     self._get_file_list_separator()
                 )
         scanner = scanning.scanner.Scanner(options)
-        scanner.scan()
+
+        def process_result(path: str, matches: list) -> None:
+            match_count = len(matches)
+            print(f'File at {path} has {match_count} match(es): ' +
+                  ', '.join([str(match) for match in matches]))
+
+        scanner.scan(process_result)
         return 0
 
 
@@ -117,6 +152,9 @@ def main(config) -> int:
         command = ScanCommand(config)
         command.execute()
         return 0
+    except api.licensing.LicenseRequiredException:
+        print('A valid Wordfence CLI license is required')  # TODO: stderr
+        return 1
     except BaseException as exception:
         raise exception
         print(f'Error: {exception}')

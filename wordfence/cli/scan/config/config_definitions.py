@@ -150,16 +150,22 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "description": "PCRE regex allow pattern. Only matching filenames will"
                        " be scanned.",
         "context": "ALL",
-        "argument_type": "OPTION",
-        "default": None
+        "argument_type": "OPTION_REPEATABLE",
+        "default": None,
+        "meta": {
+            "ini_separator": ","
+        }
     },
     "exclude-files-pattern": {
         "short_name": "X",
         "description": "PCRE regex deny pattern. Matching filenames will not "
                        "be scanned.",
         "context": "ALL",
-        "argument_type": "OPTION",
-        "default": None
+        "argument_type": "OPTION_REPEATABLE",
+        "default": None,
+        "meta": {
+            "ini_separator": ","
+        }
     },
     "chunk-size": {
         "short_name": "z",
@@ -221,4 +227,10 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": None,
         "hidden": True
     },
+    "cache": {
+        "description": "Whether or not to use to enable the cache",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
+    }
 }
