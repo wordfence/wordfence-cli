@@ -33,6 +33,7 @@ class NocClient:
             query = base_query.copy()
         query['action'] = action
         query['k'] = self.license.key
+        query['cli'] = 1
         return query
 
     def request(self, action: str, query: dict = None):
