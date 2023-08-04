@@ -11,6 +11,12 @@ from wordfence.intel.signatures import SignatureSet
 
 class ScanCommand:
 
+    CACHEABLE_TYPES = {
+            'wordfence.intel.signatures.SignatureSet',
+            'wordfence.intel.signatures.CommonString',
+            'wordfence.intel.signatures.Signature'
+        }
+
     def __init__(self, config):
         self.config = config
         self.cache = self._initialize_cache()
@@ -26,7 +32,10 @@ class ScanCommand:
 
     def _initialize_cache(self) -> caching.Cache:
         try:
-            return caching.CacheDirectory(self.config.cache_directory)
+            return caching.CacheDirectory(
+                    self.config.cache_directory,
+                    self.CACHEABLE_TYPES
+                )
         except caching.CacheException:
             return caching.RuntimeCache()
 
@@ -46,7 +55,8 @@ class ScanCommand:
                 return noc1_client.get_malware_signatures()
             self.cacheable_signatures = caching.Cacheable(
                     'signatures',
-                    fetch_signatures
+                    fetch_signatures,
+                    86400  # Cache signatures for 24 hours
                 )
         signatures = self.cacheable_signatures.get(self.cache)
         self.filter_signatures(signatures)
@@ -66,7 +76,6 @@ class ScanCommand:
         return self.config.file_list_separator
 
     def execute(self) -> int:
-        print("Chunk size: " + str(self.config.chunk_size))
         paths = set()
         for argument in self.config.trailing_arguments:
             paths.add(argument)
@@ -74,7 +83,7 @@ class ScanCommand:
                 paths=paths,
                 threads=int(self.config.threads),
                 signatures=self._get_signatures(),
-                # chunk_size=self.config.chunk_size
+                chunk_size=self.config.chunk_size
             )
         if self._should_read_stdin():
             options.path_source = StreamReader(

@@ -1,4 +1,6 @@
-from typing import Optional, TextIO
+import fcntl
+from typing import Optional, IO, TextIO
+from enum import IntEnum
 
 
 class StreamReader:
@@ -31,3 +33,25 @@ class StreamReader:
             return path
         else:
             return None
+
+
+class LockType(IntEnum):
+    EXCLUSIVE = fcntl.LOCK_EX
+    SHARED = fcntl.LOCK_SH
+
+
+class FileLock:
+
+    def __init__(self, file: IO, lock_type: LockType = LockType.EXCLUSIVE):
+        self.file = file
+        self.lock_type = lock_type
+
+    def _operate_lock(self, action: int):
+        fcntl.flock(self.file, action)
+
+    def __enter__(self):
+        self._operate_lock(self.lock_type.value)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._operate_lock(fcntl.LOCK_UN)
