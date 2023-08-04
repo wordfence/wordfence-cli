@@ -91,6 +91,7 @@ class ScanCommand:
                     sys.stdin,
                     self._get_file_list_separator()
                 )
+        updater.Version.check(self.cache)
         scanner = scanning.scanner.Scanner(options)
         scanner.scan()
         return 0
@@ -114,7 +115,6 @@ signal.signal(signal.SIGINT, handle_interrupt)
 
 def main(config) -> int:
     command = None
-    updater.Updater.check_version()
     try:
         command = ScanCommand(config)
         command.execute()
