@@ -112,6 +112,11 @@ signal.signal(signal.SIGINT, handle_interrupt)
 
 
 def main(config) -> int:
+    if config.extension_module_test:
+        import helloModule
+        helloModule.helloworld()
+        sys.exit(0)
+
     command = None
     try:
         command = ScanCommand(config)

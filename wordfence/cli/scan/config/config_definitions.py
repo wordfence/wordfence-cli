@@ -221,4 +221,11 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": None,
         "hidden": True
     },
+    "extension-module-test": {
+        "description": "Load a test compiled C module and execute it.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False,
+        "hidden": True
+    },
 }

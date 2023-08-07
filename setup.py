@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 
 from wordfence import __version__
 
@@ -19,6 +19,7 @@ setup(
     maintainer_email='devs@wordfence.com',
     license='GPL 2.0',
     license_files='LICENSE',
+    ext_modules=[Extension('helloModule', ['extensions/hello_world.c'])],
     entry_points={
         'console_scripts': [
             'wordfence = wordfence.cli.cli:main',
