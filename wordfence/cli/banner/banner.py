@@ -18,7 +18,4 @@ def show_welcome_banner():
 
 
 def should_show_welcome_banner(banner_enabled):
-    if not banner_enabled or not sys.stdout.isatty():
-        return False
-
-    return True
+    return banner_enabled and sys.stdout.isatty()
