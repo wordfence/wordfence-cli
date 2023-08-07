@@ -1,2 +1,3 @@
 regex >= 2019.06.05
 packaging >= 23
+requests >= 2.3
