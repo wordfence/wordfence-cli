@@ -64,6 +64,8 @@ class Client(NocClient):
             signatures[signature_id] = Signature(
                 signature_id,
                 record[2],
+                record[7],
+                record[3],
                 record[8]
             )
             for index in record[8]:

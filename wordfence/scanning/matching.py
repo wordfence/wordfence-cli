@@ -64,7 +64,7 @@ class RegexMatcherContext(MatcherContext):
             return
         match = signature.get_pattern().search(chunk)
         if match is not None:
-            self.matches[signature.signature.identifier] = True
+            self.matches[signature.signature.identifier] = match.group(0)
 
     def process_chunk(self, chunk: bytes) -> None:
         chunk = chunk.decode('utf-8', 'ignore')

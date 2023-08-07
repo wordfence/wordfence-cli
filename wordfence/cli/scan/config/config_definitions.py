@@ -59,7 +59,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "description": "Sets default behavior of reading paths to scan from "
                        "stdin.",
         "context": "ALL",
-        "argument_type": "FLAG",
+        "argument_type": "OPTIONAL_FLAG",
         "default": None
     },
     "file-list-separator": {
@@ -70,26 +70,6 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION",
         "default": "AA==",
         "default_type": "base64"
-    },
-    "report-path": {
-        "short_name": "r",
-        "description": "Write report out to this path.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": "./report.txt"
-    },
-    "report-format": {
-        "short_name": "F",
-        "description": "CSV or TSV. Defaults to \"CSV\".",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": "CSV",
-        "meta": {
-            "valid_options": (
-                "csv",
-                "tsv"
-            )
-        }
     },
     "threads": {
         "short_name": "t",
@@ -105,22 +85,42 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": False
     },
+    "output-path": {
+        "description": "Path to which to write results.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": None,
+    },
+    "output-columns": {
+        "description": "List of columns to output.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": "filename"
+    },
     "output-format": {
         "short_name": "m",
-        "description": "TODO determine output.",
+        "description": "Output format used for result data.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": None
+        "default": 'csv',
+        "meta": {
+            "valid_options": [
+                "csv",
+                "tsv",
+            ]
+        }
+    },
+    "output-headers": {
+        "description": "Whether or not to include column headers in output",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
     },
     "images": {
-        "short_name": "g",
-        "description": "PCRE regex pattern for image extensions. Defaults to "
-                       "\"jpg|jpeg|mp3|avi|m4v|mov|mp4|gif|png|tiff?|svg|sql|"
-                       "js|tbz2?|bz2?|xz|zip|tgz|gz|tar|log|err\\d+\".",
+        "description": "Include image files in the scan.",
         "context": "ALL",
-        "argument_type": "OPTION",
-        "default": "jpg|jpeg|mp3|avi|m4v|mov|mp4|gif|png|tiff?|svg|sql|js|"
-                   "tbz2?|bz2?|xz|zip|tgz|gz|tar|log|err\\d+"
+        "argument_type": "FLAG",
+        "default": False
     },
     "include-files": {
         "short_name": "n",
@@ -188,25 +188,6 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "context": "ALL",
         "argument_type": "OPTION",
         "default": "50m"
-    },
-    "automatic-resolution": {
-        "short_name": "R",
-        "description": "Automatic options the scan can take. This option can "
-                       "be set multiple times to enable multiple resolutions. "
-                       "Valid options: repair, delete, quarantine, "
-                       "remove-permissions.",
-        "context": "ALL",
-        "argument_type": "OPTION_REPEATABLE",
-        "default": None,
-        "meta": {
-            "valid_options": (
-                "repair",
-                "delete",
-                "quarantine",
-                "remove-permissions"
-            ),
-            "ini_separator": ","
-        }
     },
     "banner": {
         "description": "Include to display the banner in command output.",

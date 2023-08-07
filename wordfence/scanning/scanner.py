@@ -1,10 +1,11 @@
 import os
 import queue
+import time
 from ctypes import c_bool, c_uint
 from enum import IntEnum
 from multiprocessing import Queue, Process, Value
 from dataclasses import dataclass
-from typing import Set, Optional, Callable
+from typing import Set, Optional, Callable, Dict
 
 from .exceptions import ScanningException
 from .matching import Matcher, RegexMatcher
@@ -249,6 +250,19 @@ class ScanMetrics:
         return self._aggregate_int_metric(self.bytes)
 
 
+class ScanResult:
+
+    def __init__(
+                self,
+                path: str,
+                matches: Dict[int, str],
+                timestamp: float = None
+            ):
+        self.path = path
+        self.matches = matches
+        self.timestamp = timestamp if timestamp is not None else time.time()
+
+
 class ScanWorkerPool:
 
     def __init__(
@@ -313,7 +327,7 @@ class ScanWorkerPool:
                 return False
         return True
 
-    def await_results(self, result_processor: Callable[[str, list], None]):
+    def await_results(self, result_processor: Callable[[ScanResult], None]):
         self._assert_started()
         while True:
             event = self._result_queue.get()
@@ -329,7 +343,8 @@ class ScanWorkerPool:
                         event.worker_index,
                         event.data['length']
                     )
-                result_processor(event.data['path'], event.data['matches'])
+                result = ScanResult(event.data['path'], event.data['matches'])
+                result_processor(result)
             elif event.type == ScanEventType.FILE_QUEUE_EMPTIED:
                 self._status.value = Status.PROCESSING_FILES
             elif event.type == ScanEventType.EXCEPTION:
@@ -365,7 +380,7 @@ class Scanner:
         worker = ScanWorker(status, work_queue, result_queue)
         worker.work()
 
-    def scan(self, result_processor: Callable[[str, list], None]):
+    def scan(self, result_processor: Callable[[ScanResult], None]):
         """Run a scan"""
         timer = timing.Timer()
         file_locator_process = FileLocatorProcess(

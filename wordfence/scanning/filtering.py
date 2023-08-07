@@ -47,15 +47,22 @@ def filter_any(path: str) -> bool:
 
 
 PATTERN_PHP = re.compile(
-        r'.(?:php(?:\d+)?|phtml)(\.|$)',
+        r'\.(?:php(?:\d+)?|phtml)(\.|$)',
         re.IGNORECASE
     )
 PATTERN_HTML = re.compile(
-        r'.(?:html?)(\.|$)',
+        r'\.(?:html?)(\.|$)',
         re.IGNORECASE
     )
 PATTERN_JS = re.compile(
-        r'.(?:js|svg)(\.|$)',
+        r'\.(?:js|svg)(\.|$)',
+        re.IGNORECASE
+    )
+PATTERN_IMAGES = re.compile(
+        (
+            r'\.(?:jpg|jpeg|mp3|avi|m4v|mov|mp4|gif|png|tiff?|svg|sql|js|tbz2?'
+            r'|bz2?|xz|zip|tgz|gz|tar|log|err\d+)(\.|$)'
+        ),
         re.IGNORECASE
     )
 
@@ -72,6 +79,10 @@ def filter_js(path: str) -> bool:
     return matches_regex(PATTERN_JS, path)
 
 
+def filter_images(path: str) -> bool:
+    return matches_regex(PATTERN_IMAGES, path)
+
+
 def filter_filename(value: str) -> Callable[[str], bool]:
     def filter(path: str) -> bool:
         filename = os.path.basename(path)
@@ -79,7 +90,10 @@ def filter_filename(value: str) -> Callable[[str], bool]:
     return filter
 
 
-def filter_pattern(pattern: str) -> Callable[[str], bool]:
+def filter_pattern(regex: str) -> Callable[[str], bool]:
+    pattern = re.compile(regex)
+
     def filter(path: str) -> bool:
-        return re.search(pattern, path) is not None
+        return matches_regex(pattern, path)
+
     return filter

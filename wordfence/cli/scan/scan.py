@@ -2,12 +2,14 @@ import sys
 import signal
 import os
 from multiprocessing import parent_process
+from contextlib import nullcontext
 
 from wordfence import scanning, api
 from wordfence.scanning import filtering
 from wordfence.util import caching
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
+from .reporting import Report, ReportFormat
 
 
 class ScanCommand:
@@ -100,6 +102,8 @@ class ScanCommand:
             filter.add(filtering.filter_php)
             filter.add(filtering.filter_html)
             filter.add(filtering.filter_js)
+            if self.config.images:
+                filter.add(filtering.filter_pattern(self.config.images))
         return filter
 
     def execute(self) -> int:
@@ -119,14 +123,20 @@ class ScanCommand:
                     sys.stdin,
                     self._get_file_list_separator()
                 )
-        scanner = scanning.scanner.Scanner(options)
 
-        def process_result(path: str, matches: list) -> None:
-            match_count = len(matches)
-            print(f'File at {path} has {match_count} match(es): ' +
-                  ', '.join([str(match) for match in matches]))
-
-        scanner.scan(process_result)
+        with open(self.config.output_path, 'w') if self.config.output_path \
+                is not None else nullcontext() as output_file:
+            output_format = ReportFormat(self.config.output_format)
+            output_columns = self.config.output_columns.split(',')
+            report = Report(output_format, output_columns, options.signatures)
+            if self.config.output and sys.stdout is not None:
+                report.add_target(sys.stdout)
+            if output_file is not None:
+                report.add_target(output_file)
+            if self.config.output_headers:
+                report.write_headers()
+            scanner = scanning.scanner.Scanner(options)
+            scanner.scan(lambda result: report.add_result(result))
         return 0
 
 
