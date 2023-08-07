@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from setuptools import setup, find_packages
 
-from wordfence import __version__
+from wordfence.version import __version__
 
 with open('README.md', 'r') as file:
     long_description = file.read()
