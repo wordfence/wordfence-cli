@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-RUN apt update && apt-get install -y debsigs \
+RUN apt-get update && apt-get install -y debsigs \
     dpkg-sig \
     python3 \
     dh-python \
