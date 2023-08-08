@@ -392,7 +392,7 @@ class Scanner:
         for path in self.options.paths:
             file_locator_process.add_path(path)
         worker_count = self.options.threads
-        log.debug("Using " + str(worker_count) + " workers...")
+        log.debug("Using " + str(worker_count) + " worker(s)...")
         matcher = RegexMatcher(self.options.signatures)
         metrics = ScanMetrics(worker_count)
         with ScanWorkerPool(
