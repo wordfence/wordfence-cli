@@ -92,7 +92,8 @@ class ConfigItemDefinition:
         return_type = self.meta.value_type
         if not return_type:
             raise ValueError(
-                f"Specified type not in the allow list: {self.meta.value_type}")
+                f"Specified type not in the allow list: {self.meta.value_type}"
+                )
         return return_type
 
     @classmethod
@@ -133,7 +134,8 @@ class ConfigItemDefinition:
             if source['meta'].get('valid_options', False):
                 source['meta']['valid_options'] = tuple(
                     source['meta']['valid_options'])
-            # set flags to booleans types if another type is not already defined
+            # set flags to booleans types
+            # if another type is not already defined
             if not_set_token is source['meta'].get('value_type',
                                                    not_set_token) and is_flag:
                 source['meta']['value_type'] = 'bool'

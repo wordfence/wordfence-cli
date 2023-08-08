@@ -21,7 +21,10 @@ class LimitedDeserializer(pickle.Unpickler):
             raise ProhibitedTypeException(f'Global {full_name} is not allowed')
 
 
-def limited_deserialize(data: bytes, allowed: Optional[Set[str]] = None) -> Any:
+def limited_deserialize(
+            data: bytes,
+            allowed: Optional[Set[str]] = None
+        ) -> Any:
     if allowed is None:
         allowed = set()
     return LimitedDeserializer(data, allowed).load()

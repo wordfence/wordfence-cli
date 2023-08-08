@@ -48,7 +48,8 @@ def add_to_parser(target_parser,
             f" CLI argument. Should it be specified in the INI file instead?")
         return
     if config_definition.name == 'help' or config_definition.short_name == 'h':
-        # change this behavior by setting ArgumentParser kwarg add_help to False
+        # change this behavior by setting
+        # ArgumentParser kwarg add_help to False
         raise ValueError(
             "A help command cannot be defined, as one is added automatically"
             " by the parser")

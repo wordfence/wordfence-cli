@@ -1,1 +1,3 @@
-from .banner import *
+from . import banner
+
+__all__ = ['banner']

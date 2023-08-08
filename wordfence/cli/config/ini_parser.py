@@ -97,7 +97,7 @@ def load_ini(cli_values) -> ConfigParser:
                 f"{json.dumps(get_ini_path(cli_values))}") from e
         elif e.errno != errno.ENOENT:
             raise
-        # config file does not exist -- proceed with default values + CLI values
+        # config file does not exist: proceed with default values + CLI values
         log.info(
             f"Config file not found or not readable: "
             f"{json.dumps(get_ini_path(cli_values))}. Merging default config "
@@ -112,7 +112,7 @@ def load_ini(cli_values) -> ConfigParser:
         if section_name != config_section_name:
             config.remove_section(section_name)
     # remove values that are in the incorrect context or are entirely unknown
-    for property_name, value in config.items(config_section_name):
+    for property_name, _value in config.items(config_section_name):
         # arguments are stored in the lookup by name (kebab-case), but written
         # out in snake_case in the INI
         key = property_name.replace('_', '-')

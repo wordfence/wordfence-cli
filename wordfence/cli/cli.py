@@ -1,7 +1,7 @@
 import importlib
 import sys
 
-from wordfence.cli.banner import show_welcome_banner_if_enabled
+from .banner.banner import show_welcome_banner_if_enabled
 from .config import load_config
 
 

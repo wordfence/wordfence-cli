@@ -5,9 +5,9 @@ from types import SimpleNamespace
 from typing import Any, Type, List, Dict, Optional
 
 from .cli_parser import CliCanonicalValueExtractor, get_cli_values, parser
-from .config_items import ConfigValue, ConfigItemDefinition, \
+from .config_items import ConfigItemDefinition, \
     AlwaysInvalidExtractor, CanonicalValueExtractorInterface, not_set_token, \
-    valid_subcommands, get_config_map_for_subcommand
+    get_config_map_for_subcommand
 from .ini_parser import load_ini, get_ini_value_extractor
 
 
@@ -55,7 +55,8 @@ def create_config_object(definitions: Dict[str, ConfigItemDefinition],
             if extractor.is_valid_source(source):
                 extractor_class = extractor
                 break
-        # extract all values from the source and conditionally update the config
+        # extract all values from the source and
+        # conditionally update the config
         for item_definition in definitions.values():
             new_value = (extractor_class
                          .get_canonical_value(item_definition, source))
@@ -66,7 +67,7 @@ def create_config_object(definitions: Dict[str, ConfigItemDefinition],
             elif not hasattr(target, item_definition.property_name):
                 setattr(target, item_definition.property_name,
                         item_definition.default)
-    setattr(target, 'trailing_arguments', trailing_arguments)
+    target.trailing_arguments = trailing_arguments
     return target
 
 

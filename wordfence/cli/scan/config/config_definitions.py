@@ -189,7 +189,8 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": "50m"
     },
     "banner": {
-        "description": "Include to display the banner in command output when running in a TTY/terminal.",
+        "description": "Include to display the banner in command output when "
+                       "running in a TTY/terminal.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True

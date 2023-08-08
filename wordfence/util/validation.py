@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 class ValidationException(BaseException):
 
     def __init__(self, key: list, message: str, value=None):
@@ -17,7 +20,7 @@ class ValidationException(BaseException):
 
 class Validator:
 
-    def validate(self, data, parent_key: list = []):
+    def validate(self, data, parent_key: Optional[list] = None):
         pass
 
     def validate_type(self, key, value, expected_type) -> None:
@@ -33,10 +36,12 @@ class Validator:
 
 class DictionaryValidator(Validator):
 
-    def __init__(self, expected: dict = {}):
+    def __init__(self, expected: dict = None):
         self.expected = expected
 
-    def validate(self, data, parent_key: list = []) -> None:
+    def validate(self, data, parent_key: Optional[list] = None) -> None:
+        if parent_key is None:
+            parent_key = []
         if not isinstance(data, dict):
             raise ValidationException(
                     parent_key,
@@ -57,7 +62,9 @@ class ListValidator(Validator):
     def __init__(self, expected):
         self.expected = expected
 
-    def validate(self, data, parent_key: list = []) -> None:
+    def validate(self, data, parent_key: Optional[list] = None) -> None:
+        if parent_key is None:
+            parent_key = []
         if not isinstance(data, list):
             raise ValidationException(
                     parent_key,
