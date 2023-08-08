@@ -8,6 +8,7 @@ from logging import DEBUG
 from wordfence import scanning, api
 from wordfence.scanning import filtering
 from wordfence.util import caching
+from wordfence.util import updater
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import log
@@ -109,6 +110,7 @@ class ScanCommand:
         return filter
 
     def execute(self) -> int:
+        updater.Version.check(self.cache)
         paths = set()
         for argument in self.config.trailing_arguments:
             paths.add(argument)
