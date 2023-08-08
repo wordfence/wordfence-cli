@@ -19,3 +19,8 @@ def show_welcome_banner():
 
 def should_show_welcome_banner(banner_enabled):
     return banner_enabled and sys.stdout.isatty()
+
+
+def show_welcome_banner_if_enabled(config) -> None:
+    if should_show_welcome_banner(config.banner):
+        show_welcome_banner()
