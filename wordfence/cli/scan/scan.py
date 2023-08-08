@@ -110,7 +110,8 @@ class ScanCommand:
         return filter
 
     def execute(self) -> int:
-        updater.Version.check(self.cache)
+        if self.config.check_for_update:
+            updater.Version.check(self.cache)
         paths = set()
         for argument in self.config.trailing_arguments:
             paths.add(argument)

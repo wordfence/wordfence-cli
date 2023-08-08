@@ -219,5 +219,12 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "context": "ALL",
         "argument_type": "FLAG",
         "default": False
+    },
+    "check-for-update": {
+        "description": "Whether or not to run the update check",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True,
+        "hidden": True
     }
 }
