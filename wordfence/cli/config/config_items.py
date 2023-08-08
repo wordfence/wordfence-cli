@@ -32,10 +32,12 @@ class ArgumentType(Enum):
     FLAG = 2
     """boolean values set by name (no value) -- inverts the default value when
     provided"""
-    # FLAG: argument name + value
-    OPTION = 3
+    OPTIONAL_FLAG = 3
+    """boolean values set by name with an optional third state (None)
+    representing the absence of a value"""
+    OPTION = 4
     """required the option name plus a value"""
-    OPTION_REPEATABLE = 4
+    OPTION_REPEATABLE = 5
     """an option that can be repeated multiple times with different values"""
 
 
@@ -80,9 +82,13 @@ class ConfigItemDefinition:
     def has_ini_separator(self) -> bool:
         return True if self.meta and self.meta.ini_separator else False
 
+    def is_flag(self) -> bool:
+        return self.argument_type == ArgumentType.FLAG \
+            or self.argument_type == ArgumentType.OPTIONAL_FLAG
+
     def get_value_type(self):
         if not self.meta:
-            return str if self.argument_type != ArgumentType.FLAG else bool
+            return str if not self.is_flag() else bool
         return_type = self.meta.value_type
         if not return_type:
             raise ValueError(
@@ -95,6 +101,13 @@ class ConfigItemDefinition:
         # value. Any "property_name" value specified in the configuration is
         # ignored.
         source['property_name'] = source['name'].replace('-', '_')
+
+        is_optional_flag = \
+            ArgumentType.OPTIONAL_FLAG == source['argument_type']
+        is_flag = (
+                is_optional_flag or
+                ArgumentType.FLAG == source['argument_type']
+            )
 
         if source.get('default_type', None) == 'base64':
             if 'default' not in source:
@@ -122,15 +135,15 @@ class ConfigItemDefinition:
                     source['meta']['valid_options'])
             # set flags to booleans types if another type is not already defined
             if not_set_token is source['meta'].get('value_type',
-                                                   not_set_token) and source[
-                'argument_type'] \
-                    == ArgumentType.FLAG:
+                                                   not_set_token) and is_flag:
                 source['meta']['value_type'] = 'bool'
             source['meta'] = ConfigItemMeta(**source['meta'])
 
         # sanity check
-        if ArgumentType.FLAG == source['argument_type'] and not (isinstance(
-                source['default'], bool) or source['default'] is None):
+        if is_flag and not (
+                    isinstance(source['default'], bool) or
+                    (is_optional_flag and source['default'] is None)
+                ):
             raise ValueError(
                 f"Flag {source['name']} has a non-boolean value type defined: "
                 f"{type(source['default'])}")
@@ -216,7 +229,7 @@ def config_definitions_to_config_map(
                     f"has already been loaded")
             else:
                 used_short_names.add(config_item.short_name)
-        if config_item.argument_type == ArgumentType.FLAG:
+        if config_item.is_flag():
             implied_name = f'no-{config_item.name}'
             if implied_name in implied_names:
                 raise KeyError(

@@ -13,10 +13,14 @@ class Signature:
                 self,
                 identifier: int,
                 rule: str,
+                name: str,
+                description: str,
                 common_strings: list = None
             ):
         self.identifier = identifier
         self.rule = rule
+        self.name = name
+        self.description = description
         self.common_strings = common_strings \
             if common_strings is not None \
             else []
@@ -41,3 +45,8 @@ class SignatureSet:
         for index in signature.common_strings:
             self.common_strings[index].signature_ids.remove(identifier)
         del self.signatures[identifier]
+
+    def get_signature(self, identifier: int) -> None:
+        if identifier in self.signatures:
+            return self.signatures[identifier]
+        raise ValueError(f'Invalid signature identifier: {identifier}')
