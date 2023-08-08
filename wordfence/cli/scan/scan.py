@@ -3,12 +3,14 @@ import signal
 import os
 from multiprocessing import parent_process
 from contextlib import nullcontext
+from logging import DEBUG
 
 from wordfence import scanning, api
 from wordfence.scanning import filtering
 from wordfence.util import caching
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
+from wordfence.logging import log
 from .reporting import Report, ReportFormat
 
 
@@ -142,13 +144,13 @@ class ScanCommand:
 
 def handle_repeated_interrupt(signal_number: int, stack) -> None:
     if parent_process() is None:
-        print('Scan command terminating immediately...')
+        log.warning('Scan command terminating immediately...')
     os._exit(130)
 
 
 def handle_interrupt(signal_number: int, stack) -> None:
     if parent_process() is None:
-        print('Scan command interrupted, stopping...')
+        log.info('Scan command interrupted, stopping...')
     signal.signal(signal.SIGINT, handle_repeated_interrupt)
     sys.exit(130)
 
@@ -159,13 +161,15 @@ signal.signal(signal.SIGINT, handle_interrupt)
 def main(config) -> int:
     command = None
     try:
+        if config.verbose:
+            log.setLevel(DEBUG)
         command = ScanCommand(config)
         command.execute()
         return 0
     except api.licensing.LicenseRequiredException:
-        print('A valid Wordfence CLI license is required')  # TODO: stderr
+        log.error('A valid Wordfence CLI license is required')  # TODO: stderr
         return 1
     except BaseException as exception:
         raise exception
-        print(f'Error: {exception}')
+        log.error(f'Error: {exception}')
         return 1

@@ -8,7 +8,6 @@ class StreamReader:
     def __init__(self, stream: TextIO, delimiter: str, chunk_size: int = 1024):
         self.stream = stream
         self.delimiter = delimiter
-        print('Delimiter: ' + repr(self.delimiter))
         self.chunk_size = chunk_size
         self._buffer = ''
         self._end_of_stream = False

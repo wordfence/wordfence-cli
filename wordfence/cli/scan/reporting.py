@@ -8,7 +8,12 @@ from wordfence.intel.signatures import SignatureSet, Signature
 
 class ReportFormat(str, Enum):
     CSV = 'csv',
-    TSV = 'tsv'
+    TSV = 'tsv',
+    NULL_DELIMITED = 'null-delimited',
+    LINE_DELIMITED = 'line-delimited'
+
+    def get_valid_options() -> List[str]:
+        return [format.value for format in ReportFormat]
 
 
 class ReportWriter:
@@ -32,7 +37,7 @@ class CsvReportWriter(ReportWriter):
     def get_delimiter(self) -> str:
         return ','
 
-    def write_row(self, data: List[str]):
+    def write_row(self, data: List[str]) -> None:
         self.writer.writerow(data)
 
 
@@ -40,6 +45,21 @@ class TsvReportWriter(CsvReportWriter):
 
     def get_delimiter(self) -> str:
         return '\t'
+
+
+class SingleColumnWriter(ReportWriter):
+
+    def __init__(self, target: IO, delimiter: str):
+        super().__init__(target)
+        self.delimiter = delimiter
+
+    def write_row(self, data: List[str]) -> None:
+        for index, value in enumerate(data):
+            if index > 0:
+                raise ValueError(
+                    'Only a single column can be written in this format'
+                )
+            self._target.write(value + self.delimiter)
 
 
 class Report:
@@ -60,6 +80,10 @@ class Report:
             return CsvReportWriter(stream)
         elif self.format == ReportFormat.TSV:
             return TsvReportWriter(stream)
+        elif self.format == ReportFormat.NULL_DELIMITED:
+            return SingleColumnWriter(stream, "\0")
+        elif self.format == ReportFormat.LINE_DELIMITED:
+            return SingleColumnWriter(stream, "\n")
         else:
             raise ValueError('Unsupported report format: ' + str(self.format))
 

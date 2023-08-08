@@ -1,6 +1,8 @@
 import re
 from typing import Dict, Any
 
+from ..reporting import ReportFormat
+
 KIBIBYTE = 1024
 MEBIBYTE = 1024 * 1024
 
@@ -104,10 +106,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION",
         "default": 'csv',
         "meta": {
-            "valid_options": [
-                "csv",
-                "tsv",
-            ]
+            "valid_options": ReportFormat.get_valid_options()
         }
     },
     "output-headers": {
@@ -209,9 +208,15 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "hidden": True
     },
     "cache": {
-        "description": "Whether or not to use to enable the cache",
+        "description": "Whether or not to use to enable the cache.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True
+    },
+    "verbose": {
+        "description": "Whether or not to enable verbose logging.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": False
     }
 }

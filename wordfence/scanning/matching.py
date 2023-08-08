@@ -1,6 +1,7 @@
 import regex
 
 from ..intel.signatures import CommonString, Signature, SignatureSet
+from ..logging import log
 
 regex.DEFAULT_VERSION = regex.VERSION1
 
@@ -100,12 +101,12 @@ class RegexSignature:
             rule = self.signature.rule
             self.pattern = regex.compile(rule)
         except BaseException as error:
-            print('Regex compilation for signature ' +
-                  str(self.signature.identifier) +
-                  ' failed: ' +
-                  str(error) +
-                  ', pattern: ' +
-                  repr(rule))
+            log.error('Regex compilation for signature ' +
+                      str(self.signature.identifier) +
+                      ' failed: ' +
+                      str(error) +
+                      ', pattern: ' +
+                      repr(rule))
             self.pattern = None
             # raise error #TODO: How should this be handled
 

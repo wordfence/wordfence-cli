@@ -13,6 +13,7 @@ from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader
 from ..intel.signatures import SignatureSet
+from ..logging import log
 
 MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
@@ -92,7 +93,7 @@ class FileLocatorProcess(Process):
 
     def add_path(self, path: str):
         self._path_count += 1
-        print(f'Path: {path}')
+        log.debug(f'Scanning base path: {path}')
         self._input_queue.put(path)
 
     def finalize_paths(self):
@@ -166,7 +167,7 @@ class ScanWorker(Process):
 
     def work(self):
         self._working = True
-        print('Worker Started: ' + str(os.getpid()))
+        log.debug(f'Worker {self.index} started, PID:' + str(os.getpid()))
         while self._working:
             try:
                 item = self._work_queue.get(timeout=QUEUE_READ_TIMEOUT)
@@ -332,10 +333,11 @@ class ScanWorkerPool:
         while True:
             event = self._result_queue.get()
             if event is None:
-                print('All workers complete and all results processed...')
+                log.debug('All workers have completed and all results have '
+                          'been processed.')
                 return
             elif event.type == ScanEventType.COMPLETED:
-                print('Worker completed ' + str(event.worker_index))
+                log.debug(f'Worker {event.worker_index} completed.')
                 if self.is_complete():
                     self._result_queue.put(None)
             elif event.type == ScanEventType.FILE_PROCESSED:
@@ -348,7 +350,7 @@ class ScanWorkerPool:
             elif event.type == ScanEventType.FILE_QUEUE_EMPTIED:
                 self._status.value = Status.PROCESSING_FILES
             elif event.type == ScanEventType.EXCEPTION:
-                print(
+                log.error(
                         'Exception occurred while processing file: ' +
                         str(event.data['exception'])
                     )
@@ -390,7 +392,7 @@ class Scanner:
         for path in self.options.paths:
             file_locator_process.add_path(path)
         worker_count = self.options.threads
-        print("Using " + str(worker_count) + " workers")
+        log.debug("Using " + str(worker_count) + " workers...")
         matcher = RegexMatcher(self.options.signatures)
         metrics = ScanMetrics(worker_count)
         with ScanWorkerPool(
@@ -407,10 +409,10 @@ class Scanner:
                         break
                     file_locator_process.add_path(path)
             file_locator_process.finalize_paths()
-            print('Awaiting results...')
+            log.debug('Awaiting results...')
             worker_pool.await_results(result_processor)
         timer.stop()
-        print(
+        log.info(
                 "Processed " +
                 str(metrics.get_total_count()) +
                 " files containing " +
