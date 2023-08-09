@@ -1,8 +1,8 @@
 __pycache__
 .idea
 *.py[cod]
-build
-dist
+/build/
+/dist/
 deb_dist
 .vscode
 wordfence.egg-info/
