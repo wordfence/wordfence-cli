@@ -166,7 +166,10 @@ def main(config) -> int:
     try:
         if config.debug:
             log.setLevel(logging.DEBUG)
-        elif config.verbose or (config.verbose is None and os.isatty()):
+        elif config.verbose or (
+                    config.verbose is None
+                    and sys.stdout is not None and sys.stdout.isatty()
+                ):
             log.setLevel(logging.INFO)
         command = ScanCommand(config)
         command.execute()
