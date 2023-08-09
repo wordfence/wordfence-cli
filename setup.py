@@ -17,7 +17,7 @@ setup(
     author_email='devs@wordfence.com',
     maintainer='Wordfence',
     maintainer_email='devs@wordfence.com',
-    license='GPL 2.0',
+    license='GPL-2.0-only',
     license_files='LICENSE',
     entry_points={
         'console_scripts': [
