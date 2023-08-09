@@ -1,7 +1,7 @@
 import re
 from typing import Dict, Any
 
-from ..reporting import ReportFormat
+from ..reporting import ReportFormat, ReportColumn
 
 KIBIBYTE = 1024
 MEBIBYTE = 1024 * 1024
@@ -97,7 +97,10 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "description": "List of columns to output.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": "filename"
+        "default": "filename",
+        "meta": {
+            "valid_options": ReportColumn.get_valid_options()
+        }
     },
     "output-format": {
         "short_name": "m",

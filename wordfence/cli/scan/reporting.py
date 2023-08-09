@@ -6,6 +6,17 @@ from wordfence.scanning.scanner import ScanResult
 from wordfence.intel.signatures import SignatureSet, Signature
 
 
+class ReportColumn(str, Enum):
+    FILENAME = 'filename'
+    SIGNATURE_ID = 'signature_id'
+    SIGNATURE_NAME = 'signature_name'
+    SIGNATURE_DESCRIPTION = 'signature_description'
+    MATCHED_TEXT = 'matched_text'
+
+    def get_valid_options() -> List[str]:
+        return [column.value for column in ReportColumn]
+
+
 class ReportFormat(str, Enum):
     CSV = 'csv',
     TSV = 'tsv',
@@ -98,15 +109,15 @@ class Report:
                 signature: Signature,
                 match: str
             ) -> Any:
-        if column == 'filename':
+        if column == ReportColumn.FILENAME.value:
             return result.path
-        elif column == 'signature_id':
+        elif column == ReportColumn.SIGNATURE_ID.value:
             return signature.identifier
-        elif column == 'signature_name':
+        elif column == ReportColumn.SIGNATURE_NAME.value:
             return signature.name
-        elif column == 'signature_description':
+        elif column == ReportColumn.SIGNATURE_DESCRIPTION.value:
             return signature.description
-        elif column == 'matched_text':
+        elif column == ReportColumn.MATCHED_TEXT.value:
             return match,
         elif column == 'discovered_at':
             return int(result.timestamp)
