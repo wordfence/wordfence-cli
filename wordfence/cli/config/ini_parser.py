@@ -1,5 +1,6 @@
 import errno
 import json
+import os
 from argparse import Namespace
 from configparser import ConfigParser
 from typing import List, Set, Any, Dict, Callable
@@ -8,9 +9,9 @@ from wordfence.logging import log
 from .config_items import Context, ConfigItemDefinition, \
     CanonicalValueExtractorInterface, not_set_token, \
     get_config_map_for_subcommand, subcommand_module_map, ReferenceToken
+from .defaults import INI_DEFAULT_PATH
 
-INI_DEFAULT_FILENAME = 'wordfence-cli.ini'
-INI_DEFAULT_PATH = f"/etc/wordfence/{INI_DEFAULT_FILENAME}"
+
 valid_contexts: Set[Context] = {Context.ALL, Context.CONFIG}
 
 
@@ -81,8 +82,10 @@ def get_ini_value_extractor(
 def get_ini_path(cli_values: Namespace) -> str:
     if 'configuration' not in cli_values or not isinstance(
             cli_values.configuration, str):
-        return INI_DEFAULT_PATH
-    return cli_values.configuration
+        path = INI_DEFAULT_PATH
+    else:
+        path = cli_values.configuration
+    return os.path.expanduser(path)
 
 
 def load_ini(cli_values) -> ConfigParser:

@@ -21,7 +21,8 @@ class ReportFormat(str, Enum):
     CSV = 'csv',
     TSV = 'tsv',
     NULL_DELIMITED = 'null-delimited',
-    LINE_DELIMITED = 'line-delimited'
+    LINE_DELIMITED = 'line-delimited',
+    HUMAN = 'human'
 
     def get_valid_options() -> List[str]:
         return [format.value for format in ReportFormat]

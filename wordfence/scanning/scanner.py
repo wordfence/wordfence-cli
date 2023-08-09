@@ -55,11 +55,11 @@ class FileLocator:
         try:
             contents = os.scandir(path)
             for item in contents:
-                if not self.file_filter.filter(item.path):
-                    continue
                 if item.is_dir():
                     yield from self.search_directory(item.path)
                 elif item.is_file():
+                    if not self.file_filter.filter(item.path):
+                        continue
                     self.located_count += 1
                     yield item.path
         except OSError as os_error:
@@ -70,6 +70,7 @@ class FileLocator:
         real_path = os.path.realpath(self.path)
         if os.path.isdir(real_path):
             for path in self.search_directory(real_path):
+                log.debug(f'File added to scan queue: {path}')
                 self.queue.put(path)
         else:
             self.queue.put(real_path)
@@ -93,7 +94,7 @@ class FileLocatorProcess(Process):
 
     def add_path(self, path: str):
         self._path_count += 1
-        log.debug(f'Scanning base path: {path}')
+        log.info(f'Scanning path: {path}')
         self._input_queue.put(path)
 
     def finalize_paths(self):
@@ -199,24 +200,29 @@ class ScanWorker(Process):
         return self.complete.value
 
     def _has_exceeded_file_size_limit(self, length: int) -> bool:
-        if self._max_file_size is None:
+        if self._max_file_size is None or self._max_file_size == 0:
             return False
         return length > self._max_file_size
 
     def _process_file(self, path: str):
         try:
-            with open(path, mode='rb') as file:
-                context = self._matcher.create_context()
+            log.debug(f'Processing file: {path}')
+            with open(path, mode='rb') as file, \
+                    self._matcher.create_context() as context:
                 length = 0
                 while (chunk := file.read(self._chunk_size)):
                     length += len(chunk)
                     if self._has_exceeded_file_size_limit(length):
                         break
                     context.process_chunk(chunk)
-                matches = context.get_matches()
                 self._put_event(
                         ScanEventType.FILE_PROCESSED,
-                        {'path': path, 'length': length, 'matches': matches}
+                        {
+                            'path': path,
+                            'length': length,
+                            'matches': context.matches,
+                            'timeouts': context.timeouts
+                        }
                     )
         except OSError as error:
             self._put_event(ScanEventType.EXCEPTION, {'exception': error})
@@ -225,18 +231,46 @@ class ScanWorker(Process):
         self.work()
 
 
+class ScanResult:
+
+    def __init__(
+                self,
+                path: str,
+                read_length: int,
+                matches: Dict[int, str],
+                timeouts: Set[int],
+                timestamp: float = None
+            ):
+        self.path = path
+        self.read_length = read_length
+        self.matches = matches
+        self.timeouts = timeouts
+        self.timestamp = timestamp if timestamp is not None else time.time()
+
+    def has_matches(self) -> bool:
+        return len(self.matches) > 0
+
+    def get_timeout_count(self) -> int:
+        return len(self.timeouts)
+
+
 class ScanMetrics:
 
     def __init__(self, worker_count: int):
         self.counts = self._initialize_int_metric(worker_count)
         self.bytes = self._initialize_int_metric(worker_count)
+        self.matches = self._initialize_int_metric(worker_count)
+        self.timeouts = self._initialize_int_metric(worker_count)
 
     def _initialize_int_metric(self, worker_count: int):
         return [0] * worker_count
 
-    def record_result(self, worker_index: int, length: int):
+    def record_result(self, worker_index: int, result: ScanResult):
         self.counts[worker_index] += 1
-        self.bytes[worker_index] += length
+        self.bytes[worker_index] += result.read_length
+        if result.has_matches():
+            self.matches[worker_index] += 1
+        self.timeouts[worker_index] += result.get_timeout_count()
 
     def _aggregate_int_metric(self, metric: list) -> int:
         total = 0
@@ -250,18 +284,11 @@ class ScanMetrics:
     def get_total_bytes(self) -> int:
         return self._aggregate_int_metric(self.bytes)
 
+    def get_total_matches(self) -> int:
+        return self._aggregate_int_metric(self.matches)
 
-class ScanResult:
-
-    def __init__(
-                self,
-                path: str,
-                matches: Dict[int, str],
-                timestamp: float = None
-            ):
-        self.path = path
-        self.matches = matches
-        self.timestamp = timestamp if timestamp is not None else time.time()
+    def get_total_timeouts(self) -> int:
+        return self._aggregate_int_metric(self.timeouts)
 
 
 class ScanWorkerPool:
@@ -272,13 +299,15 @@ class ScanWorkerPool:
                 work_queue: Queue,
                 matcher: Matcher,
                 metrics: ScanMetrics,
-                chunk_size: int = DEFAULT_CHUNK_SIZE
+                chunk_size: int = DEFAULT_CHUNK_SIZE,
+                max_file_size: Optional[int] = None
             ):
         self.size = size
         self._matcher = matcher
         self._work_queue = work_queue
         self.metrics = metrics
         self._chunk_size = chunk_size
+        self._max_file_size = max_file_size
         self._started = False
 
     def __enter__(self):
@@ -301,7 +330,8 @@ class ScanWorkerPool:
                     self._work_queue,
                     self._result_queue,
                     self._matcher,
-                    self._chunk_size
+                    self._chunk_size,
+                    self._max_file_size
                 )
             worker.start()
             self._workers.append(worker)
@@ -337,15 +367,26 @@ class ScanWorkerPool:
                           'been processed.')
                 return
             elif event.type == ScanEventType.COMPLETED:
-                log.debug(f'Worker {event.worker_index} completed.')
+                log.debug(f'Worker {event.worker_index} completed')
                 if self.is_complete():
                     self._result_queue.put(None)
             elif event.type == ScanEventType.FILE_PROCESSED:
+                result = ScanResult(
+                        event.data['path'],
+                        event.data['length'],
+                        event.data['matches'],
+                        event.data['timeouts']
+                    )
+                if result.get_timeout_count() > 0:
+                    log.warning(
+                            'The following signatures timed out while '
+                            f'processing {result.path}: ' +
+                            ', '.join({str(i) for i in result.timeouts})
+                        )
                 self.metrics.record_result(
                         event.worker_index,
-                        event.data['length']
+                        result
                     )
-                result = ScanResult(event.data['path'], event.data['matches'])
                 result_processor(result)
             elif event.type == ScanEventType.FILE_QUEUE_EMPTIED:
                 self._status.value = Status.PROCESSING_FILES
@@ -400,7 +441,8 @@ class Scanner:
                     file_locator_process.output_queue,
                     matcher,
                     metrics,
-                    self.options.chunk_size
+                    self.options.chunk_size,
+                    self.options.max_file_size
                 ) as worker_pool:
             if self.options.path_source is not None:
                 while True:
@@ -412,12 +454,18 @@ class Scanner:
             log.debug('Awaiting results...')
             worker_pool.await_results(result_processor)
         timer.stop()
+        self.log_results(metrics, timer)
+
+    def log_results(self, metrics: ScanMetrics, timer: timing.Timer) -> None:
+        match_count = metrics.get_total_matches()
+        total_count = metrics.get_total_count()
+        byte_count = metrics.get_total_bytes()
+        elapsed_time = timer.get_elapsed()
+        timeout_count = metrics.get_total_timeouts()
+        if timeout_count > 0:
+            log.warning(f'{timeout_count} timeout(s) occurred during scan')
         log.info(
-                "Processed " +
-                str(metrics.get_total_count()) +
-                " files containing " +
-                str(metrics.get_total_bytes()) +
-                " bytes in " +
-                str(timer.get_elapsed()) +
-                " seconds"
+                f'Found {match_count} match(es) after processing {total_count}'
+                f' file(s) containing {byte_count} byte(s) over {elapsed_time}'
+                f' second(s)'
             )
