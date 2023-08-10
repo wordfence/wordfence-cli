@@ -45,7 +45,11 @@ tar \
   -czvf "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" \
   -C /opt/wordfence-cli/dist/ \
   wordfence
+sha256sum \
+  "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" \
+  > "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz.sha256"
 cp "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" "/opt/output/"
+cp "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz.sha256" "/opt/output/"
 
 # keep the debian folder clean (additional files will be added as part of the build process)
 #cp -r /opt/debian /opt/wordfence-cli/dist/debian

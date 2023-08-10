@@ -38,4 +38,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wordfence_cli_${{ matrix.arch }}
-          path: ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
+          path: |
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256
