@@ -5,3 +5,4 @@ build
 dist
 deb_dist
 .vscode
+wordfence.egg-info/

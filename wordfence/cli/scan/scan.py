@@ -1,9 +1,9 @@
 import sys
 import signal
 import os
+import logging
 from multiprocessing import parent_process
 from contextlib import nullcontext
-from logging import DEBUG
 
 from wordfence import scanning, api
 from wordfence.scanning import filtering
@@ -40,7 +40,7 @@ class ScanCommand:
         if self.config.cache:
             try:
                 return caching.CacheDirectory(
-                        self.config.cache_directory,
+                        os.path.expanduser(self.config.cache_directory),
                         self.CACHEABLE_TYPES
                     )
             except caching.CacheException:
@@ -120,7 +120,7 @@ class ScanCommand:
                 threads=int(self.config.threads),
                 signatures=self._get_signatures(),
                 chunk_size=self.config.chunk_size,
-                max_file_size=self.config.max_file_size,
+                max_file_size=int(self.config.max_file_size),
                 file_filter=self._initialize_file_filter()
             )
         if self._should_read_stdin():
@@ -164,8 +164,13 @@ signal.signal(signal.SIGINT, handle_interrupt)
 def main(config) -> int:
     command = None
     try:
-        if config.verbose:
-            log.setLevel(DEBUG)
+        if config.debug:
+            log.setLevel(logging.DEBUG)
+        elif config.verbose or (
+                    config.verbose is None
+                    and sys.stdout is not None and sys.stdout.isatty()
+                ):
+            log.setLevel(logging.INFO)
         command = ScanCommand(config)
         command.execute()
         return 0

@@ -6,14 +6,14 @@ from typing import Set, List, Dict, Any, Tuple
 from wordfence.logging import log
 from .config_items import ConfigItemDefinition, \
     CanonicalValueExtractorInterface, Context, ArgumentType, \
-    not_set_token, valid_subcommands, get_config_map_for_subcommand, \
-    subcommand_module_map
+    not_set_token, valid_subcommands, get_config_map_for_subcommand
 
 NAME = "Wordfence CLI"
 DESCRIPTION = "Multifunction commandline tool for Wordfence"
+COMMAND = "wordfence"
 
 parser: ArgumentParser = ArgumentParser(
-    prog=NAME,
+    prog=COMMAND,
     description=DESCRIPTION)
 
 valid_contexts: Set[Context] = {Context.ALL, Context.CLI}
@@ -68,7 +68,7 @@ def add_to_parser(target_parser,
         named_params['choices'] = config_definition.meta.valid_options
 
     # special handling
-    if config_definition.argument_type == ArgumentType.FLAG:
+    if config_definition.is_flag():
         # store the opposite of the default boolean
         named_params['action'] = 'store_true'
         # adjust the provided help message
@@ -92,7 +92,7 @@ def add_to_parser(target_parser,
     target_parser.add_argument(*names, **named_params)
 
     # register the negation of a flag
-    if config_definition.argument_type == ArgumentType.FLAG:
+    if config_definition.is_flag():
         named_params['action'] = 'store_false'
         names = [f"--no-{config_definition.name}"]
         if config_definition.hidden:
@@ -110,8 +110,7 @@ def get_cli_values() -> Tuple[Namespace, List[str]]:
     for subcommand in valid_subcommands:
         definitions = get_config_map_for_subcommand(subcommand)
         subparser = subparsers.add_parser(subcommand,
-                                          prog=subcommand_module_map[
-                                              subcommand].CLI_TITLE)
+                                          prog=subcommand)
         for definition in definitions.values():
             add_to_parser(subparser, definition)
 

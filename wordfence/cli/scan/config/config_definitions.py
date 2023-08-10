@@ -1,7 +1,8 @@
 import re
 from typing import Dict, Any
 
-from ..reporting import ReportFormat
+from ..reporting import ReportFormat, ReportColumn
+from wordfence.cli.config.defaults import INI_DEFAULT_PATH
 
 KIBIBYTE = 1024
 MEBIBYTE = 1024 * 1024
@@ -32,10 +33,10 @@ config_definitions: Dict[str, Dict[str, Any]] = {
     "configuration": {
         "short_name": "c",
         "description": "Path to a configuration INI file to use (defaults to"
-                       " \"/etc/wordfence/wordfence-cli.ini\").",
+                       f" \"{INI_DEFAULT_PATH}\").",
         "context": "CLI",
         "argument_type": "OPTION",
-        "default": "/etc/wordfence/wordfence-cli.ini"
+        "default": INI_DEFAULT_PATH
     },
     "exclude-signatures": {
         "short_name": "i",
@@ -84,8 +85,8 @@ config_definitions: Dict[str, Dict[str, Any]] = {
     "output": {
         "description": "Write results to stdout.",
         "context": "ALL",
-        "argument_type": "FLAG",
-        "default": False
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
     },
     "output-path": {
         "description": "Path to which to write results.",
@@ -97,14 +98,17 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "description": "List of columns to output.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": "filename"
+        "default": "filename",
+        "meta": {
+            "valid_options": ReportColumn.get_valid_options()
+        }
     },
     "output-format": {
         "short_name": "m",
         "description": "Output format used for result data.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": 'csv',
+        "default": 'line-delimited',
         "meta": {
             "valid_options": ReportFormat.get_valid_options()
         }
@@ -112,8 +116,8 @@ config_definitions: Dict[str, Dict[str, Any]] = {
     "output-headers": {
         "description": "Whether or not to include column headers in output",
         "context": "ALL",
-        "argument_type": "FLAG",
-        "default": True
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
     },
     "images": {
         "description": "Include image files in the scan.",
@@ -186,7 +190,10 @@ config_definitions: Dict[str, Dict[str, Any]] = {
                        ", m (mebibyte).",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": "50m"
+        "default": byte_length('50m'),
+        "meta": {
+            "value_type": byte_length
+        }
     },
     "banner": {
         "description": "Include to display the banner in command output when "
@@ -199,7 +206,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "description": "A path to use for cache files.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": "/var/cache/wordfence"
+        "default": "~/.cache/wordfence"
     },
     "noc1-url": {
         "description": "URL to use for accessing the NOC1 API.",
@@ -214,8 +221,20 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": True
     },
+    "purge-cache": {
+        "description": "Purge any existing values from the cache.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False
+    },
     "verbose": {
         "description": "Whether or not to enable verbose logging.",
+        "context": "ALL",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
+    },
+    "debug": {
+        "description": "Whether or not to enable debug logging.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": False

@@ -1,9 +1,17 @@
 import regex
+import signal
 
 from ..intel.signatures import CommonString, Signature, SignatureSet
 from ..logging import log
 
 regex.DEFAULT_VERSION = regex.VERSION1
+
+
+DEFAULT_TIMEOUT = 1  # Seconds
+
+
+class TimeoutException(Exception):
+    pass
 
 
 class MatchResult:
@@ -17,8 +25,13 @@ class MatchResult:
 
 class Matcher:
 
-    def __init__(self, signature_set: SignatureSet):
+    def __init__(
+                self,
+                signature_set: SignatureSet,
+                timeout: int = DEFAULT_TIMEOUT
+            ):
         self.signature_set = signature_set
+        self.timeout = timeout
 
 
 class MatcherContext:
@@ -31,6 +44,7 @@ class RegexMatcherContext(MatcherContext):
         self.matcher = matcher
         self.common_string_states = self._initialize_common_string_states()
         self.matches = {}
+        self.timeouts = set()
 
     def _initialize_common_string_states(self) -> list:
         states = []
@@ -63,9 +77,14 @@ class RegexMatcherContext(MatcherContext):
     def _match_signature(self, signature: Signature, chunk: str):
         if not signature.is_valid():
             return
-        match = signature.get_pattern().search(chunk)
-        if match is not None:
-            self.matches[signature.signature.identifier] = match.group(0)
+        try:
+            signal.alarm(self.matcher.timeout)
+            match = signature.get_pattern().search(chunk)
+            signal.alarm(0)  # Clear the alarm
+            if match is not None:
+                self.matches[signature.signature.identifier] = match.group(0)
+        except TimeoutException:
+            self.timeouts.add(signature.signature.identifier)
 
     def process_chunk(self, chunk: bytes) -> None:
         chunk = chunk.decode('utf-8', 'ignore')
@@ -75,8 +94,21 @@ class RegexMatcherContext(MatcherContext):
         for signature in possible_signatures:
             self._match_signature(signature, chunk)
 
-    def get_matches(self) -> list:
-        return self.matches
+    def __enter__(self):
+        def handle_timeout(signum, frame):
+            raise TimeoutException()
+
+        self._previous_alarm_handler = signal.signal(
+                signal.SIGALRM,
+                handle_timeout
+            )
+        if self._previous_alarm_handler is None:
+            self._previous_alarm_handler = signal.SIG_DFL
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        signal.signal(signal.SIGALRM, self._previous_alarm_handler)
+        pass
 
 
 class RegexCommonString:
@@ -120,8 +152,12 @@ class RegexSignature:
 
 class RegexMatcher(Matcher):
 
-    def __init__(self, signature_set: SignatureSet):
-        super().__init__(signature_set)
+    def __init__(
+                self,
+                signature_set: SignatureSet,
+                timeout: int = DEFAULT_TIMEOUT
+            ):
+        super().__init__(signature_set, timeout)
         self._compile_regexes()
         self.signatures_without_common_strings = \
             self._extract_signatures_without_common_strings()
