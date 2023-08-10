@@ -33,7 +33,7 @@ jobs:
             --platform "linux/${{ matrix.arch }}" \
             -v "${GITHUB_WORKSPACE}/docker/build/volumes/output/:/opt/output" \
             -v "${GITHUB_WORKSPACE}/docker/build/volumes/debian/:/opt/debian" \
-            wf-cli-build
+            wfcli-build
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
