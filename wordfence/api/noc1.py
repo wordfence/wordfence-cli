@@ -49,6 +49,7 @@ class Client(NocClient):
         })
         try:
             validator.validate(patterns)
+            patterns['rules'] = [signature for signature in patterns['rules'] if signature[5] == 0]
             return patterns
         except ValidationException as exception:
             raise ApiException('Response validation failed') from exception
