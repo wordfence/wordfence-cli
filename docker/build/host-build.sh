@@ -22,7 +22,15 @@ fi
 
 KEYS_DIR=$(realpath "$2")
 
-docker rm -f wfcli-build-container wfcli-build-container-arm64 2>/dev/null
 echo "output path: $PROJECT_DIR/docker/build/volumes/output"
-docker run -it --name wfcli-build-container -v "$PROJECT_DIR"/docker/build/volumes/output/:/opt/output -v "$KEYS_DIR":/opt/keys wfcli-build
-docker run -it --name wfcli-build-container-arm64 --platform linux/arm64 -v "$PROJECT_DIR"/docker/build/volumes/output/:/opt/output -v "$KEYS_DIR":/opt/keys wfcli-build-arm64
+ARCHITECTURES=("amd64" "arm64")
+
+function build_and_package() {
+    ARCHITECTURE="$1"
+    docker run -it --rm --name "wfcli-build-container-$ARCHITECTURE" --platform "linux/$ARCHITECTURE" -v "$PROJECT_DIR"/docker/build/volumes/output/:/opt/output -v "$PROJECT_DIR"/docker/build/volumes/debian/:/opt/debian -v "$KEYS_DIR":/opt/keys "wfcli-build-$ARCHITECTURE"
+}
+
+for arch in "${ARCHITECTURES[@]}"
+do
+    build_and_package "$arch"
+done
