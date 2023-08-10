@@ -1,0 +1,41 @@
+name: "Wordfence CLI build"
+
+on:
+  #push: 
+  #  tags:
+  #    - "v*.*.*"
+  # Allows running the workflow manually
+  workflow_dispatch:
+    inputs:
+
+jobs:
+  linux_build:
+    name: Linux build
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+    steps:
+      - uses: actions/checkout@v3
+      - name: Docker build
+        run: |
+          docker build \
+            -t wfcli-build \
+            --platform "linux/${{ matrix.arch }}" \
+            -f "${GITHUB_WORKSPACE}/docker/build/Dockerfile" \
+            "$GITHUB_WORKSPACE"
+      - name: Docker run
+        run: |
+          docker run \
+            --name "wfcli-build-container" \
+            --platform "linux/${{ matrix.arch }}" \
+            -v "${GITHUB_WORKSPACE}/docker/build/volumes/output/:/opt/output" \
+            -v "${GITHUB_WORKSPACE}/docker/build/volumes/debian/:/opt/debian" \
+            wf-cli-build
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_${{ matrix.arch }}
+          path: ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
