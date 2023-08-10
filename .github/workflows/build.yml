@@ -1,7 +1,9 @@
 name: "Wordfence CLI build"
 
 on:
-  push: 
+  #push: 
+  #  tags:
+  #    - "v*.*.*"
   # Allows running the workflow manually
   workflow_dispatch:
     inputs:
