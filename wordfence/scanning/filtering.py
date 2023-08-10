@@ -1,6 +1,6 @@
 import re
 import os
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Pattern, AnyStr
 
 
 class FilterCondition:
@@ -90,10 +90,14 @@ def filter_filename(value: str) -> Callable[[str], bool]:
     return filter
 
 
+class Filter:
+    def __init__(self, pattern: Pattern[AnyStr]):
+        self.pattern = pattern
+
+    def __call__(self, path: str) -> bool:
+        return matches_regex(self.pattern, path)
+
+
 def filter_pattern(regex: str) -> Callable[[str], bool]:
     pattern = re.compile(regex)
-
-    def filter(path: str) -> bool:
-        return matches_regex(pattern, path)
-
-    return filter
+    return Filter(pattern)
