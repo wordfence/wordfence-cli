@@ -40,16 +40,13 @@ pyinstaller \
   --hidden-import wordfence.cli.scan.config \
   main.py
 
-# copy the tar.gz file to the output directory
-tar \
-  -czvf "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" \
-  -C /opt/wordfence-cli/dist/ \
-  wordfence
-sha256sum \
-  "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" \
-  > "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz.sha256"
-cp "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" "/opt/output/"
-cp "/opt/wordfence-cli/dist/wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz.sha256" "/opt/output/"
+# copy the tar.gz and checksum file to the output directory
+pushd /opt/wordfence-cli/dist
+tar -czvf "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" wordfence
+cp "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" /opt/output/
+sha256sum "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" > "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz.sha256"
+cp "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz.sha256" /opt/output/
+popd
 
 # keep the debian folder clean (additional files will be added as part of the build process)
 #cp -r /opt/debian /opt/wordfence-cli/dist/debian
