@@ -9,7 +9,7 @@ set -e
 cd /opt/wordfence-cli
 
 ARCHITECTURE=$(dpkg --print-architecture)
-VERSION=$(python -c "from wordfence import version; print(version.__version__)")
+VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
 CHANGELOG_VERSION=$(head -n 1 /opt/debian/changelog | sed -n -E 's/wordfence \(([^)]+)\).*/\1/p')
 
 if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then

@@ -63,7 +63,7 @@ jobs:
         run: python -m build
       - name: Create checksums
         run: |
-          VERSION=$(python -c "from wordfence import version; print(version.__version__)")
+          VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
           cd dist
           sha256sum *.tar.gz *.whl > "wordfence-${VERSION}.sha256"
       - name: Upload artifacts
