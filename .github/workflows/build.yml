@@ -56,7 +56,9 @@ jobs:
         with:
           python-version: '3.8'
       - name: Python build
-        run: python -m build
+        run: |
+          pip install build~=0.10
+          python3 -m build
       - name: Create checksums
         run: |
           VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
