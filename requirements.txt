@@ -3,8 +3,7 @@ regex >= 2023.6.3
 packaging ~= 23.1
 requests ~= 2.3
 # Build requirements
+build ~= 0.10
 setuptools ~= 68.0.0
-wheel ~= 0.41.1
-build ~= 0.10.0
 # Helpful development tools
 pyinstaller ~= 5.13.0
