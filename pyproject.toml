@@ -1,0 +1,48 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools~=68.0.0",
+    "wheel~=0.41.1",
+    "build~=0.10.0"
+]
+
+[project]
+name = "wordfence"
+authors = [
+    { name = "Wordfence", email = "opensource@wordfence.com" }
+]
+maintainers = [
+    { name = "Wordfence", email = "opensource@wordfence.com" }
+]
+description = "Command-line malware scanner powered by Wordfence"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Topic :: Security"
+]
+dependencies = [
+    "regex>=2023.6.3",
+    "packaging~=23",
+    "requests~=2.3"
+]
+dynamic = [
+    "version"
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "wordfence.version.__version__" }
+
+[project.urls]
+Homepage = "https://www.wordfence.com/products/wordfence-cli/"
+Documentation = "https://www.wordfence.com/help/wordfence-cli/"
+Repository = "https://github.com/wordfence/wordfence-cli"
+
+[project.scripts]
+wordfence = "wordfence.cli.cli:main"
