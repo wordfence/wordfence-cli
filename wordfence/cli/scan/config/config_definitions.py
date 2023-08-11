@@ -245,5 +245,11 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": True,
         "hidden": True
+    },
+    "configure": {
+        "description": "Interactively configure Wordfence CLI.",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
     }
 }

@@ -1,11 +1,10 @@
 import json
 
-from .exceptions import ApiException
 from .noc_client import NocClient
+from .exceptions import ApiException
 
 from ..intel.signatures import CommonString, Signature, SignatureSet
-from ..util.validation import DictionaryValidator, ListValidator, \
-        ValidationException
+from ..util.validation import DictionaryValidator, ListValidator, Validator
 
 NOC1_BASE_URL = 'https://noc1.wordfence.com/v2.27/'
 
@@ -22,6 +21,14 @@ class Client(NocClient):
         query = super().build_query(action, base_query)
         query['s'] = self._generate_site_stats()
         return query
+
+    def validate_response(self, response, validator: Validator) -> None:
+        if isinstance(response, dict) and 'errorMsg' in response:
+            raise ApiException(
+                    'Error message received in response body',
+                    response['errorMsg']
+                )
+        return super().validate_response(response, validator)
 
     def get_patterns(self, regex_engine: str = None) -> dict:
         base_query = {}
@@ -47,11 +54,8 @@ class Client(NocClient):
             'word2': str,
             'word3': str
         })
-        try:
-            validator.validate(patterns)
-            return patterns
-        except ValidationException as exception:
-            raise ApiException('Response validation failed') from exception
+        self.validate_response(patterns, validator)
+        return patterns
 
     def get_malware_signatures(self) -> SignatureSet:
         patterns = self.get_patterns(regex_engine='python')
@@ -74,3 +78,11 @@ class Client(NocClient):
                 except IndexError as index_error:
                     raise index_error  # TODO: How should this be handled
         return SignatureSet(common_strings, signatures)
+
+    def ping_api_key(self) -> bool:
+        response = self.request('ping_api_key')
+        validator = DictionaryValidator({
+                'ok': int
+            })
+        self.validate_response(response, validator)
+        return bool(response['ok'])

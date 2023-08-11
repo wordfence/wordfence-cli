@@ -153,3 +153,6 @@ class Report:
         for row in rows:
             for writer in self.writers:
                 writer.write_row(row)
+
+    def has_writers(self) -> bool:
+        return len(self.writers) > 0
