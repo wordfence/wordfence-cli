@@ -28,10 +28,9 @@ if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then
   cd /opt/wordfence-cli
 fi
 
-# install requirements and build
+# install requirements
 pip install --upgrade pip
 pip install -r requirements.txt
-python -m build
 #python3 setup.py build
 #python3 setup.py install
 
@@ -42,12 +41,14 @@ pyinstaller \
   --hidden-import wordfence.cli.scan.config \
   main.py
 
-# copy the tar.gz and checksum file to the output directory
 pushd /opt/wordfence-cli/dist
-tar -czvf "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" wordfence
-cp "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" /opt/output/
-sha256sum "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz" > "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz.sha256"
-cp "wordfence_${VERSION}_${ARCHITECTURE}_linux_exec.tar.gz.sha256" /opt/output/
+
+# compress the standalone executable, checksum it, and copy both to the output directory
+STANDALONE_FILENAME="wordfence_${VERSION}_${ARCHITECTURE}_linux_exec"
+tar -czvf "${STANDALONE_FILENAME}.tar.gz" wordfence
+sha256sum "${STANDALONE_FILENAME}.tar.gz" > "${STANDALONE_FILENAME}.tar.gz.sha256"
+cp "${STANDALONE_FILENAME}.tar.gz" "${STANDALONE_FILENAME}.tar.gz.sha256" /opt/output
+
 popd
 
 # keep the debian folder clean (additional files will be added as part of the build process)

@@ -9,8 +9,8 @@ on:
     inputs:
 
 jobs:
-  linux_build:
-    name: Linux build
+  linux_standalone_build:
+    name: Linux standalone build
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -38,10 +38,39 @@ jobs:
             -v "${GITHUB_WORKSPACE}/docker/build/volumes/output/:/opt/output" \
             -v "${GITHUB_WORKSPACE}/docker/build/volumes/debian/:/opt/debian" \
             wfcli-build
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: wordfence_cli_${{ matrix.arch }}
           path: |
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256
+            ${{ github.workspace }}/docker/build/volumes/output/standalone/wordfence_*.tar.gz
+            ${{ github.workspace }}/docker/build/volumes/output/standalone/wordfence_*.tar.gz.sha256
+  python_build:
+    name: Python build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      - name: Install requirements
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Python build
+        run: python -m build
+      - name: Create checksums
+        run: |
+          VERSION=$(python setup.py --version)
+          cd dist
+          sha256sum *.tar.gz *.whl > "wordfence-${VERSION}.sha256"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_python
+          path: |
+            ${{ github.workspace }}/dist/*.tar.gz
+            ${{ github.workspace }}/dist/*.whl
+            ${{ github.workspace }}/dist/*.sha256
