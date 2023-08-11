@@ -34,6 +34,7 @@ class Options:
     path_source: Optional[StreamReader] = None
     max_file_size: Optional[int] = None
     file_filter: Optional[FileFilter] = None
+    match_all: bool = False
 
 
 class Status(IntEnum):
@@ -214,7 +215,8 @@ class ScanWorker(Process):
                     length += len(chunk)
                     if self._has_exceeded_file_size_limit(length):
                         break
-                    context.process_chunk(chunk)
+                    if context.process_chunk(chunk):
+                        break
                 self._put_event(
                         ScanEventType.FILE_PROCESSED,
                         {
@@ -437,7 +439,10 @@ class Scanner:
             file_locator_process.add_path(path)
         worker_count = self.options.threads
         log.debug("Using " + str(worker_count) + " worker(s)...")
-        matcher = RegexMatcher(self.options.signatures)
+        matcher = RegexMatcher(
+                    self.options.signatures,
+                    match_all=self.options.match_all
+                )
         metrics = ScanMetrics(worker_count)
         with ScanWorkerPool(
                     worker_count,
@@ -469,7 +474,7 @@ class Scanner:
         if timeout_count > 0:
             log.warning(f'{timeout_count} timeout(s) occurred during scan')
         log.info(
-                f'Found {match_count} match(es) after processing {total_count}'
-                f' file(s) containing {byte_count} byte(s) over {elapsed_time}'
-                f' second(s)'
+                f'Found {match_count} matching file(s) after processing '
+                f'{total_count} file(s) containing {byte_count} byte(s) over '
+                f'{elapsed_time} second(s)'
             )

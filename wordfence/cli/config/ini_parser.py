@@ -27,7 +27,7 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
                             source: ConfigParser) -> Any:
         self.assert_is_valid_source(source)
 
-        if definition.has_ini_separator():
+        if definition.has_separator():
             # always return separated values as a string
             value = source.get(self.config_section_name,
                                definition.property_name,
@@ -55,8 +55,8 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
             value = source.get(self.config_section_name,
                                definition.property_name,
                                fallback=not_set_token)
-        if isinstance(value, str) and definition.has_ini_separator():
-            value = value.split(definition.meta.ini_separator)
+        if isinstance(value, str) and definition.has_separator():
+            value = value.split(definition.meta.separator)
             if definition.get_value_type() == int:
                 value = [int(string_int) for string_int in value]
             elif definition.get_value_type() != str:

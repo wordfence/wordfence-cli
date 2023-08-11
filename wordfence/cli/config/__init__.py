@@ -75,8 +75,12 @@ def create_config_object(definitions: Dict[str, ConfigItemDefinition],
             if new_value is not not_set_token:
                 setattr(target, item_definition.property_name, new_value)
             elif not hasattr(target, item_definition.property_name):
+                default = item_definition.default
+                if item_definition.has_separator() and \
+                        isinstance(default, str):
+                    default = default.split(item_definition.meta.separator)
                 setattr(target, item_definition.property_name,
-                        item_definition.default)
+                        default)
     target.trailing_arguments = trailing_arguments
     return target
 

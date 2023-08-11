@@ -12,6 +12,7 @@ from wordfence.util import updater
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import log
+from wordfence.version import __version__
 from .reporting import Report, ReportFormat
 from .configure import Configurer
 
@@ -127,7 +128,8 @@ class ScanCommand:
                 signatures=self._get_signatures(),
                 chunk_size=self.config.chunk_size,
                 max_file_size=int(self.config.max_file_size),
-                file_filter=self._initialize_file_filter()
+                file_filter=self._initialize_file_filter(),
+                match_all=self.config.match_all
             )
         if self._should_read_stdin():
             options.path_source = StreamReader(
@@ -138,7 +140,7 @@ class ScanCommand:
         with open(self.config.output_path, 'w') if self.config.output_path \
                 is not None else nullcontext() as output_file:
             output_format = ReportFormat(self.config.output_format)
-            output_columns = self.config.output_columns.split(',')
+            output_columns = self.config.output_columns
             report = Report(output_format, output_columns, options.signatures)
             if self._should_write_stdout():
                 report.add_target(sys.stdout)
@@ -174,10 +176,19 @@ def handle_interrupt(signal_number: int, stack) -> None:
 signal.signal(signal.SIGINT, handle_interrupt)
 
 
+def display_version() -> None:
+    print(f"Wordfence CLI {__version__}")
+
+
 def main(config) -> int:
     command = None
     try:
-        if config.debug:
+        if config.version:
+            display_version()
+            return 0
+        if config.quiet:
+            log.setLevel(logging.CRITICAL)
+        elif config.debug:
             log.setLevel(logging.DEBUG)
         elif config.verbose or (
                     config.verbose is None
