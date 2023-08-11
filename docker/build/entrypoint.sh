@@ -28,10 +28,12 @@ if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then
   cd /opt/wordfence-cli
 fi
 
-pip install --upgrade pip setuptools wheel pyinstaller
+# install requirements and build
+pip install --upgrade pip
 pip install -r requirements.txt
-python3 setup.py build
-python3 setup.py install
+python -m build
+#python3 setup.py build
+#python3 setup.py install
 
 pyinstaller \
   --name wordfence \

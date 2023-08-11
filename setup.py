@@ -25,5 +25,8 @@ setup(
         ]
     },
     packages=find_packages(),
-    install_requires=['regex']
+    install_requires=[
+        'regex>=2023.6.3',
+        'requests~=2.3'
+    ]
 )
