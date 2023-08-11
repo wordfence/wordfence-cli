@@ -1,6 +1,11 @@
 import fcntl
+import os
 from typing import Optional, IO, TextIO
 from enum import IntEnum
+
+
+class IoException(Exception):
+    pass
 
 
 class StreamReader:
@@ -54,3 +59,31 @@ class FileLock:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._operate_lock(fcntl.LOCK_UN)
+
+
+def resolve_path(path: str) -> str:
+    """ Resolve a path to a normalized, absolute path """
+    return os.path.abspath(os.path.expanduser(path))
+
+
+def ensure_directory_is_writable(path: str, create_mode: int = 0o700) -> str:
+    """ Ensure that the specified directory is writable, """
+    """ creating it and parent directories as needed. Note """
+    """ that the checks here are not atomic; this assumes """
+    """ that nothing else is modifying the filesystem which """
+    """ is not guaranteed. """
+    path = resolve_path(path)
+    if os.path.exists(path):
+        if os.path.isdir(path):
+            if not os.access(path, os.W_OK):
+                raise IoException(f'Directory at {path} is not writable')
+            if not os.access(path, os.X_OK):
+                raise IoException(f'Directory at {path} is not executable')
+            return path
+        else:
+            raise IoException(f'Path {path} exists and is not a directory')
+    try:
+        os.makedirs(path, mode=create_mode, exist_ok=True)
+    except OSError:
+        raise IoException('Failed to create directory at {$path}')
+    return path

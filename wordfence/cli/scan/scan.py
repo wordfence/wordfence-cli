@@ -13,6 +13,7 @@ from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import log
 from .reporting import Report, ReportFormat
+from .configure import Configurer
 
 
 class ScanCommand:
@@ -79,6 +80,11 @@ class ScanCommand:
         else:
             return self.config.read_stdin
 
+    def _should_write_stdout(self) -> bool:
+        if sys.stdout is None or self.config.output is False:
+            return False
+        return self.config.output or self.config.output_path is None
+
     def _get_file_list_separator(self) -> str:
         if isinstance(self.config.file_list_separator, bytes):
             return self.config.file_list_separator.decode('utf-8')
@@ -134,10 +140,17 @@ class ScanCommand:
             output_format = ReportFormat(self.config.output_format)
             output_columns = self.config.output_columns.split(',')
             report = Report(output_format, output_columns, options.signatures)
-            if self.config.output and sys.stdout is not None:
+            if self._should_write_stdout():
                 report.add_target(sys.stdout)
             if output_file is not None:
                 report.add_target(output_file)
+            if not report.has_writers():
+                log.error(
+                        'Please specify an output file using the --output-path'
+                        ' option or add --output to write results to standard '
+                        'output'
+                    )
+                return 1
             if self.config.output_headers:
                 report.write_headers()
             scanner = scanning.scanner.Scanner(options)
@@ -171,6 +184,8 @@ def main(config) -> int:
                     and sys.stdout is not None and sys.stdout.isatty()
                 ):
             log.setLevel(logging.INFO)
+        configurer = Configurer(config)
+        configurer.check_config()
         command = ScanCommand(config)
         command.execute()
         return 0
@@ -178,6 +193,5 @@ def main(config) -> int:
         log.error('A valid Wordfence CLI license is required')  # TODO: stderr
         return 1
     except BaseException as exception:
-        raise exception
         log.error(f'Error: {exception}')
         return 1

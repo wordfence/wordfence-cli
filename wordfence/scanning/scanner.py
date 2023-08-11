@@ -315,7 +315,10 @@ class ScanWorkerPool:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.stop()
+        if exc_type is None:
+            self.stop()
+        else:
+            self.terminate()
 
     def start(self):
         if self._started:
@@ -445,6 +448,7 @@ class Scanner:
                     self.options.max_file_size
                 ) as worker_pool:
             if self.options.path_source is not None:
+                log.debug('Reading input paths...')
                 while True:
                     path = self.options.path_source.read_entry()
                     if path is None:
