@@ -12,7 +12,9 @@ from wordfence.util import updater
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import log
+from wordfence.version import __version__
 from .reporting import Report, ReportFormat
+from .configure import Configurer
 
 
 class ScanCommand:
@@ -79,6 +81,11 @@ class ScanCommand:
         else:
             return self.config.read_stdin
 
+    def _should_write_stdout(self) -> bool:
+        if sys.stdout is None or self.config.output is False:
+            return False
+        return self.config.output or self.config.output_path is None
+
     def _get_file_list_separator(self) -> str:
         if isinstance(self.config.file_list_separator, bytes):
             return self.config.file_list_separator.decode('utf-8')
@@ -121,7 +128,8 @@ class ScanCommand:
                 signatures=self._get_signatures(),
                 chunk_size=self.config.chunk_size,
                 max_file_size=int(self.config.max_file_size),
-                file_filter=self._initialize_file_filter()
+                file_filter=self._initialize_file_filter(),
+                match_all=self.config.match_all
             )
         if self._should_read_stdin():
             options.path_source = StreamReader(
@@ -132,12 +140,19 @@ class ScanCommand:
         with open(self.config.output_path, 'w') if self.config.output_path \
                 is not None else nullcontext() as output_file:
             output_format = ReportFormat(self.config.output_format)
-            output_columns = self.config.output_columns.split(',')
+            output_columns = self.config.output_columns
             report = Report(output_format, output_columns, options.signatures)
-            if self.config.output and sys.stdout is not None:
+            if self._should_write_stdout():
                 report.add_target(sys.stdout)
             if output_file is not None:
                 report.add_target(output_file)
+            if not report.has_writers():
+                log.error(
+                        'Please specify an output file using the --output-path'
+                        ' option or add --output to write results to standard '
+                        'output'
+                    )
+                return 1
             if self.config.output_headers:
                 report.write_headers()
             scanner = scanning.scanner.Scanner(options)
@@ -161,16 +176,27 @@ def handle_interrupt(signal_number: int, stack) -> None:
 signal.signal(signal.SIGINT, handle_interrupt)
 
 
+def display_version() -> None:
+    print(f"Wordfence CLI {__version__}")
+
+
 def main(config) -> int:
     command = None
     try:
-        if config.debug:
+        if config.version:
+            display_version()
+            return 0
+        if config.quiet:
+            log.setLevel(logging.CRITICAL)
+        elif config.debug:
             log.setLevel(logging.DEBUG)
         elif config.verbose or (
                     config.verbose is None
                     and sys.stdout is not None and sys.stdout.isatty()
                 ):
             log.setLevel(logging.INFO)
+        configurer = Configurer(config)
+        configurer.check_config()
         command = ScanCommand(config)
         command.execute()
         return 0
@@ -178,6 +204,5 @@ def main(config) -> int:
         log.error('A valid Wordfence CLI license is required')  # TODO: stderr
         return 1
     except BaseException as exception:
-        raise exception
         log.error(f'Error: {exception}')
         return 1

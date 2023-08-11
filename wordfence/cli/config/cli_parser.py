@@ -40,6 +40,25 @@ class CliCanonicalValueExtractor(CanonicalValueExtractorInterface):
         return value
 
 
+def create_split_and_append_action(delimiter: str):
+
+    class SplitAndAppend(argparse.Action):
+
+        def __call__(
+                    self,
+                    parser: argparse.ArgumentParser,
+                    namespace: argparse.Namespace,
+                    values,
+                    option_string=None
+                ):
+            items = getattr(namespace, self.dest, [])
+            new_values = values.split(delimiter)
+            items.extend([value for value in new_values if value != ''])
+            setattr(namespace, self.dest, items)
+
+    return SplitAndAppend
+
+
 def add_to_parser(target_parser,
                   config_definition: ConfigItemDefinition) -> None:
     if config_definition.context not in valid_contexts:
@@ -81,9 +100,17 @@ def add_to_parser(target_parser,
         named_params['action'] = 'append'
         named_params['default'] = [not_set_token]
 
+    if config_definition.has_separator():
+        named_params['default'] = [not_set_token]
+        named_params['action'] = \
+            create_split_and_append_action(
+                    config_definition.meta.separator
+                )
+
     # store_true and store_false do not have the same options as other actions,
     # and will throw an error if type is specified
-    if not named_params['action'].startswith('store_'):
+    if isinstance(named_params['action'], str) and \
+            not named_params['action'].startswith('store_'):
         named_params['type'] = config_definition.get_value_type()
 
     if config_definition.hidden:

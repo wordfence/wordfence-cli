@@ -55,7 +55,7 @@ not_set_token = ReferenceToken()
 class ConfigItemMeta:
     valid_options: Optional[Tuple[str]] = None
     multiple: Optional[bool] = None
-    ini_separator: Optional[str] = None
+    separator: Optional[str] = None
     value_type: Union[Type, Callable] = str
 
 
@@ -79,8 +79,8 @@ class ConfigItemDefinition:
     def has_options_list(self) -> bool:
         return True if self.meta and self.meta.valid_options else False
 
-    def has_ini_separator(self) -> bool:
-        return True if self.meta and self.meta.ini_separator else False
+    def has_separator(self) -> bool:
+        return True if self.meta and self.meta.separator else False
 
     def is_flag(self) -> bool:
         return self.argument_type == ArgumentType.FLAG \

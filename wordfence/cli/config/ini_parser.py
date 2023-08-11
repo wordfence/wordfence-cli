@@ -3,7 +3,7 @@ import json
 import os
 from argparse import Namespace
 from configparser import ConfigParser
-from typing import List, Set, Any, Dict, Callable
+from typing import List, Set, Any, Dict, Callable, Optional
 
 from wordfence.logging import log
 from .config_items import Context, ConfigItemDefinition, \
@@ -27,7 +27,7 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
                             source: ConfigParser) -> Any:
         self.assert_is_valid_source(source)
 
-        if definition.has_ini_separator():
+        if definition.has_separator():
             # always return separated values as a string
             value = source.get(self.config_section_name,
                                definition.property_name,
@@ -55,8 +55,8 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
             value = source.get(self.config_section_name,
                                definition.property_name,
                                fallback=not_set_token)
-        if isinstance(value, str) and definition.has_ini_separator():
-            value = value.split(definition.meta.ini_separator)
+        if isinstance(value, str) and definition.has_separator():
+            value = value.split(definition.meta.separator)
             if definition.get_value_type() == int:
                 value = [int(string_int) for string_int in value]
             elif definition.get_value_type() != str:
@@ -88,10 +88,11 @@ def get_ini_path(cli_values: Namespace) -> str:
     return os.path.expanduser(path)
 
 
-def load_ini(cli_values) -> ConfigParser:
+def load_ini(cli_values) -> (ConfigParser, Optional[str]):
     config = ConfigParser()
+    ini_path = get_ini_path(cli_values)
     try:
-        with open(get_ini_path(cli_values)) as file:
+        with open(ini_path) as file:
             config.read_file(file)
     except OSError as e:
         if e.errno == errno.EACCES:
@@ -105,7 +106,7 @@ def load_ini(cli_values) -> ConfigParser:
             f"Config file not found or not readable: "
             f"{json.dumps(get_ini_path(cli_values))}. Merging default config "
             f"values.")
-        return config
+        return (config, None)
     config_section_name = get_config_section_name(cli_values)
     definitions = get_definitions(cli_values)
     all_section_names: List[str] = config.sections()
@@ -141,4 +142,4 @@ def load_ini(cli_values) -> ConfigParser:
             "*** Invalid settings not known to wordfence-cli or that are not "
             "intended for use in INI config files were discarded. ***")
 
-    return config
+    return (config, ini_path)

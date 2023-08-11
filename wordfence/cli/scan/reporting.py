@@ -16,6 +16,9 @@ class ReportColumn(str, Enum):
     def get_valid_options() -> List[str]:
         return [column.value for column in ReportColumn]
 
+    def get_valid_options_as_string(delimiter: str = ', '):
+        return delimiter.join(ReportColumn.get_valid_options())
+
 
 class ReportFormat(str, Enum):
     CSV = 'csv',
@@ -74,6 +77,45 @@ class SingleColumnWriter(ReportWriter):
             self._target.write(value + self.delimiter)
 
 
+class HumanReadableWriter(ReportWriter):
+
+    def __init__(self, target: IO, columns: str):
+        super().__init__(target)
+        self._columns = columns
+
+    def _get_value(data: List[str], column: str) -> str:
+        return
+
+    def _map_data_to_dict(self, data: List[str]) -> dict:
+        return {
+            name: data[index] for index, name in enumerate(self._columns)
+        }
+
+    def write_row(self, data: List[str]) -> None:
+        values = self._map_data_to_dict(data)
+        file = None
+        signature_id = None
+        if 'filename' in values:
+            file = values['filename']
+        if 'signature_id' in values:
+            signature_id = values['signature_id']
+        # TODO: Add more custom messages if desired
+        if file is not None and False:
+            if signature_id is not None:
+                self._target.write(
+                        f"File at {file} matched signature {signature_id}"
+                    )
+            else:
+                self._target.write(
+                        f"File {file} matched a signature"
+                    )
+        else:
+            self._target.write(
+                    "Match found: " + str(values)
+                )
+        self._target.write("\n")
+
+
 class Report:
 
     def __init__(
@@ -96,6 +138,8 @@ class Report:
             return SingleColumnWriter(stream, "\0")
         elif self.format == ReportFormat.LINE_DELIMITED:
             return SingleColumnWriter(stream, "\n")
+        elif self.format == ReportFormat.HUMAN:
+            return HumanReadableWriter(stream, self.columns)
         else:
             raise ValueError('Unsupported report format: ' + str(self.format))
 
@@ -153,3 +197,6 @@ class Report:
         for row in rows:
             for writer in self.writers:
                 writer.write_row(row)
+
+    def has_writers(self) -> bool:
+        return len(self.writers) > 0

@@ -13,10 +13,16 @@ from .ini_parser import load_ini, get_ini_value_extractor
 
 class Config(SimpleNamespace):
 
-    def __init__(self, definitions, subcommand):
+    def __init__(
+                self,
+                definitions,
+                subcommand,
+                ini_path: Optional[str] = None
+            ):
         super().__init__()
         self.__definitions = definitions
         self.subcommand = subcommand
+        self.ini_path = ini_path
         self.trailing_arguments = None
 
     def values(self) -> Dict[str, Any]:
@@ -34,8 +40,12 @@ class Config(SimpleNamespace):
     def define(self, property_name) -> ConfigItemDefinition:
         return self.__definitions[property_name]
 
+    def has_ini_file(self) -> bool:
+        return self.ini_path is not None
+
 
 __instance: Optional[Config] = None
+__ini_path: Optional[str] = None
 __ini_values: Optional[ConfigParser] = None
 __cli_values: Optional[Namespace] = None
 
@@ -65,8 +75,12 @@ def create_config_object(definitions: Dict[str, ConfigItemDefinition],
             if new_value is not not_set_token:
                 setattr(target, item_definition.property_name, new_value)
             elif not hasattr(target, item_definition.property_name):
+                default = item_definition.default
+                if item_definition.has_separator() and \
+                        isinstance(default, str):
+                    default = default.split(item_definition.meta.separator)
                 setattr(target, item_definition.property_name,
-                        item_definition.default)
+                        default)
     target.trailing_arguments = trailing_arguments
     return target
 
@@ -80,7 +94,7 @@ def load_config():
         if not __cli_values.subcommand:
             parser.print_help()
             sys.exit()
-        __ini_values = load_ini(__cli_values)
+        __ini_values, __ini_path = load_ini(__cli_values)
 
         value_extractors.append(get_ini_value_extractor(__cli_values))
         value_extractors.append(CliCanonicalValueExtractor())
@@ -90,4 +104,5 @@ def load_config():
             trailing_arguments,
             __ini_values,
             __cli_values)
+        __instance.ini_path = __ini_path
     return __instance

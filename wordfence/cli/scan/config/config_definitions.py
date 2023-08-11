@@ -46,7 +46,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ",",
+            "separator": ",",
             "value_type": int
         }
     },
@@ -95,12 +95,14 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": None,
     },
     "output-columns": {
-        "description": "List of columns to output.",
+        "description": ("An ordered, comma-delimited list of columns to"
+                        " include in the output. Available columns: "
+                        + ReportColumn.get_valid_options_as_string()),
         "context": "ALL",
         "argument_type": "OPTION",
         "default": "filename",
         "meta": {
-            "valid_options": ReportColumn.get_valid_options()
+            "separator": ","
         }
     },
     "output-format": {
@@ -108,7 +110,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "description": "Output format used for result data.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": 'line-delimited',
+        "default": 'csv',
         "meta": {
             "valid_options": ReportFormat.get_valid_options()
         }
@@ -133,7 +135,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ","
+            "separator": ","
         }
     },
     "exclude-files": {
@@ -145,7 +147,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ","
+            "separator": ","
         }
     },
     "include-files-pattern": {
@@ -156,7 +158,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ","
+            "separator": ","
         }
     },
     "exclude-files-pattern": {
@@ -167,7 +169,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ","
+            "separator": ","
         }
     },
     "chunk-size": {
@@ -228,13 +230,22 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": False
     },
     "verbose": {
+        "short_name": "v",
         "description": "Whether or not to enable verbose logging.",
         "context": "ALL",
         "argument_type": "OPTIONAL_FLAG",
         "default": None
     },
     "debug": {
+        "short_name": "d",
         "description": "Whether or not to enable debug logging.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": False
+    },
+    "quiet": {
+        "short_name": "q",
+        "description": "Suppress all output other than scan results.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": False
@@ -245,5 +256,25 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": True,
         "hidden": True
+    },
+    "configure": {
+        "description": "Interactively configure Wordfence CLI.",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
+    },
+    "version": {
+        "description": "Display the version of Wordfence CLI.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False
+    },
+    "match-all": {
+        "description": "If set, all possible signatures will be checked "
+                       "against each scanned file. Otherwise, only the "
+                       "first matching signature will be reported",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": False
     }
 }
