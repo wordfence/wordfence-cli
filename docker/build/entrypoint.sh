@@ -9,7 +9,7 @@ set -e
 cd /opt/wordfence-cli
 
 ARCHITECTURE=$(dpkg --print-architecture)
-VERSION=$(./setup.py --version)
+VERSION=$(python -c "from wordfence import version; print(version.__version__)")
 CHANGELOG_VERSION=$(head -n 1 /opt/debian/changelog | sed -n -E 's/wordfence \(([^)]+)\).*/\1/p')
 
 if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then
@@ -17,7 +17,7 @@ if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then
   DEBEMAIL=devs@wordfence.com
   export DEBFULLNAME
   export DEBEMAIL
-  echo "Changelog verison $CHANGELOG_VERSION does not equal setup.py version $VERSION -- updating changelog"
+  echo "Changelog verison $CHANGELOG_VERSION does not equal pyproject.toml version $VERSION -- updating changelog"
   cd /opt/debian
   dch \
     --distribution unstable \
@@ -31,8 +31,6 @@ fi
 # install requirements
 pip install --upgrade pip
 pip install -r requirements.txt
-#python3 setup.py build
-#python3 setup.py install
 
 pyinstaller \
   --name wordfence \
