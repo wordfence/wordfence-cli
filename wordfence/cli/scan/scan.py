@@ -45,15 +45,15 @@ class ScanCommand:
                         os.path.expanduser(self.config.cache_directory),
                         self.CACHEABLE_TYPES
                     )
-            except caching.CacheException:
-                # TODO: Should cache failures trigger some kind of notice?
-                pass
+            except caching.CacheException as e:
+                log.warning('Failed to initialize cache directory: ' + str(e))
         return caching.RuntimeCache()
 
     def filter_signatures(self, signatures: SignatureSet) -> None:
         if self.config.exclude_signatures is None:
             return
         for identifier in self.config.exclude_signatures:
+            log.debug(f'Excluding signature {identifier}')
             signatures.remove_signature(identifier)
 
     def _get_signatures(self) -> SignatureSet:
@@ -64,6 +64,7 @@ class ScanCommand:
                         base_url=self.config.noc1_url
                     )
                 return noc1_client.get_malware_signatures()
+            # TODO: Make signature cache license-specific
             self.cacheable_signatures = caching.Cacheable(
                     'signatures',
                     fetch_signatures,
@@ -117,6 +118,8 @@ class ScanCommand:
         return filter
 
     def execute(self) -> int:
+        if self.config.purge_cache:
+            self.cache.purge()
         if self.config.check_for_update:
             updater.Version.check(self.cache)
         paths = set()
@@ -197,8 +200,9 @@ def main(config) -> int:
             log.setLevel(logging.INFO)
         configurer = Configurer(config)
         configurer.check_config()
-        command = ScanCommand(config)
-        command.execute()
+        if not config.configure:
+            command = ScanCommand(config)
+            command.execute()
         return 0
     except api.licensing.LicenseRequiredException:
         log.error('A valid Wordfence CLI license is required')  # TODO: stderr

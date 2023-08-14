@@ -33,12 +33,13 @@ class Version:
             )
         except NoCachedValueException:
             latest_version = Version.get_latest()
-            if latest_version is None:
-                log.error('Unable to fetch the latest version. '
-                          'The version you are using may be out of date!')
-                return
-            else:
-                caching.Cache.put(cache, 'latest_version', latest_version)
+            caching.Cache.put(cache, 'latest_version', latest_version)
+            log.error('Unable to fetch the latest version. '
+                      'The version you are using may be out of date!')
+            return
+
+        if latest_version is None:
+            return
 
         if version.parse(__version__) < version.parse(latest_version):
             log.warning('A newer version of the Wordfence CLI is available! '

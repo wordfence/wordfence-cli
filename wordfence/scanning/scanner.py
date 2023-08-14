@@ -469,7 +469,7 @@ class Scanner:
         match_count = metrics.get_total_matches()
         total_count = metrics.get_total_count()
         byte_count = metrics.get_total_bytes()
-        elapsed_time = timer.get_elapsed()
+        elapsed_time = round(timer.get_elapsed())
         timeout_count = metrics.get_total_timeouts()
         if timeout_count > 0:
             log.warning(f'{timeout_count} timeout(s) occurred during scan')
