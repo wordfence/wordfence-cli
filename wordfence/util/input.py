@@ -1,7 +1,7 @@
 from typing import Optional, Callable, Any
 
 
-class InvalidInputException(BaseException):
+class InvalidInputException(Exception):
 
     def __init__(self, message: str):
         self.message = message

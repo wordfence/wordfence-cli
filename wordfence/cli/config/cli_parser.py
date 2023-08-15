@@ -43,7 +43,10 @@ class CliCanonicalValueExtractor(CanonicalValueExtractorInterface):
         return value
 
 
-def create_split_and_append_action(delimiter: str):
+def create_split_and_append_action(delimiter: str, value_type=None):
+
+    if value_type is None:
+        value_type = str
 
     class SplitAndAppend(argparse.Action):
 
@@ -56,7 +59,9 @@ def create_split_and_append_action(delimiter: str):
                 ):
             items = getattr(namespace, self.dest, [])
             new_values = values.split(delimiter)
-            items.extend([value for value in new_values if value != ''])
+            items.extend(
+                    [value_type(value) for value in new_values if value != '']
+                )
             setattr(namespace, self.dest, items)
 
     return SplitAndAppend
@@ -109,12 +114,12 @@ def add_to_parser(target_parser,
         named_params['default'] = [not_set_token]
         named_params['action'] = \
             create_split_and_append_action(
-                    config_definition.meta.separator
+                    config_definition.meta.separator,
+                    config_definition.get_value_type()
                 )
-
     # store_true and store_false do not have the same options as other actions,
     # and will throw an error if type is specified
-    if isinstance(named_params['action'], str) and \
+    elif not isinstance(named_params['action'], str) or \
             not named_params['action'].startswith('store_'):
         named_params['type'] = config_definition.get_value_type()
 
@@ -127,7 +132,6 @@ def add_to_parser(target_parser,
     if config_definition.is_flag():
         named_params['action'] = 'store_false'
         names = [f"--no-{config_definition.name}"]
-        # TODO: How do we want to present the no variants in help
         if config_definition.hidden or not config_definition.default:
             named_params['help'] = argparse.SUPPRESS
         else:

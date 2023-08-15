@@ -10,7 +10,7 @@ from .serialization import limited_deserialize
 from ..logging import log
 
 
-class CacheException(BaseException):
+class CacheException(Exception):
     pass
 
 
@@ -67,7 +67,12 @@ class CacheDirectory(Cache):
         self._initialize_directory()
 
     def _initialize_directory(self) -> None:
-        os.makedirs(self.path, mode=0o700, exist_ok=True)
+        try:
+            os.makedirs(self.path, mode=0o700, exist_ok=True)
+        except OSError as e:
+            raise CacheException(
+                    f'Failed to initialize cache directory at {self.path}'
+                ) from e
 
     def _serialize_value(self, value: Any) -> Any:
         return pickle.dumps(value)

@@ -53,8 +53,13 @@ class ScanCommand:
         if self.config.exclude_signatures is None:
             return
         for identifier in self.config.exclude_signatures:
-            log.debug(f'Excluding signature {identifier}')
-            signatures.remove_signature(identifier)
+            if signatures.remove_signature(identifier):
+                log.debug(f'Excluded signature {identifier}')
+            else:
+                log.warning(
+                        f'Signature {identifier} is not in the existing set. '
+                        'It will not be used in the scan.'
+                    )
 
     def _get_signatures(self) -> SignatureSet:
         if self.cacheable_signatures is None:
@@ -144,7 +149,12 @@ class ScanCommand:
                 is not None else nullcontext() as output_file:
             output_format = ReportFormat(self.config.output_format)
             output_columns = self.config.output_columns
-            report = Report(output_format, output_columns, options.signatures)
+            report = Report(
+                    output_format,
+                    output_columns,
+                    options.signatures,
+                    self.config.output_headers
+                )
             if self._should_write_stdout():
                 report.add_target(sys.stdout)
             if output_file is not None:
@@ -156,8 +166,6 @@ class ScanCommand:
                         'output'
                     )
                 return 1
-            if self.config.output_headers:
-                report.write_headers()
             scanner = scanning.scanner.Scanner(options)
             scanner.scan(lambda result: report.add_result(result))
         return 0

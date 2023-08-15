@@ -38,13 +38,14 @@ class SignatureSet:
         self.common_strings = common_strings
         self.signatures = signatures
 
-    def remove_signature(self, identifier: int) -> None:
+    def remove_signature(self, identifier: int) -> bool:
         if identifier not in self.signatures:
-            return
+            return False
         signature = self.signatures[identifier]
         for index in signature.common_strings:
             self.common_strings[index].signature_ids.remove(identifier)
         del self.signatures[identifier]
+        return True
 
     def get_signature(self, identifier: int) -> None:
         if identifier in self.signatures:
