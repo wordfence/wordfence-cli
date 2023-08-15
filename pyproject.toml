@@ -30,8 +30,8 @@ dependencies = [
 ]
 dynamic = [ "version" ]
 
-[tool.setuptools]
-packages = [ "wordfence" ]
+[tool.setuptools.packages.find]
+include = [ "wordfence*" ]
 
 [tool.setuptools.dynamic]
 version = { attr = "wordfence.version.__version__" }
