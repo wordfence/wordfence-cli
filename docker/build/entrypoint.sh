@@ -1,31 +1,26 @@
 #!/bin/bash
 set -e
 
-#if [ ! -f /opt/keys/signing-key.asc ]; then
-#    echo "Unable to locate the signing key"
-#    exit 1
-#fi
-
-cd /opt/wordfence-cli
+cd /root/wordfence-cli
 
 ARCHITECTURE=$(dpkg --print-architecture)
 VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
-CHANGELOG_VERSION=$(head -n 1 /opt/debian/changelog | sed -n -E 's/wordfence \(([^)]+)\).*/\1/p')
+CHANGELOG_VERSION=$(head -n 1 /root/debian/changelog | sed -n -E 's/wordfence \(([^)]+)\).*/\1/p')
 
 if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then
   DEBFULLNAME=Wordfence
-  DEBEMAIL=devs@wordfence.com
+  DEBEMAIL=opensource@wordfence.com
   export DEBFULLNAME
   export DEBEMAIL
   echo "Changelog verison $CHANGELOG_VERSION does not equal pyproject.toml version $VERSION -- updating changelog"
-  cd /opt/debian
+  cd /root/debian
   dch \
     --distribution unstable \
     --check-dirname-level 0 \
     --package wordfence \
     --newversion "$VERSION" \
     "$VERSION release. See https://github.com/wordfence/wordfence-cli for release notes."
-  cd /opt/wordfence-cli
+  cd /root/wordfence-cli
 fi
 
 # install requirements
@@ -39,35 +34,52 @@ pyinstaller \
   --hidden-import wordfence.cli.scan.config \
   main.py
 
-pushd /opt/wordfence-cli/dist
+pushd /root/wordfence-cli/dist
 
-# compress the standalone executable, checksum it, and copy both to the output directory
+# compress the standalone executable, checksum and sign it, and copy both to the output directory
 STANDALONE_FILENAME="wordfence_${VERSION}_${ARCHITECTURE}_linux_exec"
 tar -czvf "${STANDALONE_FILENAME}.tar.gz" wordfence
 sha256sum "${STANDALONE_FILENAME}.tar.gz" > "${STANDALONE_FILENAME}.tar.gz.sha256"
-cp "${STANDALONE_FILENAME}.tar.gz" "${STANDALONE_FILENAME}.tar.gz.sha256" /opt/output
+gpg \
+  --homedir "$CONTAINER_GPG_HOME_DIR" \
+  --detach-sign \
+  --armor \
+  --local-user '=Wordfence <opensource@wordfence.com>' \
+  "${STANDALONE_FILENAME}.tar.gz"
+gpg \
+  --homedir "$CONTAINER_GPG_HOME_DIR" \
+  --detach-sign \
+  --armor \
+  --local-user '=Wordfence <opensource@wordfence.com>' \
+  "${STANDALONE_FILENAME}.tar.gz.sha256"
+cp \
+  "${STANDALONE_FILENAME}.tar.gz" \
+  "${STANDALONE_FILENAME}.tar.gz.asc" \
+  "${STANDALONE_FILENAME}.tar.gz.sha256" \
+  "${STANDALONE_FILENAME}.tar.gz.sha256.asc" \
+  /root/output
 
 popd
 
 # keep the debian folder clean (additional files will be added as part of the build process)
-#cp -r /opt/debian /opt/wordfence-cli/dist/debian
-#cd /opt/wordfence-cli/dist
+#cp -r /root/debian /root/wordfence-cli/dist/debian
+#cd /root/wordfence-cli/dist
 
 # build the package
 #dpkg-buildpackage -us -uc -b
 
 # set up GPG for signing
-#gpg --import /opt/keys/signing-key.asc
+#gpg --import /root/keys/signing-key.asc
 #GPG_ID=$(gpg --list-signatures --with-colons | grep sig | head -n 1 | cut -d':' -f5)
 
 # setting GPG_TTY environment variable resolves an error with dpkg-sig
 #GPG_TTY=$(tty)
 #export GPG_TTY
 
-#echo "signing /opt/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
+#echo "signing /root/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
 # sign using one of the below strategies
-# debsigs --sign=origin -k "$GPG_ID" "/opt/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
-#dpkg-sig -k "$GPG_ID" --sign builder "/opt/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
+# debsigs --sign=origin -k "$GPG_ID" "/root/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
+#dpkg-sig -k "$GPG_ID" --sign builder "/root/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
 
-#cp "/opt/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb" "/opt/output/"
-ls -lah "/opt/output"
+#cp "/root/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb" "/root/output/"
+ls -lah "/root/output"
