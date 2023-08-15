@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y debsigs \
     python3 \
     python3-pip
 
-COPY ./docker/build/entrypoint.sh /opt/entrypoint.sh
-COPY ./ /opt/wordfence-cli
+COPY ./docker/build/entrypoint.sh /root/entrypoint.sh
+COPY ./ /root/wordfence-cli
 
-RUN chmod +x /opt/entrypoint.sh
+RUN chmod +x /root/entrypoint.sh
 
 ENTRYPOINT ["/bin/bash"]
-CMD ["/opt/entrypoint.sh"]
+CMD ["/root/entrypoint.sh"]

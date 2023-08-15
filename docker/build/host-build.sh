@@ -27,7 +27,7 @@ ARCHITECTURES=("amd64" "arm64")
 
 function build_and_package() {
     ARCHITECTURE="$1"
-    docker run -it --rm --name "wfcli-build-container-$ARCHITECTURE" --platform "linux/$ARCHITECTURE" -v "$PROJECT_DIR"/docker/build/volumes/output/:/opt/output -v "$PROJECT_DIR"/docker/build/volumes/debian/:/opt/debian -v "$KEYS_DIR":/opt/keys "wfcli-build-$ARCHITECTURE"
+    docker run -it --rm --name "wfcli-build-container-$ARCHITECTURE" --platform "linux/$ARCHITECTURE" -v "$PROJECT_DIR"/docker/build/volumes/output/:/root/output -v "$PROJECT_DIR"/docker/build/volumes/debian/:/root/debian "wfcli-build-$ARCHITECTURE"
 }
 
 for arch in "${ARCHITECTURES[@]}"

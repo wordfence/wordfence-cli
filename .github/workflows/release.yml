@@ -1,0 +1,115 @@
+name: "Wordfence CLI release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_number:
+        type: string
+        description: The build workflow run number to release
+        required: true
+      release_pypi:
+        type: boolean
+        description: Whether to upload a release to PyPI
+        default: true
+      pypi_repository:
+        type: string
+        description: The repository to upload Python distribution packages to (pypi or testpypi)
+        default: pypi
+      release_github:
+        type: boolean
+        description: Whether to draft a GitHub release
+        default: true
+
+jobs:
+  pypi_release:
+    if: ${{ inputs.release_pypi }}
+    name: PyPI release
+    runs-on: ubuntu-22.04
+  steps:
+    - name: Download artifact
+      uses: dawidd6/action-download-artifact@v2.27.0
+      with:
+        workflow: build.yml
+        run_number: ${{ inputs.build_run_number }}
+    - name: Set up Python
+      uses: actions/setup-python@4
+      with:
+        python-version: '3.8'
+    - name: Import GPG key
+      uses: crazy-max/ghaction-import-gpg@v5.3.0
+      with:
+        gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+        passphrase: ${{ secrets.GPG_PASSPHRASE }}
+    - name: Upload distribution packages
+      run: |
+        pip install twine~=4.0.2
+        python3 -m twine \
+          upload \
+          --repository ${{ github.event.inputs.pypi_repository }} \
+          --username __token__ \
+          --non-interactive \
+          wordfence_cli_python/*
+
+  linux_standalone_build:
+    name: Linux standalone build
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      # Set up QEMU to support additional platforms
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2.2.0
+      - name: Docker build
+        run: |
+          docker build \
+            -t wfcli-build \
+            --platform "linux/${{ matrix.arch }}" \
+            -f "${GITHUB_WORKSPACE}/docker/build/Dockerfile" \
+            "$GITHUB_WORKSPACE"
+      - name: Docker run
+        run: |
+          docker run \
+            --name "wfcli-build-container" \
+            --platform "linux/${{ matrix.arch }}" \
+            -v "${GITHUB_WORKSPACE}/docker/build/volumes/output/:/opt/output" \
+            -v "${GITHUB_WORKSPACE}/docker/build/volumes/debian/:/opt/debian" \
+            wfcli-build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_${{ matrix.arch }}
+          path: |
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256
+  python_build:
+    name: Python build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      - name: Python build
+        run: |
+          pip install build~=0.10
+          python3 -m build
+      - name: Create checksums
+        run: |
+          VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
+          cd dist
+          sha256sum *.tar.gz *.whl > "wordfence-${VERSION}.sha256"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_python
+          path: |
+            ${{ github.workspace }}/dist/*.tar.gz
+            ${{ github.workspace }}/dist/*.whl
+            ${{ github.workspace }}/dist/*.sha256
