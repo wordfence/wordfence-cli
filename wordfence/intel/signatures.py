@@ -1,3 +1,6 @@
+from ..api.licensing import License, LicenseSpecific
+
+
 class CommonString:
 
     def __init__(self, string: str, signature_ids: list = None):
@@ -32,9 +35,15 @@ class Signature:
         return self.get_common_string_count() > 0
 
 
-class SignatureSet:
+class SignatureSet(LicenseSpecific):
 
-    def __init__(self, common_strings: list, signatures: dict):
+    def __init__(
+                self,
+                common_strings: list,
+                signatures: dict,
+                license: License = None
+            ):
+        super().__init__(license)
         self.common_strings = common_strings
         self.signatures = signatures
 

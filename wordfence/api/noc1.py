@@ -76,8 +76,11 @@ class Client(NocClient):
                 try:
                     common_strings[index].signature_ids.append(signature_id)
                 except IndexError as index_error:
-                    raise index_error  # TODO: How should this be handled
-        return SignatureSet(common_strings, signatures)
+                    raise ApiException(
+                            'Response data contains malformed common string '
+                            'association'
+                        ) from index_error
+        return SignatureSet(common_strings, signatures, self.license)
 
     def ping_api_key(self) -> bool:
         response = self.request('ping_api_key')

@@ -4,8 +4,10 @@ import os
 import logging
 from multiprocessing import parent_process
 from contextlib import nullcontext
+from typing import Any
 
 from wordfence import scanning, api
+from wordfence.api.licensing import LicenseSpecific
 from wordfence.scanning import filtering
 from wordfence.util import caching
 from wordfence.util import updater
@@ -22,14 +24,24 @@ class ScanCommand:
     CACHEABLE_TYPES = {
             'wordfence.intel.signatures.SignatureSet',
             'wordfence.intel.signatures.CommonString',
-            'wordfence.intel.signatures.Signature'
+            'wordfence.intel.signatures.Signature',
+            'wordfence.api.licensing.License'
         }
 
     def __init__(self, config):
         self.config = config
         self.cache = self._initialize_cache()
         self.license = None
+        self.cache.add_filter(self.filter_cache_entry)
         self.cacheable_signatures = None
+
+    def filter_cache_entry(self, value: Any) -> Any:
+        if isinstance(value, LicenseSpecific):
+            if not value.is_compatible_with_license(self._get_license()):
+                raise caching.InvalidCachedValueException(
+                        'Incompatible license'
+                    )
+        return value
 
     def _get_license(self) -> api.licensing.License:
         if self.license is None:
@@ -69,7 +81,6 @@ class ScanCommand:
                         base_url=self.config.noc1_url
                     )
                 return noc1_client.get_malware_signatures()
-            # TODO: Make signature cache license-specific
             self.cacheable_signatures = caching.Cacheable(
                     'signatures',
                     fetch_signatures,
@@ -213,8 +224,9 @@ def main(config) -> int:
             command.execute()
         return 0
     except api.licensing.LicenseRequiredException:
-        log.error('A valid Wordfence CLI license is required')  # TODO: stderr
+        log.error('A valid Wordfence CLI license is required')
         return 1
     except BaseException as exception:
         log.error(f'Error: {exception}')
+        raise exception
         return 1

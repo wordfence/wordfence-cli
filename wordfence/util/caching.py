@@ -18,7 +18,14 @@ class NoCachedValueException(CacheException):
     pass
 
 
+class InvalidCachedValueException(CacheException):
+    pass
+
+
 class Cache:
+
+    def __init__(self):
+        self.filters = []
 
     def _serialize_value(self, value: Any) -> Any:
         return value
@@ -36,15 +43,26 @@ class Cache:
         self._save(key, self._serialize_value(value))
 
     def get(self, key: str, max_age: Optional[int] = None) -> Any:
-        return self._deserialize_value(self._load(key, max_age))
+        return self.filter_value(
+                self._deserialize_value(self._load(key, max_age))
+            )
 
     def purge(self) -> None:
         pass
+
+    def add_filter(self, filter: Callable[[Any], Any]) -> None:
+        self.filters.append(filter)
+
+    def filter_value(self, value: Any) -> Any:
+        for filter in self.filters:
+            value = filter(value)
+        return value
 
 
 class RuntimeCache(Cache):
 
     def __init__(self):
+        super().__init__()
         self.purge()
 
     def _save(self, key: str, value: Any) -> None:
@@ -62,6 +80,7 @@ class RuntimeCache(Cache):
 class CacheDirectory(Cache):
 
     def __init__(self, path: str, allowed: Optional[Set[str]] = None):
+        super().__init__()
         self.path = path
         self.allowed = allowed
         self._initialize_directory()
@@ -143,7 +162,10 @@ class Cacheable:
     def get(self, cache: Cache) -> Any:
         try:
             value = cache.get(self.key, self.max_age)
-        except NoCachedValueException:
+        except (
+                NoCachedValueException,
+                InvalidCachedValueException
+                ):
             value = self._initialize_value()
             cache.put(self.key, value)
         return value
