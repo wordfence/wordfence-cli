@@ -1,4 +1,5 @@
 import requests
+import time
 from packaging import version
 from typing import Optional
 
@@ -26,21 +27,15 @@ class Version:
     @staticmethod
     def check(cache: caching.Cache):
         try:
-            latest_version = caching.Cache.get(
-                cache,
-                'latest_version',
-                86400  # Latest version is valid for 24 hours
-            )
+            caching.Cache.get(cache, 'last_update_check', 86400)
         except NoCachedValueException:
+            caching.Cache.put(cache, 'last_update_check', int(time.time()))
             latest_version = Version.get_latest()
-            caching.Cache.put(cache, 'latest_version', latest_version)
-            log.error('Unable to fetch the latest version. '
-                      'The version you are using may be out of date!')
-            return
-
-        if latest_version is None:
-            return
-
-        if version.parse(__version__) < version.parse(latest_version):
-            log.warning('A newer version of the Wordfence CLI is available! '
-                        'Updating to ' + latest_version + ' is recommended.')
+            if latest_version is None:
+                log.error('Unable to fetch the latest version. '
+                          'The version you are using may be out of date!')
+                return
+            if version.parse(__version__) < version.parse(latest_version):
+                log.warning(
+                    'A newer version of the Wordfence CLI is available! '
+                    'Updating to ' + latest_version + ' is recommended.')
