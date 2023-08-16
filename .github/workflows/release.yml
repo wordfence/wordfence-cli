@@ -39,17 +39,17 @@ jobs:
         run: |
           pip install twine~=4.0.2
           if [ "${{ github.event.inputs.pypi_repository }}" = "pypi" ]; then
-            TWINE_USERNAME="__token__"
-            TWINE_PASSWORD="${{ secrets.PYPI_TWINE_PASSWORD }}"
-            TWINE_REPOSITORY_URL="${{ secrets.PYPI_TWINE_REPOSITORY_URL }}"
+            export TWINE_USERNAME="__token__"
+            export TWINE_PASSWORD="${{ secrets.PYPI_TWINE_PASSWORD }}"
+            export TWINE_REPOSITORY_URL="${{ secrets.PYPI_TWINE_REPOSITORY_URL }}"
           elif [ "${{ github.event.inputs.pypi_repository }}" = "testpypi" ]; then
-            TWINE_USERNAME="__token__"
-            TWINE_PASSWORD="${{ secrets.TEST_PYPI_TWINE_PASSWORD }}"
-            TWINE_REPOSITORY_URL="${{ secrets.TEST_PYPI_TWINE_REPOSITORY_URL }}"
+            export TWINE_USERNAME="__token__"
+            export TWINE_PASSWORD="${{ secrets.TEST_PYPI_TWINE_PASSWORD }}"
+            export TWINE_REPOSITORY_URL="${{ secrets.TEST_PYPI_TWINE_REPOSITORY_URL }}"
           elif [ "${{ github.event.inputs.pypi_repository }}" = "testwf" ]; then
-            TWINE_USERNAME="wordfence"
-            TWINE_PASSWORD="${{ secrets.TEST_WF_TWINE_PASSWORD }}"
-            TWINE_REPOSITORY_URL="${{ secrets.TEST_WF_TWINE_REPOSITORY_URL }}"
+            export TWINE_USERNAME="wordfence"
+            export TWINE_PASSWORD="${{ secrets.TEST_WF_TWINE_PASSWORD }}"
+            export TWINE_REPOSITORY_URL="${{ secrets.TEST_WF_TWINE_REPOSITORY_URL }}"
           fi
           python -m twine \
             upload \
