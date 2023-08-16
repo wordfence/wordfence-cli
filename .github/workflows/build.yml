@@ -55,7 +55,9 @@ jobs:
           name: wordfence_cli_${{ matrix.arch }}
           path: |
             ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.asc
             ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256.asc
   python_build:
     name: Python build
     runs-on: ubuntu-20.04
@@ -91,3 +93,4 @@ jobs:
             ${{ github.workspace }}/dist/*.tar.gz
             ${{ github.workspace }}/dist/*.whl
             ${{ github.workspace }}/dist/*.sha256
+            ${{ github.workspace }}/dist/*.asc
