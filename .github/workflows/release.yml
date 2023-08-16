@@ -25,34 +25,34 @@ jobs:
     if: ${{ inputs.release_pypi }}
     name: PyPI release
     runs-on: ubuntu-22.04
-  steps:
-    - name: Download artifact
-      uses: dawidd6/action-download-artifact@v2.27.0
-      with:
-        workflow: build.yml
-        run_number: ${{ inputs.build_run_number }}
-    - name: Set up Python
-      uses: actions/setup-python@4
-      with:
-        python-version: '3.8'
-    - name: Upload distribution packages
-      run: |
-        pip install twine~=4.0.2
-        if [ "${{ github.event.inputs.pypi_repository }}" = "pypi" ]; then
-          TWINE_USERNAME="${{ secrets.PYPI_TWINE_USERNAME }}"
-          TWINE_PASSWORD="${{ secrets.PYPI_TWINE_PASSWORD }}"
-          TWINE_REPOSITORY_URL="${{ secrets.PYPI_TWINE_REPOSITORY_URL }}"
-        elif [ "${{ github.event.inputs.pypi_repository }}" = "testpypi" ]; then
-          TWINE_USERNAME="${{ secrets.TEST_PYPI_TWINE_USERNAME }}"
-          TWINE_PASSWORD="${{ secrets.TEST_PYPI_TWINE_PASSWORD }}"
-          TWINE_REPOSITORY_URL="${{ secrets.TEST_PYPI_TWINE_REPOSITORY_URL }}"
-        elif [ "${{ github.event.inputs.pypi_repository }}" = "testwf" ]; then
-          TWINE_USERNAME="${{ secrets.TEST_WF_TWINE_USERNAME }}"
-          TWINE_PASSWORD="${{ secrets.TEST_WF_TWINE_PASSWORD }}"
-          TWINE_REPOSITORY_URL="${{ secrets.TEST_WF_TWINE_REPOSITORY_URL }}"
-        fi
-        # Mask repo URL
-        python -m twine \
-          upload \
-          --non-interactive \
-          wordfence_cli_python/*.whl wordfence_cli_python/*.tar.gz > /dev/null 2>&1
+    steps:
+      - name: Download artifact
+        uses: dawidd6/action-download-artifact@v2.27.0
+        with:
+          workflow: build.yml
+          run_number: ${{ inputs.build_run_number }}
+      - name: Set up Python
+        uses: actions/setup-python@4
+        with:
+          python-version: '3.8'
+      - name: Upload distribution packages
+        run: |
+          pip install twine~=4.0.2
+          if [ "${{ github.event.inputs.pypi_repository }}" = "pypi" ]; then
+            TWINE_USERNAME="${{ secrets.PYPI_TWINE_USERNAME }}"
+            TWINE_PASSWORD="${{ secrets.PYPI_TWINE_PASSWORD }}"
+            TWINE_REPOSITORY_URL="${{ secrets.PYPI_TWINE_REPOSITORY_URL }}"
+          elif [ "${{ github.event.inputs.pypi_repository }}" = "testpypi" ]; then
+            TWINE_USERNAME="${{ secrets.TEST_PYPI_TWINE_USERNAME }}"
+            TWINE_PASSWORD="${{ secrets.TEST_PYPI_TWINE_PASSWORD }}"
+            TWINE_REPOSITORY_URL="${{ secrets.TEST_PYPI_TWINE_REPOSITORY_URL }}"
+          elif [ "${{ github.event.inputs.pypi_repository }}" = "testwf" ]; then
+            TWINE_USERNAME="${{ secrets.TEST_WF_TWINE_USERNAME }}"
+            TWINE_PASSWORD="${{ secrets.TEST_WF_TWINE_PASSWORD }}"
+            TWINE_REPOSITORY_URL="${{ secrets.TEST_WF_TWINE_REPOSITORY_URL }}"
+          fi
+          # Mask repo URL
+          python -m twine \
+            upload \
+            --non-interactive \
+            wordfence_cli_python/*.whl wordfence_cli_python/*.tar.gz > /dev/null 2>&1
