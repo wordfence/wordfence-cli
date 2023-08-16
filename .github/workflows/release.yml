@@ -14,7 +14,7 @@ on:
       pypi_repository:
         type: string
         description: The repository to upload Python distribution packages to (pypi, testpypi, or testwf)
-        default: pypi
+        required: true
       release_github:
         type: boolean
         description: Whether to draft a GitHub release

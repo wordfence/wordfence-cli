@@ -7,11 +7,6 @@ on:
   # Allows running the workflow manually
   workflow_dispatch:
     inputs:
-      git_ref:
-        type: string
-        description: Git ref to build code from
-        required: true
-        default: main
 
 jobs:
   linux_standalone_build:
@@ -25,8 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.git_ref }}
       # Set up QEMU to support additional platforms
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -71,8 +64,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.git_ref }}
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
