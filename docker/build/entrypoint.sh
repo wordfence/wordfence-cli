@@ -61,25 +61,4 @@ cp \
 
 popd
 
-# keep the debian folder clean (additional files will be added as part of the build process)
-#cp -r /root/debian /root/wordfence-cli/dist/debian
-#cd /root/wordfence-cli/dist
-
-# build the package
-#dpkg-buildpackage -us -uc -b
-
-# set up GPG for signing
-#gpg --import /root/keys/signing-key.asc
-#GPG_ID=$(gpg --list-signatures --with-colons | grep sig | head -n 1 | cut -d':' -f5)
-
-# setting GPG_TTY environment variable resolves an error with dpkg-sig
-#GPG_TTY=$(tty)
-#export GPG_TTY
-
-#echo "signing /root/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
-# sign using one of the below strategies
-# debsigs --sign=origin -k "$GPG_ID" "/root/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
-#dpkg-sig -k "$GPG_ID" --sign builder "/root/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb"
-
-#cp "/root/wordfence-cli/wordfence_${VERSION}_${ARCHITECTURE}.deb" "/root/output/"
 ls -lah "/root/output"
