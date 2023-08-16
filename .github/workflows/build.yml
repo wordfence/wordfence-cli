@@ -1,0 +1,97 @@
+name: "Wordfence CLI build"
+
+on:
+  push: 
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+
+jobs:
+  linux_standalone_build:
+    name: Linux standalone build
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      # Set up QEMU to support additional platforms
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Docker build
+        run: |
+          docker build \
+            -t wfcli-build \
+            --platform "linux/${{ matrix.arch }}" \
+            -f "${GITHUB_WORKSPACE}/docker/build/Dockerfile" \
+            "$GITHUB_WORKSPACE"
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v5.3.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Docker run
+        run: |
+          GPG_HOME_DIR=$(gpgconf --list-dirs homedir)
+          GPG_SOCKET=$(gpgconf --list-dirs agent-socket)
+          CONTAINER_GPG_HOME_DIR="/var/run/host_gpg_home_dir"
+          docker run \
+            --name "wfcli-build-container" \
+            --platform "linux/${{ matrix.arch }}" \
+            -v "${GITHUB_WORKSPACE}/docker/build/volumes/output/:/root/output:rw" \
+            -v "${GITHUB_WORKSPACE}/docker/build/volumes/debian/:/root/debian:rw" \
+            -v "${GPG_HOME_DIR}:${CONTAINER_GPG_HOME_DIR}:rw" \
+            -v "${GPG_SOCKET}:${CONTAINER_GPG_HOME_DIR}/S.gpg-agent:rw" \
+            -e "CONTAINER_GPG_HOME_DIR=${CONTAINER_GPG_HOME_DIR}" \
+            wfcli-build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_${{ matrix.arch }}
+          path: |
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.asc
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256.asc
+  python_build:
+    name: Python build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v5.3.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Python build
+        run: |
+          pip install build~=0.10
+          python3 -m build
+      - name: Create checksums and signatures
+        run: |
+          VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
+          cd dist
+          sha256sum "wordfence-${VERSION}.tar.gz" > "wordfence-${VERSION}.tar.gz.sha256"
+          sha256sum "wordfence-${VERSION}-py3-none-any.whl" > "wordfence-${VERSION}-py3-none-any.whl.sha256"
+          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}.tar.gz"
+          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}-py3-none-any.whl"
+          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}.tar.gz.sha256"
+          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}-py3-none-any.whl.sha256"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_python
+          path: |
+            ${{ github.workspace }}/dist/*.tar.gz
+            ${{ github.workspace }}/dist/*.whl
+            ${{ github.workspace }}/dist/*.sha256
+            ${{ github.workspace }}/dist/*.asc

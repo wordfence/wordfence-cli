@@ -1,0 +1,109 @@
+name: "Wordfence CLI release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_number:
+        type: string
+        description: The build workflow run number to release (without the preceding '#')
+        required: true
+      release_pypi:
+        type: boolean
+        description: Whether to upload a release to PyPI
+        default: true
+      pypi_repository:
+        type: string
+        description: The repository to upload Python distribution packages to (pypi, testpypi, or testwf)
+        required: true
+      release_github:
+        type: boolean
+        description: Whether to draft a GitHub release
+        default: true
+      release_tag:
+        type: string
+        description: The tag to create a release for (e.g., v1.0.0); will be created if it doesn't exist
+        required: true
+
+jobs:
+  pypi_release:
+    if: ${{ inputs.release_pypi }}
+    name: PyPI release
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download artifact
+        uses: dawidd6/action-download-artifact@v2.27.0
+        with:
+          workflow: build.yml
+          run_number: ${{ inputs.build_run_number }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      - name: Upload distribution packages
+        run: |
+          pip install twine~=4.0.2
+          if [ "${{ github.event.inputs.pypi_repository }}" = "pypi" ]; then
+            export TWINE_USERNAME="__token__"
+            export TWINE_PASSWORD="${{ secrets.PYPI_TWINE_PASSWORD }}"
+            export TWINE_REPOSITORY_URL="${{ secrets.PYPI_TWINE_REPOSITORY_URL }}"
+          elif [ "${{ github.event.inputs.pypi_repository }}" = "testpypi" ]; then
+            export TWINE_USERNAME="__token__"
+            export TWINE_PASSWORD="${{ secrets.TEST_PYPI_TWINE_PASSWORD }}"
+            export TWINE_REPOSITORY_URL="${{ secrets.TEST_PYPI_TWINE_REPOSITORY_URL }}"
+          elif [ "${{ github.event.inputs.pypi_repository }}" = "testwf" ]; then
+            export TWINE_USERNAME="wordfence"
+            export TWINE_PASSWORD="${{ secrets.TEST_WF_TWINE_PASSWORD }}"
+            export TWINE_REPOSITORY_URL="${{ secrets.TEST_WF_TWINE_REPOSITORY_URL }}"
+          fi
+          python -m twine \
+            upload \
+            --non-interactive \
+            wordfence_cli_python/*.whl \
+            wordfence_cli_python/*.tar.gz
+  github_release:
+    if: ${{ inputs.release_github }}
+    name: GitHub release
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download artifact
+        uses: dawidd6/action-download-artifact@v2.27.0
+        with:
+          workflow: build.yml
+          run_number: ${{ inputs.build_run_number }}
+      - name: Get commit hash from build
+        id: get-commit-hash
+        run: |
+          printf "Getting commit hash for build number %s\\n" "$BUILD_RUN_NUMBER"
+          BUILD_COMMIT_HASH=$(
+            gh run list \
+              --repo wordfence/wordfence-cli \
+              --workflow build.yml \
+              --json headBranch,headSha,number | jq -r ".[] | select(.number==$BUILD_RUN_NUMBER) | .headSha"
+          )
+          if [ ! -z "$BUILD_COMMIT_HASH" ]; then
+            printf "Found commit hash %s\\n" "$BUILD_COMMIT_HASH"
+          else
+            echo "Couldn't find commit hash"
+            exit 1
+          fi
+          echo "BUILD_COMMIT_HASH=${BUILD_COMMIT_HASH}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_RUN_NUMBER: ${{ inputs.build_run_number }}
+      - name: Create draft release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            wordfence_cli_python/*.tar.gz
+            wordfence_cli_python/*.whl
+            wordfence_cli_python/*.sha256
+            wordfence_cli_python/*.asc
+            wordfence_cli_amd64/*.tar.gz
+            wordfence_cli_amd64/*.sha256
+            wordfence_cli_amd64/*.asc
+            wordfence_cli_arm64/*.tar.gz
+            wordfence_cli_arm64/*.sha256
+            wordfence_cli_arm64/*.asc
+          target_commitish: ${{ steps.get-commit-hash.outputs.BUILD_COMMIT_HASH }}
+          tag_name: ${{ inputs.release_tag }}
+          draft: true
