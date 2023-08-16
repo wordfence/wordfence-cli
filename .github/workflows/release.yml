@@ -76,6 +76,7 @@ jobs:
           printf "Getting commit hash for build number %s\\n" "$BUILD_RUN_NUMBER"
           BUILD_COMMIT_HASH=$(
             gh run list \
+              --repo wordfence/wordfence-cli \
               --workflow build.yml \
               --json headBranch,headSha,number | jq -r '.[] | select(.number=="$BUILD_RUN_NUMBER") | .headSha'
           )
