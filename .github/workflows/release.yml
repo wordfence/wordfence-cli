@@ -32,7 +32,7 @@ jobs:
           workflow: build.yml
           run_number: ${{ inputs.build_run_number }}
       - name: Set up Python
-        uses: actions/setup-python@4
+        uses: actions/setup-python@v4
         with:
           python-version: '3.8'
       - name: Upload distribution packages
