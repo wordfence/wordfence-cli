@@ -64,6 +64,8 @@ class Client(NocClient):
         for string in patterns['commonStrings']:
             common_strings.append(CommonString(string))
         for record in patterns['rules']:
+            if record[5] != 0:
+                continue
             signature_id = record[0]
             signatures[signature_id] = Signature(
                 signature_id,
