@@ -23,7 +23,6 @@ class Configurer:
             return False
         try:
             ensure_directory_is_writable(self.config.cache_directory)
-            log.debug('Cache directory is writable')
         except IoException:
             log.warning(
                     f'Cache directory at {self.config.cache_directory} does'

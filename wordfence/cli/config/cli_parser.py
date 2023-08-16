@@ -9,7 +9,10 @@ from .config_items import ConfigItemDefinition, \
     not_set_token, valid_subcommands, get_config_map_for_subcommand
 
 NAME = "Wordfence CLI"
-DESCRIPTION = "Multifunction commandline tool for Wordfence"
+DESCRIPTION = ("Multifunction commandline tool for Wordfence - "
+               "use wordfence {subcommand} --help for additional"
+               " information about subcommands"
+               )
 COMMAND = "wordfence"
 
 parser: ArgumentParser = ArgumentParser(
@@ -40,7 +43,10 @@ class CliCanonicalValueExtractor(CanonicalValueExtractorInterface):
         return value
 
 
-def create_split_and_append_action(delimiter: str):
+def create_split_and_append_action(delimiter: str, value_type=None):
+
+    if value_type is None:
+        value_type = str
 
     class SplitAndAppend(argparse.Action):
 
@@ -53,7 +59,9 @@ def create_split_and_append_action(delimiter: str):
                 ):
             items = getattr(namespace, self.dest, [])
             new_values = values.split(delimiter)
-            items.extend([value for value in new_values if value != ''])
+            items.extend(
+                    [value_type(value) for value in new_values if value != '']
+                )
             setattr(namespace, self.dest, items)
 
     return SplitAndAppend
@@ -94,8 +102,10 @@ def add_to_parser(target_parser,
         defaults_to = f'true (--{config_definition.name})' if (
             config_definition.default) else \
             f'false (--no-{config_definition.name})'
-        named_params['help'] += (f' If not specified, defaults to '
-                                 f'{defaults_to}.')
+        if config_definition.argument_type == ArgumentType.FLAG \
+                and config_definition.default:
+            named_params['help'] += (f' If not specified, defaults to '
+                                     f'{defaults_to}.')
     elif config_definition.argument_type == ArgumentType.OPTION_REPEATABLE:
         named_params['action'] = 'append'
         named_params['default'] = [not_set_token]
@@ -104,12 +114,12 @@ def add_to_parser(target_parser,
         named_params['default'] = [not_set_token]
         named_params['action'] = \
             create_split_and_append_action(
-                    config_definition.meta.separator
+                    config_definition.meta.separator,
+                    config_definition.get_value_type()
                 )
-
     # store_true and store_false do not have the same options as other actions,
     # and will throw an error if type is specified
-    if isinstance(named_params['action'], str) and \
+    elif not isinstance(named_params['action'], str) or \
             not named_params['action'].startswith('store_'):
         named_params['type'] = config_definition.get_value_type()
 
@@ -122,7 +132,7 @@ def add_to_parser(target_parser,
     if config_definition.is_flag():
         named_params['action'] = 'store_false'
         names = [f"--no-{config_definition.name}"]
-        if config_definition.hidden:
+        if config_definition.hidden or not config_definition.default:
             named_params['help'] = argparse.SUPPRESS
         else:
             del named_params['help']

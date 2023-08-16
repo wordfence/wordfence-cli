@@ -43,6 +43,9 @@ class ReportWriter:
     def write_row(self, data: List[str]):
         pass
 
+    def allows_headers(self) -> bool:
+        return True
+
 
 class CsvReportWriter(ReportWriter):
 
@@ -100,7 +103,7 @@ class HumanReadableWriter(ReportWriter):
         if 'signature_id' in values:
             signature_id = values['signature_id']
         # TODO: Add more custom messages if desired
-        if file is not None and False:
+        if file is not None:
             if signature_id is not None:
                 self._target.write(
                         f"File at {file} matched signature {signature_id}"
@@ -115,6 +118,9 @@ class HumanReadableWriter(ReportWriter):
                 )
         self._target.write("\n")
 
+    def allows_headers(self) -> bool:
+        return False
+
 
 class Report:
 
@@ -122,11 +128,14 @@ class Report:
                 self,
                 format: ReportFormat,
                 columns: List[str],
-                signature_set: SignatureSet
+                signature_set: SignatureSet,
+                write_headers: bool = False
             ):
         self.format = format
         self.columns = columns
         self.signature_set = signature_set
+        self.write_headers = write_headers
+        self.headers_written = False
         self.writers = []
 
     def _initialize_writer(self, stream: IO) -> ReportWriter:
@@ -189,10 +198,15 @@ class Report:
         for writer in self.writers:
             writer.write_row(data)
 
-    def write_headers(self) -> None:
-        self._write_row(self.columns)
+    def _write_headers(self) -> None:
+        if self.headers_written or not self.write_headers:
+            return
+        for writer in self.writers:
+            if writer.allows_headers():
+                writer.write_row(self.columns)
 
     def add_result(self, result: ScanResult) -> None:
+        self._write_headers()
         rows = self._format_result(result)
         for row in rows:
             for writer in self.writers:

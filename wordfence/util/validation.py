@@ -1,7 +1,7 @@
 from typing import Optional
 
 
-class ValidationException(BaseException):
+class ValidationException(Exception):
 
     def __init__(self, key: list, message: str, value=None):
         self.key = key

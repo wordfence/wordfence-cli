@@ -4,8 +4,10 @@ import os
 import logging
 from multiprocessing import parent_process
 from contextlib import nullcontext
+from typing import Any
 
 from wordfence import scanning, api
+from wordfence.api.licensing import LicenseSpecific
 from wordfence.scanning import filtering
 from wordfence.util import caching
 from wordfence.util import updater
@@ -22,14 +24,24 @@ class ScanCommand:
     CACHEABLE_TYPES = {
             'wordfence.intel.signatures.SignatureSet',
             'wordfence.intel.signatures.CommonString',
-            'wordfence.intel.signatures.Signature'
+            'wordfence.intel.signatures.Signature',
+            'wordfence.api.licensing.License'
         }
 
     def __init__(self, config):
         self.config = config
         self.cache = self._initialize_cache()
         self.license = None
+        self.cache.add_filter(self.filter_cache_entry)
         self.cacheable_signatures = None
+
+    def filter_cache_entry(self, value: Any) -> Any:
+        if isinstance(value, LicenseSpecific):
+            if not value.is_compatible_with_license(self._get_license()):
+                raise caching.InvalidCachedValueException(
+                        'Incompatible license'
+                    )
+        return value
 
     def _get_license(self) -> api.licensing.License:
         if self.license is None:
@@ -45,16 +57,21 @@ class ScanCommand:
                         os.path.expanduser(self.config.cache_directory),
                         self.CACHEABLE_TYPES
                     )
-            except caching.CacheException:
-                # TODO: Should cache failures trigger some kind of notice?
-                pass
+            except caching.CacheException as e:
+                log.warning('Failed to initialize cache directory: ' + str(e))
         return caching.RuntimeCache()
 
     def filter_signatures(self, signatures: SignatureSet) -> None:
         if self.config.exclude_signatures is None:
             return
         for identifier in self.config.exclude_signatures:
-            signatures.remove_signature(identifier)
+            if signatures.remove_signature(identifier):
+                log.debug(f'Excluded signature {identifier}')
+            else:
+                log.warning(
+                        f'Signature {identifier} is not in the existing set. '
+                        'It will not be used in the scan.'
+                    )
 
     def _get_signatures(self) -> SignatureSet:
         if self.cacheable_signatures is None:
@@ -117,6 +134,8 @@ class ScanCommand:
         return filter
 
     def execute(self) -> int:
+        if self.config.purge_cache:
+            self.cache.purge()
         if self.config.check_for_update:
             updater.Version.check(self.cache)
         paths = set()
@@ -141,7 +160,12 @@ class ScanCommand:
                 is not None else nullcontext() as output_file:
             output_format = ReportFormat(self.config.output_format)
             output_columns = self.config.output_columns
-            report = Report(output_format, output_columns, options.signatures)
+            report = Report(
+                    output_format,
+                    output_columns,
+                    options.signatures,
+                    self.config.output_headers
+                )
             if self._should_write_stdout():
                 report.add_target(sys.stdout)
             if output_file is not None:
@@ -153,8 +177,6 @@ class ScanCommand:
                         'output'
                     )
                 return 1
-            if self.config.output_headers:
-                report.write_headers()
             scanner = scanning.scanner.Scanner(options)
             scanner.scan(lambda result: report.add_result(result))
         return 0
@@ -197,12 +219,14 @@ def main(config) -> int:
             log.setLevel(logging.INFO)
         configurer = Configurer(config)
         configurer.check_config()
-        command = ScanCommand(config)
-        command.execute()
+        if not config.configure:
+            command = ScanCommand(config)
+            command.execute()
         return 0
     except api.licensing.LicenseRequiredException:
-        log.error('A valid Wordfence CLI license is required')  # TODO: stderr
+        log.error('A valid Wordfence CLI license is required')
         return 1
     except BaseException as exception:
         log.error(f'Error: {exception}')
+        raise exception
         return 1

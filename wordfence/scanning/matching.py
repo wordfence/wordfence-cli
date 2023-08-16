@@ -149,7 +149,6 @@ class RegexSignature:
                       ', pattern: ' +
                       repr(rule))
             self.pattern = None
-            # raise error #TODO: How should this be handled
 
     def get_pattern(self) -> regex.Pattern:
         # Signature patterns are compiled lazily as they are only needed if
