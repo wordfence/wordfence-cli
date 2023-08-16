@@ -10,8 +10,15 @@ if [ ! -d "$1" ]; then
 fi
 
 PROJECT_DIR=$(realpath "$1")
+ARCHITECTURES=("amd64" "arm64")
 
-docker rmi -f wfcli-build wfcli-build-arm64 2>/dev/null
-docker build -t wfcli-build -f "$PROJECT_DIR/docker/build/Dockerfile" "$PROJECT_DIR"
-docker build -t wfcli-build-arm64 --platform linux/arm64 -f "$PROJECT_DIR/docker/build/Dockerfile" "$PROJECT_DIR"
-docker rm -f wfcli-build-container 2>/dev/null
+function build_image() {
+    ARCHITECTURE="$1"
+    docker rmi -f "wfcli-build-$ARCHITECTURE" 2>/dev/null
+    docker build -t "wfcli-build-$ARCHITECTURE" --platform "linux/$ARCHITECTURE" -f "$PROJECT_DIR/docker/build/Dockerfile" "$PROJECT_DIR"
+}
+
+for arch in "${ARCHITECTURES[@]}"
+do
+    build_image "$arch"
+done

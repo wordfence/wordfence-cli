@@ -4,15 +4,19 @@ import os
 import logging
 from multiprocessing import parent_process
 from contextlib import nullcontext
+from typing import Any
 
 from wordfence import scanning, api
+from wordfence.api.licensing import LicenseSpecific
 from wordfence.scanning import filtering
 from wordfence.util import caching
 from wordfence.util import updater
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import log
+from wordfence.version import __version__
 from .reporting import Report, ReportFormat
+from .configure import Configurer
 
 
 class ScanCommand:
@@ -20,14 +24,24 @@ class ScanCommand:
     CACHEABLE_TYPES = {
             'wordfence.intel.signatures.SignatureSet',
             'wordfence.intel.signatures.CommonString',
-            'wordfence.intel.signatures.Signature'
+            'wordfence.intel.signatures.Signature',
+            'wordfence.api.licensing.License'
         }
 
     def __init__(self, config):
         self.config = config
         self.cache = self._initialize_cache()
         self.license = None
+        self.cache.add_filter(self.filter_cache_entry)
         self.cacheable_signatures = None
+
+    def filter_cache_entry(self, value: Any) -> Any:
+        if isinstance(value, LicenseSpecific):
+            if not value.is_compatible_with_license(self._get_license()):
+                raise caching.InvalidCachedValueException(
+                        'Incompatible license'
+                    )
+        return value
 
     def _get_license(self) -> api.licensing.License:
         if self.license is None:
@@ -43,16 +57,21 @@ class ScanCommand:
                         os.path.expanduser(self.config.cache_directory),
                         self.CACHEABLE_TYPES
                     )
-            except caching.CacheException:
-                # TODO: Should cache failures trigger some kind of notice?
-                pass
+            except caching.CacheException as e:
+                log.warning('Failed to initialize cache directory: ' + str(e))
         return caching.RuntimeCache()
 
     def filter_signatures(self, signatures: SignatureSet) -> None:
         if self.config.exclude_signatures is None:
             return
         for identifier in self.config.exclude_signatures:
-            signatures.remove_signature(identifier)
+            if signatures.remove_signature(identifier):
+                log.debug(f'Excluded signature {identifier}')
+            else:
+                log.warning(
+                        f'Signature {identifier} is not in the existing set. '
+                        'It will not be used in the scan.'
+                    )
 
     def _get_signatures(self) -> SignatureSet:
         if self.cacheable_signatures is None:
@@ -78,6 +97,11 @@ class ScanCommand:
             return not sys.stdin.isatty()
         else:
             return self.config.read_stdin
+
+    def _should_write_stdout(self) -> bool:
+        if sys.stdout is None or self.config.output is False:
+            return False
+        return self.config.output or self.config.output_path is None
 
     def _get_file_list_separator(self) -> str:
         if isinstance(self.config.file_list_separator, bytes):
@@ -110,6 +134,8 @@ class ScanCommand:
         return filter
 
     def execute(self) -> int:
+        if self.config.purge_cache:
+            self.cache.purge()
         if self.config.check_for_update:
             updater.Version.check(self.cache)
         paths = set()
@@ -121,7 +147,8 @@ class ScanCommand:
                 signatures=self._get_signatures(),
                 chunk_size=self.config.chunk_size,
                 max_file_size=int(self.config.max_file_size),
-                file_filter=self._initialize_file_filter()
+                file_filter=self._initialize_file_filter(),
+                match_all=self.config.match_all
             )
         if self._should_read_stdin():
             options.path_source = StreamReader(
@@ -132,14 +159,24 @@ class ScanCommand:
         with open(self.config.output_path, 'w') if self.config.output_path \
                 is not None else nullcontext() as output_file:
             output_format = ReportFormat(self.config.output_format)
-            output_columns = self.config.output_columns.split(',')
-            report = Report(output_format, output_columns, options.signatures)
-            if self.config.output and sys.stdout is not None:
+            output_columns = self.config.output_columns
+            report = Report(
+                    output_format,
+                    output_columns,
+                    options.signatures,
+                    self.config.output_headers
+                )
+            if self._should_write_stdout():
                 report.add_target(sys.stdout)
             if output_file is not None:
                 report.add_target(output_file)
-            if self.config.output_headers:
-                report.write_headers()
+            if not report.has_writers():
+                log.error(
+                        'Please specify an output file using the --output-path'
+                        ' option or add --output to write results to standard '
+                        'output'
+                    )
+                return 1
             scanner = scanning.scanner.Scanner(options)
             scanner.scan(lambda result: report.add_result(result))
         return 0
@@ -161,23 +198,35 @@ def handle_interrupt(signal_number: int, stack) -> None:
 signal.signal(signal.SIGINT, handle_interrupt)
 
 
+def display_version() -> None:
+    print(f"Wordfence CLI {__version__}")
+
+
 def main(config) -> int:
     command = None
     try:
-        if config.debug:
+        if config.version:
+            display_version()
+            return 0
+        if config.quiet:
+            log.setLevel(logging.CRITICAL)
+        elif config.debug:
             log.setLevel(logging.DEBUG)
         elif config.verbose or (
                     config.verbose is None
                     and sys.stdout is not None and sys.stdout.isatty()
                 ):
             log.setLevel(logging.INFO)
-        command = ScanCommand(config)
-        command.execute()
+        configurer = Configurer(config)
+        configurer.check_config()
+        if not config.configure:
+            command = ScanCommand(config)
+            command.execute()
         return 0
     except api.licensing.LicenseRequiredException:
-        log.error('A valid Wordfence CLI license is required')  # TODO: stderr
+        log.error('A valid Wordfence CLI license is required')
         return 1
     except BaseException as exception:
-        raise exception
         log.error(f'Error: {exception}')
+        raise exception
         return 1

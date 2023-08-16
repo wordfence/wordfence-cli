@@ -5,6 +5,7 @@ from urllib.error import URLError, HTTPError
 
 from .licensing import License
 from .exceptions import ApiException
+from ..util.validation import Validator, ValidationException
 
 DEFAULT_TIMEOUT = 30
 
@@ -46,3 +47,9 @@ class NocClient:
                 return data
         except (URLError, HTTPError) as error:
             raise ApiException('Request failed') from error
+
+    def validate_response(self, response, validator: Validator) -> None:
+        try:
+            validator.validate(response)
+        except ValidationException as exception:
+            raise ApiException('Response validation failed') from exception

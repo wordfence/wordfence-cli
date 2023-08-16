@@ -28,10 +28,12 @@ class Matcher:
     def __init__(
                 self,
                 signature_set: SignatureSet,
-                timeout: int = DEFAULT_TIMEOUT
+                timeout: int = DEFAULT_TIMEOUT,
+                match_all: bool = False
             ):
         self.signature_set = signature_set
         self.timeout = timeout
+        self.match_all = match_all
 
 
 class MatcherContext:
@@ -74,25 +76,32 @@ class RegexMatcherContext(MatcherContext):
                 possible_signatures.append(signature)
         return possible_signatures
 
-    def _match_signature(self, signature: Signature, chunk: str):
+    def _match_signature(self, signature: Signature, chunk: str) -> bool:
         if not signature.is_valid():
-            return
+            return False
         try:
             signal.alarm(self.matcher.timeout)
             match = signature.get_pattern().search(chunk)
             signal.alarm(0)  # Clear the alarm
             if match is not None:
                 self.matches[signature.signature.identifier] = match.group(0)
+                return True
         except TimeoutException:
             self.timeouts.add(signature.signature.identifier)
+        return False
 
-    def process_chunk(self, chunk: bytes) -> None:
+    def process_chunk(self, chunk: bytes) -> bool:
         chunk = chunk.decode('utf-8', 'ignore')
         possible_signatures = self._check_common_strings(chunk)
         for signature in self.matcher.signatures_without_common_strings:
-            self._match_signature(signature, chunk)
+            if self._match_signature(signature, chunk) and \
+                    not self.matcher.match_all:
+                return True
         for signature in possible_signatures:
-            self._match_signature(signature, chunk)
+            if self._match_signature(signature, chunk) and \
+                    not self.matcher.match_all:
+                return True
+        return False
 
     def __enter__(self):
         def handle_timeout(signum, frame):
@@ -140,7 +149,6 @@ class RegexSignature:
                       ', pattern: ' +
                       repr(rule))
             self.pattern = None
-            # raise error #TODO: How should this be handled
 
     def get_pattern(self) -> regex.Pattern:
         # Signature patterns are compiled lazily as they are only needed if
@@ -155,9 +163,10 @@ class RegexMatcher(Matcher):
     def __init__(
                 self,
                 signature_set: SignatureSet,
-                timeout: int = DEFAULT_TIMEOUT
+                timeout: int = DEFAULT_TIMEOUT,
+                match_all: bool = False
             ):
-        super().__init__(signature_set, timeout)
+        super().__init__(signature_set, timeout, match_all)
         self._compile_regexes()
         self.signatures_without_common_strings = \
             self._extract_signatures_without_common_strings()

@@ -14,10 +14,10 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/wordfence/wordfence-cli',
     author='Wordfence',
-    author_email='devs@wordfence.com',
+    author_email='opensource@wordfence.com',
     maintainer='Wordfence',
-    maintainer_email='devs@wordfence.com',
-    license='GPL 2.0',
+    maintainer_email='opensource@wordfence.com',
+    license='GPL-2.0-only',
     license_files='LICENSE',
     entry_points={
         'console_scripts': [

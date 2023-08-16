@@ -30,37 +30,10 @@ def byte_length(conversion_value: str) -> int:
 
 
 config_definitions: Dict[str, Dict[str, Any]] = {
-    "configuration": {
-        "short_name": "c",
-        "description": "Path to a configuration INI file to use (defaults to"
-                       f" \"{INI_DEFAULT_PATH}\").",
-        "context": "CLI",
-        "argument_type": "OPTION",
-        "default": INI_DEFAULT_PATH
-    },
-    "exclude-signatures": {
-        "short_name": "i",
-        "description": "Specify a rule ID to exclude from the scan. Can be "
-                       "used multiple times.",
-        "context": "ALL",
-        "argument_type": "OPTION_REPEATABLE",
-        "default": None,
-        "meta": {
-            "ini_separator": ",",
-            "value_type": int
-        }
-    },
-    "license": {
-        "short_name": "l",
-        "description": "Specify the license to use (usually stored in a "
-                       "license file).",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": None
-    },
     "read-stdin": {
-        "description": "Sets default behavior of reading paths to scan from "
-                       "stdin.",
+        "description": "Read paths from stdin. If not specified, paths will "
+                       "automatically be read from stdin when input is not "
+                       "from a TTY. Specify --no-read-stdin to disable.",
         "context": "ALL",
         "argument_type": "OPTIONAL_FLAG",
         "default": None
@@ -74,16 +47,10 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": "AA==",
         "default_type": "base64"
     },
-    "threads": {
-        "short_name": "t",
-        "description": "Number of scanner threads (processes). Defaults to 1 "
-                       "worker.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": 1
-    },
     "output": {
-        "description": "Write results to stdout.",
+        "description": "Write results to stdout. This is the default behavior "
+                       "when --output-path is not specified. Use --no-output "
+                       "to disable.",
         "context": "ALL",
         "argument_type": "OPTIONAL_FLAG",
         "default": None
@@ -95,12 +62,14 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": None,
     },
     "output-columns": {
-        "description": "List of columns to output.",
+        "description": ("An ordered, comma-delimited list of columns to"
+                        " include in the output. Available columns: "
+                        + ReportColumn.get_valid_options_as_string()),
         "context": "ALL",
         "argument_type": "OPTION",
         "default": "filename",
         "meta": {
-            "valid_options": ReportColumn.get_valid_options()
+            "separator": ","
         }
     },
     "output-format": {
@@ -108,7 +77,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "description": "Output format used for result data.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": 'line-delimited',
+        "default": 'csv',
         "meta": {
             "valid_options": ReportFormat.get_valid_options()
         }
@@ -116,8 +85,20 @@ config_definitions: Dict[str, Dict[str, Any]] = {
     "output-headers": {
         "description": "Whether or not to include column headers in output",
         "context": "ALL",
-        "argument_type": "OPTIONAL_FLAG",
+        "argument_type": "FLAG",
         "default": None
+    },
+    "exclude-signatures": {
+        "short_name": "i",
+        "description": "Specify a rule ID to exclude from the scan. Can be "
+                       "used multiple times.",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": None,
+        "meta": {
+            "separator": ",",
+            "value_type": int
+        }
     },
     "images": {
         "description": "Include image files in the scan.",
@@ -133,7 +114,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ","
+            "separator": ","
         }
     },
     "exclude-files": {
@@ -145,7 +126,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ","
+            "separator": ","
         }
     },
     "include-files-pattern": {
@@ -156,7 +137,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ","
+            "separator": ","
         }
     },
     "exclude-files-pattern": {
@@ -167,7 +148,7 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
         "meta": {
-            "ini_separator": ","
+            "separator": ","
         }
     },
     "chunk-size": {
@@ -195,12 +176,36 @@ config_definitions: Dict[str, Dict[str, Any]] = {
             "value_type": byte_length
         }
     },
-    "banner": {
-        "description": "Include to display the banner in command output when "
-                       "running in a TTY/terminal.",
+    "match-all": {
+        "description": "If set, all possible signatures will be checked "
+                       "against each scanned file. Otherwise, only the "
+                       "first matching signature will be reported",
         "context": "ALL",
         "argument_type": "FLAG",
-        "default": True
+        "default": False
+    },
+    "threads": {
+        "short_name": "t",
+        "description": "Number of scanner threads (processes). Defaults to 1 "
+                       "worker.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": 1
+    },
+    "configuration": {
+        "short_name": "c",
+        "description": "Path to a configuration INI file to use (defaults to"
+                       f" \"{INI_DEFAULT_PATH}\").",
+        "context": "CLI",
+        "argument_type": "OPTION",
+        "default": INI_DEFAULT_PATH
+    },
+    "license": {
+        "short_name": "l",
+        "description": "Specify the license to use.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": None
     },
     "cache-directory": {
         "description": "A path to use for cache files.",
@@ -208,15 +213,8 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION",
         "default": "~/.cache/wordfence"
     },
-    "noc1-url": {
-        "description": "URL to use for accessing the NOC1 API.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": None,
-        "hidden": True
-    },
     "cache": {
-        "description": "Whether or not to use to enable the cache.",
+        "description": "Whether or not to enable the cache.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True
@@ -228,22 +226,59 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": False
     },
     "verbose": {
-        "description": "Whether or not to enable verbose logging.",
+        "short_name": "v",
+        "description": "Enable verbose logging. If not specified, verbose "
+                       "logging will be enabled automatically if stdout is a "
+                       "TTY. Use --no-verbose to disable.",
         "context": "ALL",
         "argument_type": "OPTIONAL_FLAG",
         "default": None
     },
     "debug": {
-        "description": "Whether or not to enable debug logging.",
+        "short_name": "d",
+        "description": "Enable debug logging.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": False
     },
+    "quiet": {
+        "short_name": "q",
+        "description": "Suppress all output other than scan results.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": False
+    },
+    "banner": {
+        "description": "Display the Wordfence banner in command output when "
+                       "running in a TTY/terminal.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
+    },
+    "configure": {
+        "description": "Interactively configure Wordfence CLI.",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
+    },
+    "version": {
+        "description": "Display the version of Wordfence CLI.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False
+    },
     "check-for-update": {
-        "description": "Whether or not to run the update check",
+        "description": "Whether or not to run the update check.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True,
         "hidden": True
-    }
+    },
+    "noc1-url": {
+        "description": "URL to use for accessing the NOC1 API.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": None,
+        "hidden": True
+    },
 }
