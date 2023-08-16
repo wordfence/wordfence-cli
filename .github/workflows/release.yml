@@ -80,6 +80,7 @@ jobs:
               --workflow build.yml \
               --json headBranch,headSha,number | jq -r '.[] | select(.number=="$BUILD_RUN_NUMBER") | .headSha'
           )
+          printf "Found commit hash %s\\n" "$BUILD_COMMIT_HASH"
           echo "BUILD_COMMIT_HASH=${BUILD_COMMIT_HASH}" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -88,16 +89,16 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            wordfence_cli_python/*.tar.gz \
-            wordfence_cli_python/*.whl \
-            wordfence_cli_python/*.sha256 \
-            wordfence_cli_python/*.asc \
-            wordfence_cli_amd64/*.tar.gz \
-            wordfence_cli_amd64/*.sha256 \
-            wordfence_cli_amd64/*.asc \
-            wordfence_cli_arm64/*.tar.gz \
-            wordfence_cli_arm64/*.sha256 \
-            wordfence_cli_arm64/*.asc \
-          target_commitish: steps.get-commit-hash.outputs.BUILD_COMMIT_HASH
-          tag_name: inputs.release_tag
+            wordfence_cli_python/*.tar.gz
+            wordfence_cli_python/*.whl
+            wordfence_cli_python/*.sha256
+            wordfence_cli_python/*.asc
+            wordfence_cli_amd64/*.tar.gz
+            wordfence_cli_amd64/*.sha256
+            wordfence_cli_amd64/*.asc
+            wordfence_cli_arm64/*.tar.gz
+            wordfence_cli_arm64/*.sha256
+            wordfence_cli_arm64/*.asc
+          target_commitish: ${{ steps.get-commit-hash.outputs.BUILD_COMMIT_HASH }}
+          tag_name: ${{ inputs.release_tag }}
           draft: true
