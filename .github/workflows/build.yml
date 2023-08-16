@@ -90,10 +90,12 @@ jobs:
         run: |
           VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
           cd dist
-          sha256sum "wordfence-${VERSION}.tar.gz" "wordfence-${VERSION}-py3-none-any.whl" > "wordfence-${VERSION}.sha256"
+          sha256sum "wordfence-${VERSION}.tar.gz" > "wordfence-${VERSION}.tar.gz.sha256"
+          sha256sum "wordfence-${VERSION}-py3-none-any.whl" > "wordfence-${VERSION}-py3-none-any.whl.sha256"
           gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}.tar.gz"
           gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}-py3-none-any.whl"
-          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}.sha256"
+          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}.tar.gz.sha256"
+          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}-py3-none-any.whl.sha256"
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:

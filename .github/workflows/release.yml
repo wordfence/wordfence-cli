@@ -78,9 +78,14 @@ jobs:
             gh run list \
               --repo wordfence/wordfence-cli \
               --workflow build.yml \
-              --json headBranch,headSha,number | jq -r '.[] | select(.number=="$BUILD_RUN_NUMBER") | .headSha'
+              --json headBranch,headSha,number | jq -r ".[] | select(.number==$BUILD_RUN_NUMBER) | .headSha"
           )
-          printf "Found commit hash %s\\n" "$BUILD_COMMIT_HASH"
+          if [ ! -z "$BUILD_COMMIT_HASH" ]; then
+            printf "Found commit hash %s\\n" "$BUILD_COMMIT_HASH"
+          else
+            echo "Couldn't find commit hash"
+            exit 1
+          fi
           echo "BUILD_COMMIT_HASH=${BUILD_COMMIT_HASH}" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
