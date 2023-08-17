@@ -91,7 +91,7 @@ class RegexMatcherContext(MatcherContext):
         return False
 
     def process_chunk(self, chunk: bytes) -> bool:
-        chunk = chunk.decode('utf-8', 'ignore')
+        chunk = chunk.decode('utf-8', 'ignore').lower()
         possible_signatures = self._check_common_strings(chunk)
         for signature in self.matcher.signatures_without_common_strings:
             if self._match_signature(signature, chunk) and \
