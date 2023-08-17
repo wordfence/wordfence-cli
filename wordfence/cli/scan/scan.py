@@ -130,7 +130,7 @@ class ScanCommand:
             filter.add(filtering.filter_html)
             filter.add(filtering.filter_js)
             if self.config.images:
-                filter.add(filtering.filter_pattern(self.config.images))
+                filter.add(filtering.filter_images)
         return filter
 
     def execute(self) -> int:
