@@ -227,6 +227,8 @@ def main(config) -> int:
         log.error('A valid Wordfence CLI license is required')
         return 1
     except BaseException as exception:
-        log.error(f'Error: {exception}')
-        raise exception
+        if config.debug:
+            raise exception
+        else:
+            log.error(f'Error: {exception}')
         return 1
