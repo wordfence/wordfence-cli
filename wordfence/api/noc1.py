@@ -30,11 +30,8 @@ class Client(NocClient):
                 )
         return super().validate_response(response, validator)
 
-    def get_patterns(self, regex_engine: str = None) -> dict:
-        base_query = {}
-        if regex_engine is not None:
-            base_query['regex_engine'] = regex_engine
-        patterns = self.request('get_patterns', base_query)
+    def get_patterns(self) -> dict:
+        patterns = self.request('get_patterns')
         validator = DictionaryValidator({
             'badstrings': ListValidator(str),
             'commonStrings': ListValidator(str),
@@ -58,7 +55,7 @@ class Client(NocClient):
         return patterns
 
     def get_malware_signatures(self) -> SignatureSet:
-        patterns = self.get_patterns(regex_engine='python')
+        patterns = self.get_patterns()
         common_strings = []
         signatures = {}
         for string in patterns['commonStrings']:

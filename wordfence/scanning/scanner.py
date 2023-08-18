@@ -12,6 +12,7 @@ from .matching import Matcher, RegexMatcher
 from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader
+from ..util.pcre import PcreJitStack
 from ..intel.signatures import SignatureSet
 from ..logging import log
 
@@ -170,22 +171,23 @@ class ScanWorker(Process):
     def work(self):
         self._working = True
         log.debug(f'Worker {self.index} started, PID:' + str(os.getpid()))
-        while self._working:
-            try:
-                item = self._work_queue.get(timeout=QUEUE_READ_TIMEOUT)
-                if item is None:
-                    self._put_event(ScanEventType.FILE_QUEUE_EMPTIED)
-                    self._complete()
-                elif isinstance(item, BaseException):
-                    self._put_event(
-                            ScanEventType.FATAL_EXCEPTION,
-                            {'exception': item}
-                        )
-                else:
-                    self._process_file(item)
-            except queue.Empty:
-                if self._status.value == Status.PROCESSING_FILES:
-                    self._complete()
+        with PcreJitStack() as jit_stack:
+            while self._working:
+                try:
+                    item = self._work_queue.get(timeout=QUEUE_READ_TIMEOUT)
+                    if item is None:
+                        self._put_event(ScanEventType.FILE_QUEUE_EMPTIED)
+                        self._complete()
+                    elif isinstance(item, BaseException):
+                        self._put_event(
+                                ScanEventType.FATAL_EXCEPTION,
+                                {'exception': item}
+                            )
+                    else:
+                        self._process_file(item, jit_stack)
+                except queue.Empty:
+                    if self._status.value == Status.PROCESSING_FILES:
+                        self._complete()
 
     def _put_event(self, event_type: ScanEventType, data: dict = None) -> None:
         if data is None:
@@ -205,17 +207,18 @@ class ScanWorker(Process):
             return False
         return length > self._max_file_size
 
-    def _process_file(self, path: str):
+    def _process_file(self, path: str, jit_stack: PcreJitStack):
         try:
             log.debug(f'Processing file: {path}')
             with open(path, mode='rb') as file, \
                     self._matcher.create_context() as context:
                 length = 0
                 while (chunk := file.read(self._chunk_size)):
+                    first = length == 0
                     length += len(chunk)
                     if self._has_exceeded_file_size_limit(length):
                         break
-                    if context.process_chunk(chunk):
+                    if context.process_chunk(chunk, first, jit_stack):
                         break
                 self._put_event(
                         ScanEventType.FILE_PROCESSED,

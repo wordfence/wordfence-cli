@@ -24,7 +24,6 @@ classifiers = [
     "Topic :: Security"
 ]
 dependencies = [
-    "regex>=2023.6.3",
     "packaging>=23.1",
     "requests>=2.3"
 ]

@@ -62,16 +62,29 @@ class ScanCommand:
         return caching.RuntimeCache()
 
     def filter_signatures(self, signatures: SignatureSet) -> None:
-        if self.config.exclude_signatures is None:
-            return
-        for identifier in self.config.exclude_signatures:
-            if signatures.remove_signature(identifier):
-                log.debug(f'Excluded signature {identifier}')
-            else:
-                log.warning(
-                        f'Signature {identifier} is not in the existing set. '
-                        'It will not be used in the scan.'
-                    )
+        if self.config.include_signatures:
+            for identifier in list(signatures.signatures.keys()):
+                if identifier not in self.config.include_signatures:
+                    signatures.remove_signature(identifier)
+            for identifier in self.config.include_signatures:
+                if identifier in signatures.signatures:
+                    log.debug(f'Including signature: {identifier}')
+                else:
+                    log.warning(
+                                f'Signature {identifier} was not found and '
+                                'could not be included'
+                            )
+        if self.config.exclude_signatures is not None:
+            for identifier in self.config.exclude_signatures:
+                if signatures.remove_signature(identifier):
+                    log.debug(f'Excluded signature {identifier}')
+                else:
+                    log.warning(
+                            f'Signature {identifier} is not in the existing '
+                            'set. It will not be used in the scan.'
+                        )
+        signature_count = len(signatures.signatures)
+        log.debug(f'Filtered signature count: {signature_count}')
 
     def _get_signatures(self) -> SignatureSet:
         if self.cacheable_signatures is None:
