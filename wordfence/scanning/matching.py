@@ -1,10 +1,8 @@
-import regex
 import signal
 
 from ..intel.signatures import CommonString, Signature, SignatureSet
 from ..logging import log
-
-regex.DEFAULT_VERSION = regex.VERSION1
+from ..util.pcre import PcrePattern, PcreException, PcreJitStack
 
 
 DEFAULT_TIMEOUT = 1  # Seconds
@@ -58,7 +56,7 @@ class RegexMatcherContext(MatcherContext):
         common_string_counts = {}
         for index, common_string in enumerate(self.matcher.common_strings):
             if not self.common_string_states[index]:
-                match = common_string.pattern.search(chunk)
+                match = common_string.pattern.match(chunk)
                 if match is not None:
                     self.common_string_states[index] = True
             if self.common_string_states[index]:
@@ -76,29 +74,47 @@ class RegexMatcherContext(MatcherContext):
                 possible_signatures.append(signature)
         return possible_signatures
 
-    def _match_signature(self, signature: Signature, chunk: str) -> bool:
+    def _match_signature(
+                self,
+                signature: Signature,
+                chunk: bytes,
+                start: bool = False
+            ) -> bool:
         if not signature.is_valid():
+            print('Signature is not valid')
+            return False
+        if signature.anchored_to_start and not start:
             return False
         try:
             signal.alarm(self.matcher.timeout)
-            match = signature.get_pattern().search(chunk)
+            match = signature.get_pattern().match(chunk)
             signal.alarm(0)  # Clear the alarm
             if match is not None:
-                self.matches[signature.signature.identifier] = match.group(0)
+                self.matches[signature.signature.identifier] = \
+                        match.matched_string
                 return True
+        except PcreException as e:
+            log.warning(
+                    'Signature matching failed for '
+                    f'{signature.signature.identifier}, {e}'
+                )
         except TimeoutException:
             self.timeouts.add(signature.signature.identifier)
         return False
 
-    def process_chunk(self, chunk: bytes) -> bool:
-        chunk = chunk.decode('utf-8', 'ignore').lower()
+    def process_chunk(
+                self,
+                chunk: bytes,
+                jit_stack: PcreJitStack,
+                start: bool = False,
+            ) -> bool:
         possible_signatures = self._check_common_strings(chunk)
         for signature in self.matcher.signatures_without_common_strings:
-            if self._match_signature(signature, chunk) and \
+            if self._match_signature(signature, chunk, start) and \
                     not self.matcher.match_all:
                 return True
         for signature in possible_signatures:
-            if self._match_signature(signature, chunk) and \
+            if self._match_signature(signature, chunk, start) and \
                     not self.matcher.match_all:
                 return True
         return False
@@ -124,15 +140,25 @@ class RegexCommonString:
 
     def __init__(self, common_string: CommonString):
         self.common_string = common_string
-        self.pattern = regex.compile(common_string.string)
+        self.pattern = PcrePattern(common_string.string)
 
 
 class RegexSignature:
 
     def __init__(self, signature: Signature):
         self.signature = signature
+        self.anchored_to_start = self._is_anchored_to_start()
         if not signature.has_common_strings():
             self.compile()
+
+    def _is_anchored_to_start(self) -> bool:
+        try:
+            first_character = self.signature.rule[0]
+            return first_character == '^'
+        except IndexError:
+            # Patterns shouldn't be empty, but if they are, they're not
+            # anchored
+            return False
 
     def is_valid(self) -> bool:
         return self.get_pattern() is not None
@@ -140,7 +166,7 @@ class RegexSignature:
     def compile(self) -> None:
         try:
             rule = self.signature.rule
-            self.pattern = regex.compile(rule)
+            self.pattern = PcrePattern(rule)
         except BaseException as error:
             log.error('Regex compilation for signature ' +
                       str(self.signature.identifier) +
@@ -150,7 +176,7 @@ class RegexSignature:
                       repr(rule))
             self.pattern = None
 
-    def get_pattern(self) -> regex.Pattern:
+    def get_pattern(self) -> PcrePattern:
         # Signature patterns are compiled lazily as they are only needed if
         # common strings are matched and compiling all takes several seconds
         if not hasattr(self, 'pattern'):

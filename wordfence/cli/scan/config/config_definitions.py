@@ -89,9 +89,21 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": None
     },
     "exclude-signatures": {
+        "short_name": "e",
+        "description": "Specify rule IDs to exclude from the scan. Can be "
+                       "comma-delimited and/or specified multiple times.",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": None,
+        "meta": {
+            "separator": ",",
+            "value_type": int
+        }
+    },
+    "include-signatures": {
         "short_name": "i",
-        "description": "Specify a rule ID to exclude from the scan. Can be "
-                       "used multiple times.",
+        "description": "Specify rule IDs to include in the scan. Can be "
+                       "comma-delimited and/or specified multiple times.",
         "context": "ALL",
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
@@ -191,6 +203,15 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "context": "ALL",
         "argument_type": "OPTION",
         "default": 1
+    },
+    "backtrack-limit": {
+        "description": "The backtracking limit for signature evaluation",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": 100000,
+        "meta": {
+            "value_type": int
+        }
     },
     "configuration": {
         "short_name": "c",
