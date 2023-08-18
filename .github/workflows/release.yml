@@ -19,48 +19,14 @@ on:
         type: boolean
         description: Whether to draft a GitHub release
         default: true
+      release_tag:
+        type: string
+        description: The tag to create a release for (e.g., v1.0.0); will be created if it doesn't exist
+        required: true
 
 jobs:
-  validate_build:
-    name: Validate build
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Get commit info from build
-        id: get-commit-info
-        run: |
-          printf "Getting commit info for build number %s\\n" "$BUILD_RUN_NUMBER"
-          BUILD_COMMIT_INFO=$(
-            gh run list \
-              --repo "$GITHUB_REPOSITORY" \
-              --workflow build.yml \
-              --json headBranch,headSha,number | jq -r ".[] | select(.number==$BUILD_RUN_NUMBER)"
-          )
-          BUILD_COMMIT_HASH=$(printf "$BUILD_COMMIT_INFO" | jq -r ".headSha")
-          BUILD_COMMIT_REF=$(printf "$BUILD_COMMIT_INFO" | jq -r ".headBranch")
-          if [ ! -z "$BUILD_COMMIT_HASH" ] || [ ! -z "$BUILD_COMMIT_REF" ]; then
-            printf "Found commit hash %s and ref %s\\n" "$BUILD_COMMIT_HASH" "$BUILD_COMMIT_REF"
-          else
-            echo "Couldn't find commit hash or ref"
-            exit 1
-          fi
-          echo "BUILD_COMMIT_HASH=${BUILD_COMMIT_HASH}" >> "$GITHUB_OUTPUT"
-          echo "BUILD_COMMIT_REF=${BUILD_COMMIT_HASH}" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BUILD_RUN_NUMBER: ${{ inputs.build_run_number }}
-      - name: Checkout build ref with tags
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_HASH }}
-          fetch-tags: true
-      - name: Check that build ref is a tag
-        run: if git describe --exact-match --tags HEAD; then exit 0; else exit 1; fi
-    outputs:
-      hash: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_HASH }}
-      ref: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_REF }}
   pypi_release:
     if: ${{ inputs.release_pypi }}
-    needs: validate_build
     name: PyPI release
     runs-on: ubuntu-22.04
     steps:
@@ -96,7 +62,6 @@ jobs:
             wordfence_cli_python/*.tar.gz
   github_release:
     if: ${{ inputs.release_github }}
-    needs: validate_build
     name: GitHub release
     runs-on: ubuntu-22.04
     steps:
@@ -105,9 +70,29 @@ jobs:
         with:
           workflow: build.yml
           run_number: ${{ inputs.build_run_number }}
+      - name: Get commit hash from build
+        id: get-commit-hash
+        run: |
+          printf "Getting commit hash for build number %s\\n" "$BUILD_RUN_NUMBER"
+          BUILD_COMMIT_HASH=$(
+            gh run list \
+              --repo wordfence/wordfence-cli \
+              --workflow build.yml \
+              --json headBranch,headSha,number | jq -r ".[] | select(.number==$BUILD_RUN_NUMBER) | .headSha"
+          )
+          if [ ! -z "$BUILD_COMMIT_HASH" ]; then
+            printf "Found commit hash %s\\n" "$BUILD_COMMIT_HASH"
+          else
+            echo "Couldn't find commit hash"
+            exit 1
+          fi
+          echo "BUILD_COMMIT_HASH=${BUILD_COMMIT_HASH}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_RUN_NUMBER: ${{ inputs.build_run_number }}
       - name: Check if release for tag already exists
         run: |
-          RELEASE=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName)
+          RELEASE=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_ACTION_REPOSITORY" --json id,name,tagName)
           if [ ! -z "$RELEASE" ]; then
             printf "Release for tag %s already exists: %s\\n" "$RELEASE_TAG" "$RELEASE"
             exit 1
@@ -131,6 +116,6 @@ jobs:
             wordfence_cli_arm64/*.tar.gz
             wordfence_cli_arm64/*.sha256
             wordfence_cli_arm64/*.asc
-          target_commitish: ${{ needs.validate_build.outputs.hash }}
-          tag_name: ${{ needs.validate_build.outputs.ref }}
+          target_commitish: ${{ steps.get-commit-hash.outputs.BUILD_COMMIT_HASH }}
+          tag_name: ${{ inputs.release_tag }}
           draft: true
