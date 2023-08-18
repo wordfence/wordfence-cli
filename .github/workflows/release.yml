@@ -53,11 +53,7 @@ jobs:
         with:
           ref: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_HASH }}
       - name: Check that build ref is a tag
-        run: |
-          if git describe --exact-match --tags HEAD; then
-            exit 0
-          else
-          fi
+        run: if git describe --exact-match --tags HEAD; then exit 0; else exit 1; fi
     outputs:
       hash: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_HASH }}
       ref: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_REF }}
