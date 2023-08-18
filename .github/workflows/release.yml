@@ -48,10 +48,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BUILD_RUN_NUMBER: ${{ inputs.build_run_number }}
-      - name: Checkout build ref
+      - name: Checkout build ref with tags
         uses: actions/checkout@v3
         with:
           ref: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_HASH }}
+          fetch-tags: true
       - name: Check that build ref is a tag
         run: if git describe --exact-match --tags HEAD; then exit 0; else exit 1; fi
     outputs:
