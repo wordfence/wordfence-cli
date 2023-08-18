@@ -51,7 +51,7 @@ jobs:
       - name: Checkout build ref
         uses: actions/checkout@v3
         with:
-          ref: steps.get-commit-info.outputs.BUILD_COMMIT_HASH
+          ref: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_HASH }}
       - name: Check that build ref is a tag
         run: |
           if git describe --exact-match --tags HEAD; then
@@ -59,8 +59,8 @@ jobs:
           else
           fi
     outputs:
-      hash: steps.get-commit-info.outputs.BUILD_COMMIT_HASH
-      ref: steps.get-commit-info.outputs.BUILD_COMMIT_REF
+      hash: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_HASH }}
+      ref: ${{ steps.get-commit-info.outputs.BUILD_COMMIT_REF }}
   pypi_release:
     if: ${{ inputs.release_pypi }}
     needs: validate_build
