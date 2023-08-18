@@ -11,23 +11,25 @@ fi
 
 PROJECT_DIR=$(realpath "$1")
 
-if [ -z ${2:+x} ]; then
-    echo "You must provide the path to the signing key folder"
-    exit 1
-fi
-
-if [ ! -d "$2" ]; then
-    echo "The second argument must point to a folder containing the signing key as 'signing-key.asc'"
-fi
-
-KEYS_DIR=$(realpath "$2")
-
 echo "output path: $PROJECT_DIR/docker/build/volumes/output"
 ARCHITECTURES=("amd64" "arm64")
 
 function build_and_package() {
     ARCHITECTURE="$1"
-    docker run -it --rm --name "wfcli-build-container-$ARCHITECTURE" --platform "linux/$ARCHITECTURE" -v "$PROJECT_DIR"/docker/build/volumes/output/:/root/output -v "$PROJECT_DIR"/docker/build/volumes/debian/:/root/debian "wfcli-build-$ARCHITECTURE"
+    GPG_HOME_DIR=$(gpgconf --list-dirs homedir)
+    GPG_SOCKET=$(gpgconf --list-dirs agent-socket)
+    CONTAINER_GPG_HOME_DIR="/var/run/host_gpg_home_dir"
+    docker run \
+        -it \
+        --rm \
+        --name "wfcli-build-container-${ARCHITECTURE}" \
+        --platform "linux/${ARCHITECTURE}" \
+        -v "${PROJECT_DIR}/docker/build/volumes/output/:/root/output:rw" \
+        -v "${PROJECT_DIR}/docker/build/volumes/debian/:/root/debian:rw" \
+        -v "${GPG_HOME_DIR}:${CONTAINER_GPG_HOME_DIR}:rw" \
+        -v "${GPG_SOCKET}:${CONTAINER_GPG_HOME_DIR}/S.gpg-agent:rw" \
+        -e "CONTAINER_GPG_HOME_DIR=${CONTAINER_GPG_HOME_DIR}" \
+        "wfcli-build-$ARCHITECTURE"
 }
 
 for arch in "${ARCHITECTURES[@]}"
