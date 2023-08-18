@@ -29,7 +29,7 @@ class ScanConfigurationException(ScanningException):
 class Options:
     paths: Set[str]
     signatures: SignatureSet
-    threads: int = 1
+    workers: int = 1
     chunk_size: int = DEFAULT_CHUNK_SIZE
     path_source: Optional[StreamReader] = None
     max_file_size: Optional[int] = None
@@ -437,7 +437,7 @@ class Scanner:
         file_locator_process.start()
         for path in self.options.paths:
             file_locator_process.add_path(path)
-        worker_count = self.options.threads
+        worker_count = self.options.workers
         log.debug("Using " + str(worker_count) + " worker(s)...")
         matcher = RegexMatcher(
                     self.options.signatures,

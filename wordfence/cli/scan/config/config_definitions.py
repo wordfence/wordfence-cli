@@ -184,10 +184,10 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": False
     },
-    "threads": {
-        "short_name": "t",
-        "description": "Number of scanner threads (processes). Defaults to 1 "
-                       "worker.",
+    "workers": {
+        "short_name": "w",
+        "description": "Number of worker processes used to perform scanning. "
+                       "Defaults to 1 worker process.",
         "context": "ALL",
         "argument_type": "OPTION",
         "default": 1
