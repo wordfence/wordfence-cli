@@ -143,7 +143,7 @@ class ScanCommand:
             paths.add(argument)
         options = scanning.scanner.Options(
                 paths=paths,
-                threads=int(self.config.threads),
+                threads=int(self.config.workers),
                 signatures=self._get_signatures(),
                 chunk_size=self.config.chunk_size,
                 max_file_size=int(self.config.max_file_size),
