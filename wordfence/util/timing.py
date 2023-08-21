@@ -10,6 +10,9 @@ class Timer:
     def __init__(self, start: bool = True):
         if start:
             self.start()
+        else:
+            self.start_time = None
+        self.end_time = None
 
     def _capture_time(self) -> int:
         return time.monotonic_ns()
@@ -22,6 +25,6 @@ class Timer:
 
     def get_elapsed(self, unit=unit_seconds):
         end_time = \
-                self.end_time if self.end_time is None \
+                self.end_time if self.end_time is not None \
                 else self._capture_time()
         return unit(end_time - self.start_time)

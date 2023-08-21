@@ -287,6 +287,13 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": True
     },
+    "progress": {
+        "description": "Display scan progress in the terminal with a curses "
+                       "interface",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False
+    },
     "configure": {
         "description": "Interactively configure Wordfence CLI.",
         "context": "CLI",

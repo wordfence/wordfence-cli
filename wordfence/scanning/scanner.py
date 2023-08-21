@@ -130,6 +130,7 @@ class ScanEventType(IntEnum):
     FILE_PROCESSED = 2
     EXCEPTION = 3
     FATAL_EXCEPTION = 4
+    PROGRESS_UPDATE = 5
 
 
 class ScanEvent:
@@ -137,10 +138,32 @@ class ScanEvent:
     # TODO: Define custom (more compact) pickle serialization format for this
     # class as a potential performance improvement
 
-    def __init__(self, worker_index: int, type: int, data=None):
-        self.worker_index = worker_index
+    def __init__(
+                self,
+                type: int,
+                data=None,
+                worker_index: Optional[int] = None
+            ):
         self.type = type
         self.data = data
+        self.worker_index = worker_index
+
+
+class ScanProgressMonitor(Process):
+
+    def __init__(self, status: Value, result_queue: Queue):
+        super().__init__(name='progress-monitor')
+        self._result_queue = result_queue
+        self._status = status
+
+    def is_scan_running(self) -> bool:
+        status = self._status.value
+        return status != Status.COMPLETE and status != Status.FAILED
+
+    def run(self):
+        while self.is_scan_running():
+            time.sleep(1)
+            self._result_queue.put(ScanEvent(ScanEventType.PROGRESS_UPDATE))
 
 
 class ScanWorker(Process):
@@ -193,7 +216,9 @@ class ScanWorker(Process):
     def _put_event(self, event_type: ScanEventType, data: dict = None) -> None:
         if data is None:
             data = {}
-        self._result_queue.put(ScanEvent(self.index, event_type, data))
+        self._result_queue.put(
+                ScanEvent(event_type, data, worker_index=self.index)
+            )
 
     def _complete(self):
         self._working = False
@@ -301,6 +326,17 @@ class ScanMetrics:
         return self._aggregate_int_metric(self.timeouts)
 
 
+class ScanProgressUpdate:
+
+    def __init__(self, elapsed_time: int, metrics: ScanMetrics):
+        self.elapsed_time = elapsed_time
+        self.metrics = metrics
+
+
+ScanResultCallback = Callable[[ScanResult], None]
+ProgressReceiverCallback = Callable[[ScanProgressUpdate], None]
+
+
 class ScanWorkerPool:
 
     def __init__(
@@ -309,6 +345,8 @@ class ScanWorkerPool:
                 work_queue: Queue,
                 matcher: Matcher,
                 metrics: ScanMetrics,
+                timer: timing.Timer,
+                progress_receiver: Optional[ProgressReceiverCallback] = None,
                 chunk_size: int = DEFAULT_CHUNK_SIZE,
                 scanned_content_limit: Optional[int] = None
             ):
@@ -316,6 +354,8 @@ class ScanWorkerPool:
         self._matcher = matcher
         self._work_queue = work_queue
         self.metrics = metrics
+        self._timer = timer
+        self._progress_receiver = progress_receiver
         self._chunk_size = chunk_size
         self._scanned_content_limit = scanned_content_limit
         self._started = False
@@ -330,12 +370,32 @@ class ScanWorkerPool:
         else:
             self.terminate()
 
+    def has_progress_receiver(self) -> bool:
+        return self._progress_receiver is not None
+
+    def _send_progress_update(self) -> None:
+        if self.has_progress_receiver():
+            update = ScanProgressUpdate(
+                    elapsed_time=self._timer.get_elapsed(),
+                    metrics=self.metrics
+                )
+            self._progress_receiver(update)
+
     def start(self):
         if self._started:
             raise ScanningException('Worker pool has already been started')
         self._status = Value(c_uint, Status.LOCATING_FILES)
         self._result_queue = Queue(MAX_PENDING_RESULTS)
         self._workers = []
+        if self.has_progress_receiver():
+            self._monitor = ScanProgressMonitor(
+                    self._status,
+                    self._result_queue
+                )
+            self._monitor.start()
+            self._send_progress_update()
+        else:
+            self._monitor = None
         for i in range(self.size):
             worker = ScanWorker(
                     i,
@@ -358,11 +418,15 @@ class ScanWorkerPool:
         self._assert_started()
         for worker in self._workers:
             worker.join()
+        if self._monitor is not None:
+            self._monitor.join()
 
     def terminate(self):
         self._assert_started()
         for worker in self._workers:
             worker.terminate()
+        if self._monitor is not None:
+            self._monitor.terminate()
 
     def is_complete(self) -> bool:
         self._assert_started()
@@ -371,7 +435,10 @@ class ScanWorkerPool:
                 return False
         return True
 
-    def await_results(self, result_processor: Callable[[ScanResult], None]):
+    def await_results(
+                self,
+                result_processor: ScanResultCallback,
+            ):
         self._assert_started()
         while True:
             event = self._result_queue.get()
@@ -412,6 +479,9 @@ class ScanWorkerPool:
                 self._status.value = Status.FAILED
                 self.terminate()
                 raise event.data['exception']
+            elif event.type == ScanEventType.PROGRESS_UPDATE:
+                self._send_progress_update()
+        self._status.value = Status.COMPLETE
 
     def is_failed(self) -> bool:
         return self._status.value == Status.FAILED
@@ -436,7 +506,11 @@ class Scanner:
         worker = ScanWorker(status, work_queue, result_queue)
         worker.work()
 
-    def scan(self, result_processor: Callable[[ScanResult], None]):
+    def scan(
+                self,
+                result_processor: ScanResultCallback,
+                progress_receiver: Optional[ProgressReceiverCallback] = None
+            ):
         """Run a scan"""
         timer = timing.Timer()
         file_locator_process = FileLocatorProcess(
@@ -454,12 +528,14 @@ class Scanner:
                 )
         metrics = ScanMetrics(worker_count)
         with ScanWorkerPool(
-                    worker_count,
-                    file_locator_process.output_queue,
-                    matcher,
-                    metrics,
-                    self.options.chunk_size,
-                    self.options.scanned_content_limit
+                    size=worker_count,
+                    work_queue=file_locator_process.output_queue,
+                    matcher=matcher,
+                    metrics=metrics,
+                    timer=timer,
+                    progress_receiver=progress_receiver,
+                    chunk_size=self.options.chunk_size,
+                    scanned_content_limit=self.options.scanned_content_limit,
                 ) as worker_pool:
             if self.options.path_source is not None:
                 log.debug('Reading input paths...')
