@@ -15,10 +15,13 @@ ARCHITECTURES=("amd64" "arm64")
 function build_image() {
     ARCHITECTURE="$1"
     docker rmi -f "wfcli-build-$ARCHITECTURE" 2>/dev/null
-    docker build -t "wfcli-build-$ARCHITECTURE" --platform "linux/$ARCHITECTURE" -f "$PROJECT_DIR/docker/build/Dockerfile" "$PROJECT_DIR"
+    docker build \
+        -t "wfcli-build-${ARCHITECTURE}" \
+        --platform "linux/${ARCHITECTURE}" \
+        -f "${PROJECT_DIR}/docker/build/Dockerfile" \
+        "$PROJECT_DIR"
 }
 
-for arch in "${ARCHITECTURES[@]}"
-do
+for arch in "${ARCHITECTURES[@]}"; do
     build_image "$arch"
 done

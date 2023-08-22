@@ -12,7 +12,7 @@ from .matching import Matcher, RegexMatcher
 from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader
-from ..util.pcre import PcreJitStack
+from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
 from ..intel.signatures import SignatureSet
 from ..logging import log
 
@@ -36,6 +36,7 @@ class Options:
     max_file_size: Optional[int] = None
     file_filter: Optional[FileFilter] = None
     match_all: bool = False
+    pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
 
 
 class Status(IntEnum):
