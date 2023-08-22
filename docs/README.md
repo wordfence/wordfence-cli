@@ -1,8 +1,8 @@
-## Wordfence CLI Documentation
+# Wordfence CLI Documentation
 
 Wordfence CLI is a high performance, multi-process, command-line malware scanner written in Python. 
 
-### Contents
+## Contents
 
 - [Installation](Installation.md)
 	- [Binaries](Installation.md#binaries)

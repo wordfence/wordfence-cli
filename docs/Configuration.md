@@ -1,12 +1,12 @@
-## Configuration
+# Configuration
 
 Configuration can be set through command line arguments, or configured globally through the wordfence-cli.ini file. Once Wordfence CLI is installed, we recommend running `./wordfence scan --configure` to interactively setup Wordfence CLI's global configuration.
 
-### wordfence-cli.ini
+## wordfence-cli.ini
 
 By default, `wordfence-cli.ini` will reside in `~/.config/wordfence/wordfence-cli.ini`. The INI file is best suited for global configuration options for Wordfence CLI. The license is typically all that's needed to be stored in the INI.
 
-### Command line arguments
+## Command line arguments
 
 - `--read-stdin`: Read paths from stdin. If not specified, paths will automatically be read from stdin when input is not from a TTY. Specify `--no-read-stdin` to disable.
 - `-s`, `--file-list-separator`: Separator used when listing files via stdin. Defaults to the null byte.

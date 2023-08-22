@@ -1,6 +1,6 @@
-## Installation
+# Installation
 
-### Binaries
+## Binaries
 
 This is the simplest method for installing CLI. Binaries for Wordfence CLI can be downloaded on the Releases page of the GitHub repository:
 
@@ -43,7 +43,7 @@ Verify the binary works correctly:
 
 	./wordfence scan --version
 
-### Docker
+## Docker
 
 To install Wordfence CLI using Docker, you can clone the GitHub repo to your local environment:
 
@@ -55,7 +55,7 @@ Once the Docker image is built, you can start the docker container with the volu
 
 	docker run -v /var/www:/var/www wordfence-cli:latest scan --version
 
-### Manual Installation
+## Manual Installation
 
 To install Wordfence CLI manually, you can clone the GitHub repo to your local environment:
 

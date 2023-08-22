@@ -1,12 +1,12 @@
-### Examples
+# Examples
 
-#### Scanning a directory for malware
+## Scanning a directory for malware
 
 A basic example of recursively scanning the `/var/www` directory and writing the results to `/home/wordfence/wordfence-cli.csv`. 
 
 	wordfence scan --output-path /home/wordfence/wordfence-cli.csv /var/www
 
-#### Running Wordfence CLI in a cron
+## Running Wordfence CLI in a cron
 
 Run Wordfence CLI in a cron job daily to scan `/var/www` and write the results to `/home/wordfence/wordfence-cli.csv`.
 
@@ -14,7 +14,7 @@ Run Wordfence CLI in a cron job daily to scan `/var/www` and write the results t
 
 The cronjob uses a lock file at `/home/wordfence/wordfence-cli.lock` to prevent duplicate scans from running at the same time.
 
-#### Piping files from `find` to Wordfence CLI
+## Piping files from `find` to Wordfence CLI
 
 Find files under the directory `/var/www/` that have changed in the last hour and scan them with Wordfence CLI:
 
