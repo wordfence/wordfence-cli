@@ -206,7 +206,9 @@ class ScanCommand:
             scanner = scanning.scanner.Scanner(options)
             scanner.scan(
                     report.add_result,
-                    progress.handle_update if progress is not None else None
+                    progress.handle_update if progress is not None else None,
+                    progress.scan_finished_handler if progress is not None
+                    else None
                 )
 
             if progress:
