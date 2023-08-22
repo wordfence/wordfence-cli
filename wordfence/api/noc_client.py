@@ -1,7 +1,5 @@
-import json
-from urllib.request import Request, urlopen
+import requests
 from urllib.parse import urlencode
-from urllib.error import URLError, HTTPError
 
 from .licensing import License
 from .exceptions import ApiException
@@ -40,12 +38,10 @@ class NocClient:
     def request(self, action: str, query: dict = None):
         query = self.build_query(action, query)
         url = self.base_url + '?' + urlencode(query)
-        request = Request(url)
         try:
-            with urlopen(request, timeout=self.timeout) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                return data
-        except (URLError, HTTPError) as error:
+            response = requests.get(url)
+            return response.json()
+        except Exception as error:
             raise ApiException('Request failed') from error
 
     def validate_response(self, response, validator: Validator) -> None:
