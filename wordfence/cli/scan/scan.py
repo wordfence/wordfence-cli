@@ -159,11 +159,9 @@ class ScanCommand:
         if self.config.check_for_update:
             updater.Version.check(self.cache)
 
-        threads = int(self.config.threads)
-
         progress = None
         if self.config.progress:
-            progress = ProgressDisplay(threads)
+            progress = ProgressDisplay(int(self.config.workers))
 
         paths = set()
         for argument in self.config.trailing_arguments:
