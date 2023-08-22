@@ -2,7 +2,8 @@ import signal
 
 from ..intel.signatures import CommonString, Signature, SignatureSet
 from ..logging import log
-from ..util.pcre import PcrePattern, PcreException, PcreJitStack
+from ..util.pcre import PcrePattern, PcreException, PcreJitStack, \
+        PcreOptions, PCRE_DEFAULT_OPTIONS
 
 
 DEFAULT_TIMEOUT = 1  # Seconds
@@ -138,16 +139,17 @@ class RegexMatcherContext(MatcherContext):
 
 class RegexCommonString:
 
-    def __init__(self, common_string: CommonString):
+    def __init__(self, common_string: CommonString, pcre_options: PcreOptions):
         self.common_string = common_string
-        self.pattern = PcrePattern(common_string.string)
+        self.pattern = PcrePattern(common_string.string, pcre_options)
 
 
 class RegexSignature:
 
-    def __init__(self, signature: Signature):
+    def __init__(self, signature: Signature, pcre_options: PcreOptions):
         self.signature = signature
         self.anchored_to_start = self._is_anchored_to_start()
+        self.pcre_options = pcre_options
         if not signature.has_common_strings():
             self.compile()
 
@@ -166,7 +168,7 @@ class RegexSignature:
     def compile(self) -> None:
         try:
             rule = self.signature.rule
-            self.pattern = PcrePattern(rule)
+            self.pattern = PcrePattern(rule, self.pcre_options)
         except BaseException as error:
             log.error('Regex compilation for signature ' +
                       str(self.signature.identifier) +
@@ -190,9 +192,11 @@ class RegexMatcher(Matcher):
                 self,
                 signature_set: SignatureSet,
                 timeout: int = DEFAULT_TIMEOUT,
-                match_all: bool = False
+                match_all: bool = False,
+                pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
             ):
         super().__init__(signature_set, timeout, match_all)
+        self.pcre_options = pcre_options
         self._compile_regexes()
         self.signatures_without_common_strings = \
             self._extract_signatures_without_common_strings()
@@ -206,14 +210,17 @@ class RegexMatcher(Matcher):
 
     def _compile_common_strings(self) -> None:
         self.common_strings = [
-                RegexCommonString(common_string)
+                RegexCommonString(common_string, self.pcre_options)
                 for common_string in self.signature_set.common_strings
             ]
 
     def _compile_signatures(self) -> None:
         self.signatures = {}
         for identifier, signature in self.signature_set.signatures.items():
-            self.signatures[identifier] = RegexSignature(signature)
+            self.signatures[identifier] = RegexSignature(
+                    signature,
+                    self.pcre_options
+                )
 
     def _compile_regexes(self) -> None:
         self._compile_common_strings()

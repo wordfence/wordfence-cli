@@ -445,7 +445,8 @@ class Scanner:
         log.debug("Using " + str(worker_count) + " worker(s)...")
         matcher = RegexMatcher(
                     self.options.signatures,
-                    match_all=self.options.match_all
+                    match_all=self.options.match_all,
+                    pcre_options=self.options.pcre_options
                 )
         metrics = ScanMetrics(worker_count)
         with ScanWorkerPool(
