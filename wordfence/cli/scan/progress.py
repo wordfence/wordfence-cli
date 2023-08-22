@@ -2,9 +2,10 @@ import curses
 import sys
 from typing import List, Optional
 
-from wordfence.scanning.scanner import ScanProgressUpdate, ScanMetrics
+from wordfence.scanning.scanner import ScanProgressUpdate, ScanMetrics, get_scan_finished_messages
 from ..banner.banner import get_welcome_banner
-
+from ...util import timing
+from ...logging import log
 
 _displays = []
 
@@ -138,7 +139,8 @@ class BannerBox(Box):
         super().__init__(parent, border=False)
 
     def get_width(self):
-        return self.banner.column_count
+        # take the full width
+        return self.parent.getmaxyx()[1]
 
     def get_height(self):
         return self.banner.row_count
@@ -290,3 +292,17 @@ class ProgressDisplay:
         #     offset += 1
         self._display_metrics(update.metrics)
         self.refresh()
+
+    def scan_finished_handler(self, metrics: ScanMetrics, timer: timing.Timer) -> None:
+        messages = get_scan_finished_messages(metrics, timer)
+        metric_height = 0
+        for box in self.metric_boxes:
+            max_y = box.get_height()
+            metric_height = metric_height if metric_height > max_y else max_y
+        banner_height = self.banner_box.get_height() if self.banner_box else 0
+        padding = 2 if banner_height == 0 else 3
+        if messages.timeouts:
+            log.warning(messages.timeouts)
+        self.stdscr.addstr(metric_height + banner_height + padding, 0,
+                           messages.results)
+        self.stdscr.refresh()
