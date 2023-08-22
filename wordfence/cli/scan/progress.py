@@ -1,6 +1,6 @@
 import curses
-import sys
-from typing import List, Optional
+from math import ceil
+from typing import List, Optional, NamedTuple
 
 from wordfence.scanning.scanner import ScanProgressUpdate, ScanMetrics, get_scan_finished_messages
 from ..banner.banner import get_welcome_banner
@@ -8,6 +8,15 @@ from ...util import timing
 from ...logging import log
 
 _displays = []
+
+METRIC_BOX_WIDTH = 39
+"""
+Hard-coded width of metric boxes
+
+The actual width taken up will be the hard-coded value +2 to account for the
+left and right borders. Each box on the same row will be separated by the
+padding value as well.
+"""
 
 
 def reset_terminal() -> None:
@@ -46,6 +55,9 @@ class Box:
         if True or self.parent is None:
             window = curses.newwin(height, width, 0, 0)
         else:
+            # from `man subwin`: The subwindow functions (subwin, derwin,
+            # mvderwin,  wsyncup,  wsyncdown,  wcursyncup, syncok) are
+            # flaky, incompletely implemented, and not well tested
             window = self.parent.subwin(height, width, 0, 0)
         return window
 
@@ -113,11 +125,7 @@ class MetricBox(Box):
         super().__init__(parent, title=title)
 
     def get_width(self) -> int:
-        max_width = 0
-        for metric in self.metrics:
-            length = len(metric.label) + len(metric.value) + 2
-            max_width = max(length, max_width)
-        return max_width
+        return METRIC_BOX_WIDTH
 
     def get_height(self) -> int:
         return len(self.metrics)
@@ -173,7 +181,19 @@ class BoxLayout:
         # self.y += height + self.padding
 
 
+class LayoutValues(NamedTuple):
+    rows: int
+    cols: int
+    metrics_per_row: int
+    metric_rows: int
+    metric_height: int
+    banner_height: int
+    last_metric_line: int
+
+
 class ProgressDisplay:
+
+    METRICS_PADDING = 1
 
     def __init__(self, worker_count: int):
         _displays.append(self)
@@ -224,7 +244,8 @@ class ProgressDisplay:
             self.stdscr.addstr(index, offset, row, self.color_brand)
         return index + 1
 
-    def _get_metrics(self, metrics: ScanMetrics, worker_index: int) -> None:
+    def _get_metrics(self, metrics: ScanMetrics, worker_index: int) -> \
+            List[Metric]:
         metrics = [
                 Metric('Files Processed', metrics.counts[worker_index]),
                 Metric('Bytes Processed', metrics.bytes[worker_index]),
@@ -235,7 +256,7 @@ class ProgressDisplay:
 
     def _initialize_metric_boxes(self) -> List[MetricBox]:
         default_metrics = ScanMetrics(self.worker_count)
-        layout = BoxLayout(curses.LINES, curses.COLS)
+        layout = BoxLayout(curses.LINES, curses.COLS, self.METRICS_PADDING)
         if self.banner_box is not None:
             layout.position(self.banner_box)
             self.banner_box.update()
@@ -266,43 +287,44 @@ class ProgressDisplay:
 
     def handle_update(self, update: ScanProgressUpdate) -> None:
         curses.update_lines_cols()
-        # elapsed = round(update.elapsed_time)
-        # self.stdscr.addstr(
-        #         curses.LINES - 1,
-        #         0,
-        #         f'Elapsed time: {elapsed}s'
-        #     )
-        # file_count = update.metrics.get_total_count()
-        # byte_count = update.metrics.get_total_bytes()
-        # match_count = update.metrics.get_total_matches()
-        # timeout_count = update.metrics.get_total_timeouts()
-        # speed = (byte_count / update.elapsed_time) if update.elapsed_time > 0 \
-        #     else 0
-        # stats = {
-        #         'Files Processed': file_count,
-        #         'Bytes Processed': byte_count,
-        #         'Speed': speed,
-        #         'Matches Found': match_count,
-        #     }
-        # if timeout_count > 0:
-        #     stats['Signatures Timeouts'] = timeout_count
-        # offset = self.banner_offset
-        # for label, value in stats.items():
-        #     self.stdscr.addstr(offset, 0, f'{label}: {value}')
-        #     offset += 1
         self._display_metrics(update.metrics)
         self.refresh()
 
+    @staticmethod
+    def metric_boxes_per_row(columns: int, padding: int = METRICS_PADDING):
+        per_row = columns // METRIC_BOX_WIDTH
+        if per_row == 0:
+            return 0
+        display_length = (per_row * METRIC_BOX_WIDTH) + (padding * per_row - 1)
+        return per_row if display_length <= columns else per_row - 1
+
+    def get_layout_values(self) -> LayoutValues:
+        rows, cols = self.stdscr.getmaxyx()
+        # add two to metric_height to account for box top and bottom lines
+        metric_height = self.metric_boxes[0].get_height() + 2
+        banner_height = self.banner_box.get_height() if self.banner_box else 0
+        metrics_per_row = self.metric_boxes_per_row(cols)
+        metric_rows = ceil(len(self.metric_boxes) / metrics_per_row)
+        padding = (0 if banner_height == 0 else 1) + (metric_rows - 1)
+        last_metric_line = ((metric_height * metric_rows) + banner_height +
+                            padding) - 1
+        return LayoutValues(rows, cols, metrics_per_row, metric_rows,
+                            metric_height, banner_height, last_metric_line)
+
     def scan_finished_handler(self, metrics: ScanMetrics, timer: timing.Timer) -> None:
         messages = get_scan_finished_messages(metrics, timer)
-        metric_height = 0
-        for box in self.metric_boxes:
-            max_y = box.get_height()
-            metric_height = metric_height if metric_height > max_y else max_y
-        banner_height = self.banner_box.get_height() if self.banner_box else 0
-        padding = 2 if banner_height == 0 else 3
+        vals = self.get_layout_values()
+        vertical_offset = vals.last_metric_line + 1
+        exit_message = "Press any key to exit"
+        message_lines = ceil(len(messages.results) / vals.cols) + (
+                        ceil(len(exit_message) / vals.cols))
+        if (vertical_offset + message_lines) > vals.rows:
+            vertical_offset = vals.rows - message_lines
         if messages.timeouts:
             log.warning(messages.timeouts)
-        self.stdscr.addstr(metric_height + banner_height + padding, 0,
-                           messages.results)
+        self.stdscr.move(vertical_offset, 0)
+        self.stdscr.clrtobot()
+        self.stdscr.addstr(vertical_offset, 0, messages.results)
+        self.stdscr.addstr(vertical_offset + message_lines - 1, 0,
+                           exit_message)
         self.stdscr.refresh()
