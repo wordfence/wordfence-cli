@@ -306,14 +306,10 @@ class ProgressDisplay:
     def get_layout_values(worker_count: int,
                           banner_height: Optional[int] = None,
                           cols: Optional[int] = None,
-                          rows: Optional[int] = None,
-                          show_banner: bool = True):
+                          rows: Optional[int] = None):
         if banner_height is None:
-            if show_banner:
-                banner = get_welcome_banner()
-                banner_height = len(banner.rows) if banner is not None else 0
-            else:
-                banner_height = 0
+            banner = get_welcome_banner()
+            banner_height = len(banner.rows) if banner is not None else 0
         if cols is None or rows is None:
             _cols, _rows = os.get_terminal_size()
             cols = _cols if cols is None else cols
@@ -330,8 +326,9 @@ class ProgressDisplay:
 
     @staticmethod
     def requirements_met(worker_count: int, show_banner: True):
+        banner_height = None if should_show_welcome_banner(show_banner) else 0
         layout_values = ProgressDisplay.get_layout_values(
-            worker_count, show_banner=should_show_welcome_banner(show_banner))
+            worker_count, banner_height)
         return layout_values.rows >= layout_values.last_metric_line and \
             layout_values.cols >= (METRIC_BOX_WIDTH + 2)
 
