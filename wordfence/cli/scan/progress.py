@@ -1,9 +1,10 @@
 import curses
+import os
 from math import ceil
 from typing import List, Optional, NamedTuple
 
 from wordfence.scanning.scanner import ScanProgressUpdate, ScanMetrics, get_scan_finished_messages
-from ..banner.banner import get_welcome_banner
+from ..banner.banner import get_welcome_banner, should_show_welcome_banner
 from ...util import timing
 from ...logging import log
 
@@ -194,6 +195,7 @@ class LayoutValues(NamedTuple):
 class ProgressDisplay:
 
     METRICS_PADDING = 1
+    METRICS_COUNT = 4
 
     def __init__(self, worker_count: int):
         _displays.append(self)
@@ -252,6 +254,8 @@ class ProgressDisplay:
                 Metric('Matches Found', metrics.matches[worker_index]),
                 Metric('Index', worker_index)
             ]
+        if len(metrics) > self.METRICS_COUNT:
+            raise ValueError("Metrics count is out of sync")
         return metrics
 
     def _initialize_metric_boxes(self) -> List[MetricBox]:
@@ -298,22 +302,49 @@ class ProgressDisplay:
         display_length = (per_row * METRIC_BOX_WIDTH) + (padding * per_row - 1)
         return per_row if display_length <= columns else per_row - 1
 
-    def get_layout_values(self) -> LayoutValues:
-        rows, cols = self.stdscr.getmaxyx()
-        # add two to metric_height to account for box top and bottom lines
-        metric_height = self.metric_boxes[0].get_height() + 2
-        banner_height = self.banner_box.get_height() if self.banner_box else 0
-        metrics_per_row = self.metric_boxes_per_row(cols)
-        metric_rows = ceil(len(self.metric_boxes) / metrics_per_row)
+    @staticmethod
+    def get_layout_values(worker_count: int,
+                          banner_height: Optional[int] = None,
+                          cols: Optional[int] = None,
+                          rows: Optional[int] = None,
+                          show_banner: bool = True):
+        if banner_height is None:
+            if show_banner:
+                banner = get_welcome_banner()
+                banner_height = len(banner.rows) if banner is not None else 0
+            else:
+                banner_height = 0
+        if cols is None or rows is None:
+            _cols, _rows = os.get_terminal_size()
+            cols = _cols if cols is None else cols
+            rows = _rows if rows is None else rows
+        # one line per metric + two for the top and bottom borders
+        metric_height = ProgressDisplay.METRICS_COUNT + 2
+        metrics_per_row = ProgressDisplay.metric_boxes_per_row(cols)
+        metric_rows = ceil(worker_count / metrics_per_row)
         padding = (0 if banner_height == 0 else 1) + (metric_rows - 1)
         last_metric_line = ((metric_height * metric_rows) + banner_height +
                             padding) - 1
         return LayoutValues(rows, cols, metrics_per_row, metric_rows,
                             metric_height, banner_height, last_metric_line)
 
+    @staticmethod
+    def requirements_met(worker_count: int, show_banner: True):
+        layout_values = ProgressDisplay.get_layout_values(
+            worker_count, show_banner=should_show_welcome_banner(show_banner))
+        return layout_values.rows >= layout_values.last_metric_line and \
+            layout_values.cols > (METRIC_BOX_WIDTH + 2)
+
+    def _get_layout_values(self) -> LayoutValues:
+        rows, cols = self.stdscr.getmaxyx()
+        worker_count = len(self.metric_boxes)
+        banner_height = self.banner_box.get_height() if self.banner_box else 0
+        return ProgressDisplay.get_layout_values(worker_count,
+                                                 banner_height, cols, rows)
+
     def scan_finished_handler(self, metrics: ScanMetrics, timer: timing.Timer) -> None:
         messages = get_scan_finished_messages(metrics, timer)
-        vals = self.get_layout_values()
+        vals = self._get_layout_values()
         vertical_offset = vals.last_metric_line + 1
         exit_message = "Press any key to exit"
         message_lines = ceil(len(messages.results) / vals.cols) + (
