@@ -5,7 +5,7 @@ from ctypes import c_bool, c_uint
 from enum import IntEnum
 from multiprocessing import Queue, Process, Value
 from dataclasses import dataclass
-from typing import Set, Optional, Callable, Dict
+from typing import Set, Optional, Callable, Dict, NamedTuple
 
 from .exceptions import ScanningException
 from .matching import Matcher, RegexMatcher
@@ -335,6 +335,36 @@ class ScanProgressUpdate:
 
 ScanResultCallback = Callable[[ScanResult], None]
 ProgressReceiverCallback = Callable[[ScanProgressUpdate], None]
+ScanFinishedCallback = Callable[[ScanMetrics, timing.Timer], None]
+
+
+class ScanFinishedMessages(NamedTuple):
+    results: str
+    timeouts: Optional[str]
+
+
+def get_scan_finished_messages(metrics: ScanMetrics, timer: timing.Timer) -> ScanFinishedMessages:
+    match_count = metrics.get_total_matches()
+    total_count = metrics.get_total_count()
+    byte_count = metrics.get_total_bytes()
+    elapsed_time = round(timer.get_elapsed())
+    timeout_count = metrics.get_total_timeouts()
+    timeouts_message = None
+    if timeout_count > 0:
+        timeouts_message = f'{timeout_count} timeout(s) occurred during scan'
+    results_message = (f'Found {match_count} matching file(s) after '
+                       f'processing {total_count} file(s) containing '
+                       f'{byte_count} byte(s) over {elapsed_time} second(s)')
+
+    return ScanFinishedMessages(results_message, timeouts_message)
+
+
+def default_scan_finished_handler(metrics: ScanMetrics, timer: timing.Timer) -> None:
+    """Used as the default ScanFinishedCallback"""
+    messages = get_scan_finished_messages(metrics, timer)
+    if messages.timeouts:
+        log.warning(messages.timeouts)
+    log.info(messages.results)
 
 
 class ScanWorkerPool:
@@ -509,7 +539,9 @@ class Scanner:
     def scan(
                 self,
                 result_processor: ScanResultCallback,
-                progress_receiver: Optional[ProgressReceiverCallback] = None
+                progress_receiver: Optional[ProgressReceiverCallback] = None,
+                scan_finished_handler: ScanFinishedCallback =
+                default_scan_finished_handler
             ):
         """Run a scan"""
         timer = timing.Timer()
@@ -548,18 +580,6 @@ class Scanner:
             log.debug('Awaiting results...')
             worker_pool.await_results(result_processor)
         timer.stop()
-        self.log_results(metrics, timer)
-
-    def log_results(self, metrics: ScanMetrics, timer: timing.Timer) -> None:
-        match_count = metrics.get_total_matches()
-        total_count = metrics.get_total_count()
-        byte_count = metrics.get_total_bytes()
-        elapsed_time = round(timer.get_elapsed())
-        timeout_count = metrics.get_total_timeouts()
-        if timeout_count > 0:
-            log.warning(f'{timeout_count} timeout(s) occurred during scan')
-        log.info(
-                f'Found {match_count} matching file(s) after processing '
-                f'{total_count} file(s) containing {byte_count} byte(s) over '
-                f'{elapsed_time} second(s)'
-            )
+        scan_finished_handler = scan_finished_handler if scan_finished_handler\
+            else default_scan_finished_handler
+        scan_finished_handler(metrics, timer)
