@@ -445,6 +445,7 @@ class ScanWorkerPool:
             if event is None:
                 log.debug('All workers have completed and all results have '
                           'been processed.')
+                self._status.value = Status.COMPLETE
                 return
             elif event.type == ScanEventType.COMPLETED:
                 log.debug(f'Worker {event.worker_index} completed')
@@ -481,7 +482,6 @@ class ScanWorkerPool:
                 raise event.data['exception']
             elif event.type == ScanEventType.PROGRESS_UPDATE:
                 self._send_progress_update()
-        self._status.value = Status.COMPLETE
 
     def is_failed(self) -> bool:
         return self._status.value == Status.FAILED
