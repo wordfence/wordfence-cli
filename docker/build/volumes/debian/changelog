@@ -1,3 +1,10 @@
+wordfence (0.0.4) unstable; urgency=medium
+
+  * 0.0.4 release. See https://github.com/wordfence/wordfence-cli for
+    release notes.
+
+ -- Wordfence <opensource@wordfence.com>  Fri, 18 Aug 2023 14:37:21 +0000
+
 wordfence (0.0.2) unstable; urgency=medium
 
   * 0.0.2 release. See https://github.com/wordfence/wordfence-cli for
