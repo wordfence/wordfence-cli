@@ -1,6 +1,6 @@
 # Examples
 
-## Scanning a directory for malware
+## Scanning a single directory for malware
 
 A basic example of recursively scanning the `/var/www` directory and writing the results to `/home/wordfence/wordfence-cli.csv`. 
 
@@ -18,4 +18,4 @@ The cronjob uses a lock file at `/home/wordfence/wordfence-cli.lock` to prevent 
 
 Find files under the directory `/var/www/` that have changed in the last hour and scan them with Wordfence CLI:
 
-	find /var/www/ -mmin -60 -type f -print0 | wordfence scan --output-path /home/wordfence/wordfence-cli.csv
+	find /var/www/ -cmin -60 -type f -print0 | wordfence scan --output-path /home/wordfence/wordfence-cli.csv
