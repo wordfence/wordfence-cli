@@ -24,7 +24,7 @@ By default, `wordfence-cli.ini` will reside in `~/.config/wordfence/wordfence-cl
 - `-z`, `--chunk-size`: Size of file chunks that will be scanned. Use a whole number followed by one of the following suffixes: b (byte), k (kibibyte), m (mebibyte). Defaults to 3m.
 - `-M`, `--max-file-size`: Files above this limit will not be scanned. Defaults to 50 mebibytes. Use a whole number followed by one config the following suffixes: b (byte), k (kibibyte), m (mebibyte).
 - `--match-all`: If set, all possible signatures will be checked against each scanned file. Otherwise, only the first matching signature will be reported
-- `-t`, `--threads`: Number of scanner threads (processes). Defaults to 1 worker.
+- `-w`, `--workers`: Number of worker processes used to perform scanning. Defaults to 1 worker process.
 - `-c`, `--configuration`: Path to a configuration INI file to use (defaults to "~/.config/wordfence/wordfence-cli.ini").
 - `-l`, `--license`: Specify the license to use.
 - `--cache-directory`: A path to use for cache files.
