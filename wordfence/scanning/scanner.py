@@ -33,7 +33,7 @@ class Options:
     workers: int = 1
     chunk_size: int = DEFAULT_CHUNK_SIZE
     path_source: Optional[StreamReader] = None
-    max_file_size: Optional[int] = None
+    scanned_content_limit: Optional[int] = None
     file_filter: Optional[FileFilter] = None
     match_all: bool = False
     pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
@@ -153,7 +153,7 @@ class ScanWorker(Process):
                 result_queue: Queue,
                 matcher: Matcher,
                 chunk_size: int = DEFAULT_CHUNK_SIZE,
-                max_file_size: Optional[int] = None
+                scanned_content_limit: Optional[int] = None
             ):
         self.index = index
         self._status = status
@@ -162,7 +162,7 @@ class ScanWorker(Process):
         self._matcher = matcher
         self._chunk_size = chunk_size
         self._working = True
-        self._max_file_size = max_file_size
+        self._scanned_content_limit = scanned_content_limit
         self.complete = Value(c_bool, False)
         super().__init__(name=self._generate_name())
 
@@ -203,10 +203,13 @@ class ScanWorker(Process):
     def is_complete(self) -> bool:
         return self.complete.value
 
-    def _has_exceeded_file_size_limit(self, length: int) -> bool:
-        if self._max_file_size is None or self._max_file_size == 0:
-            return False
-        return length > self._max_file_size
+    def _get_next_chunk_size(self, length: int) -> int:
+        if self._scanned_content_limit is None:
+            return self._chunk_size
+        elif length >= self._scanned_content_limit:
+            return 0
+        else:
+            return min(self._scanned_content_limit - length, self._chunk_size)
 
     def _process_file(self, path: str, jit_stack: PcreJitStack):
         try:
@@ -214,11 +217,12 @@ class ScanWorker(Process):
             with open(path, mode='rb') as file, \
                     self._matcher.create_context() as context:
                 length = 0
-                while (chunk := file.read(self._chunk_size)):
+                while (chunk_size := self._get_next_chunk_size(length)):
+                    chunk = file.read(chunk_size)
+                    if not chunk:
+                        break
                     first = length == 0
                     length += len(chunk)
-                    if self._has_exceeded_file_size_limit(length):
-                        break
                     if context.process_chunk(chunk, first, jit_stack):
                         break
                 self._put_event(
@@ -306,14 +310,14 @@ class ScanWorkerPool:
                 matcher: Matcher,
                 metrics: ScanMetrics,
                 chunk_size: int = DEFAULT_CHUNK_SIZE,
-                max_file_size: Optional[int] = None
+                scanned_content_limit: Optional[int] = None
             ):
         self.size = size
         self._matcher = matcher
         self._work_queue = work_queue
         self.metrics = metrics
         self._chunk_size = chunk_size
-        self._max_file_size = max_file_size
+        self._scanned_content_limit = scanned_content_limit
         self._started = False
 
     def __enter__(self):
@@ -340,7 +344,7 @@ class ScanWorkerPool:
                     self._result_queue,
                     self._matcher,
                     self._chunk_size,
-                    self._max_file_size
+                    self._scanned_content_limit
                 )
             worker.start()
             self._workers.append(worker)
@@ -445,7 +449,8 @@ class Scanner:
         log.debug("Using " + str(worker_count) + " worker(s)...")
         matcher = RegexMatcher(
                     self.options.signatures,
-                    match_all=self.options.match_all
+                    match_all=self.options.match_all,
+                    pcre_options=self.options.pcre_options
                 )
         metrics = ScanMetrics(worker_count)
         with ScanWorkerPool(
@@ -454,7 +459,7 @@ class Scanner:
                     matcher,
                     metrics,
                     self.options.chunk_size,
-                    self.options.max_file_size
+                    self.options.scanned_content_limit
                 ) as worker_pool:
             if self.options.path_source is not None:
                 log.debug('Reading input paths...')

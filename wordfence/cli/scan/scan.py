@@ -165,7 +165,7 @@ class ScanCommand:
                 workers=int(self.config.workers),
                 signatures=self._get_signatures(),
                 chunk_size=self.config.chunk_size,
-                max_file_size=int(self.config.scanned_content_limit),
+                scanned_content_limit=int(self.config.scanned_content_limit),
                 file_filter=self._initialize_file_filter(),
                 match_all=self.config.match_all,
                 pcre_options=self._get_pcre_options()
