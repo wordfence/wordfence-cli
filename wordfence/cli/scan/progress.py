@@ -322,7 +322,7 @@ class ProgressDisplay:
         metric_height = ProgressDisplay.METRICS_COUNT + 2
         metrics_per_row = ProgressDisplay.metric_boxes_per_row(cols)
         metric_rows = ceil(worker_count / metrics_per_row)
-        padding = (0 if banner_height == 0 else 1) + (metric_rows - 1)
+        padding = (0 if banner_height == 0 else 2) + (metric_rows - 1)
         last_metric_line = ((metric_height * metric_rows) + banner_height +
                             padding) - 1
         return LayoutValues(rows, cols, metrics_per_row, metric_rows,
@@ -333,7 +333,7 @@ class ProgressDisplay:
         layout_values = ProgressDisplay.get_layout_values(
             worker_count, show_banner=should_show_welcome_banner(show_banner))
         return layout_values.rows >= layout_values.last_metric_line and \
-            layout_values.cols > (METRIC_BOX_WIDTH + 2)
+            layout_values.cols >= (METRIC_BOX_WIDTH + 2)
 
     def _get_layout_values(self) -> LayoutValues:
         rows, cols = self.stdscr.getmaxyx()
