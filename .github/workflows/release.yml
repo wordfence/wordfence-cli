@@ -90,18 +90,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BUILD_RUN_NUMBER: ${{ inputs.build_run_number }}
-      - name: Check if release for tag already exists
-        run: |
-          RELEASE=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id,name,tagName)
-          if [ ! -z "$RELEASE" ]; then
-            printf "Release for tag %s already exists: %s\\n" "$RELEASE_TAG" "$RELEASE"
-            exit 1
-          else
-            exit 0
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
       - name: Create draft release
         uses: softprops/action-gh-release@v1
         with:
