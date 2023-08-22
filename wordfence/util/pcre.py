@@ -1,13 +1,30 @@
 from ctypes import cdll, c_char_p, c_void_p, c_int, c_ulong, c_ubyte, byref, \
-        create_string_buffer, Structure, POINTER
+        create_string_buffer, Structure, POINTER, CFUNCTYPE
+from ctypes.util import find_library
 from typing import Optional
 
-pcre = cdll.LoadLibrary('libpcre.so')
+
+class PcreException(Exception):
+    pass
+
+
+class PcreLibraryNotAvailableException(PcreException):
+    pass
+
+
+library_name = find_library('pcre')
+if library_name is None:
+    raise PcreLibraryNotAvailableException('Failed to locate libpcre')
+try:
+    pcre = cdll.LoadLibrary(library_name)
+except OSError as e:
+    raise PcreLibraryNotAvailableException('Failed to load libpcre') from e
 
 
 _pcre_version = pcre.pcre_version
+_pcre_version.argtypes = []
 _pcre_version.restype = c_char_p
-VERSION = _pcre_version()
+VERSION = _pcre_version().decode('ascii')
 
 
 PCRE_ERROR_NOMATCH = -1
@@ -15,6 +32,7 @@ PCRE_ERROR_BADOPTION = 3
 
 
 _pcre_config = pcre.pcre_config
+_pcre_config.argtypes = [c_int, c_void_p]
 _pcre_config.restype = c_int
 
 PCRE_CONFIG_JIT = 9
@@ -30,39 +48,24 @@ def _check_jit_support() -> bool:
 
 HAS_JIT_SUPPORT = _check_jit_support()
 
-_pcre_compile = pcre.pcre_compile
-_pcre_compile.restype = c_void_p
 
-if HAS_JIT_SUPPORT:
-    _pcre_jit_stack_alloc = pcre.pcre_jit_stack_alloc
-    _pcre_jit_stack_alloc.restype = c_void_p
-    _pcre_jit_stack_free = pcre.pcre_jit_stack_free
-
-
-_pcre_exec = pcre.pcre_exec
-_pcre_exec.restype = c_int
-
-
-_pcre_jit_exec = pcre.pcre_jit_exec
-_pcre_jit_exec.restype = c_int
-
-
-PCRE_EXTRA_MATCH_LIMIT = 0x0012
-PCRE_EXTRA_MATCH_LIMIT_RECURSION = 0x0010
-PCRE_STUDY_JIT_COMPILE = 0x0001
-PCRE_STUDY_EXTRA_NEEDED = 0x0008
-PCRE_CASELESS = 0x00000001
-
-
-PCRE_JIT_STACK_MIN_SIZE = 32 * 1024
-PCRE_JIT_STACK_MAX_SIZE = 64 * 1024
-
-
-class PcreException(Exception):
+class _StructPcre(Structure):
     pass
 
 
-class PcreExtra(Structure):
+_pcre_p = POINTER(_StructPcre)
+_pcre_compile = pcre.pcre_compile
+_pcre_compile.argtypes = [
+        c_char_p,
+        c_int,
+        POINTER(c_char_p),
+        POINTER(c_int),
+        POINTER(c_ubyte)
+    ]
+_pcre_compile.restype = _pcre_p
+
+
+class _StructPcreExtra(Structure):
     _fields_ = [
                 ('flags', c_ulong),
                 ('study_data', c_void_p),
@@ -75,11 +78,76 @@ class PcreExtra(Structure):
             ]
 
 
+_pcre_extra_p = POINTER(_StructPcreExtra)
 _pcre_study = pcre.pcre_study
-_pcre_study.restype = POINTER(PcreExtra)
+_pcre_study.argtypes = [_pcre_p, c_int, POINTER(c_char_p)]
+_pcre_study.restype = _pcre_extra_p
 
 
 _pcre_free_study = pcre.pcre_free_study
+_pcre_free_study.argtypes = [_pcre_extra_p]
+_pcre_free_study.restype = None
+
+
+_pcre_exec = pcre.pcre_exec
+_pcre_exec.argtypes = [
+        _pcre_p,
+        _pcre_extra_p,
+        c_char_p,
+        c_int,
+        c_int,
+        c_int,
+        POINTER(c_int),
+        c_int
+    ]
+_pcre_exec.restype = c_int
+
+
+_pcre_free_address = c_void_p.in_dll(pcre, 'pcre_free').value
+_pcre_free_prototype = CFUNCTYPE(None, c_void_p)
+_pcre_free = _pcre_free_prototype(_pcre_free_address)
+
+
+if HAS_JIT_SUPPORT:
+    class _StructPcreJitStack(Structure):
+        pass
+
+    _pcre_jit_stack_p = POINTER(_StructPcreJitStack)
+
+    _pcre_jit_stack_alloc = pcre.pcre_jit_stack_alloc
+    _pcre_jit_stack_alloc.argtypes = [c_int, c_int]
+    _pcre_jit_stack_alloc.restype = _pcre_jit_stack_p
+
+    _pcre_jit_stack_free = pcre.pcre_jit_stack_free
+    _pcre_jit_stack_free.argtypes = [_pcre_jit_stack_p]
+    _pcre_jit_stack_free.restype = None
+
+    _pcre_jit_exec = pcre.pcre_jit_exec
+    _pcre_jit_exec.argtypes = [
+            _pcre_p,
+            _pcre_extra_p,
+            c_char_p,
+            c_int,
+            c_int,
+            c_int,
+            c_void_p,
+            c_int,
+            _pcre_jit_stack_p
+        ]
+    _pcre_jit_exec.restype = c_int
+
+
+PCRE_EXTRA_MATCH_LIMIT = 0x0012
+PCRE_EXTRA_MATCH_LIMIT_RECURSION = 0x0010
+PCRE_STUDY_JIT_COMPILE = 0x0001
+PCRE_STUDY_EXTRA_NEEDED = 0x0008
+PCRE_CASELESS = 0x00000001
+
+
+PCRE_JIT_STACK_MIN_SIZE = 32 * 1024
+PCRE_JIT_STACK_MAX_SIZE = 64 * 1024
+PCRE_DEFAULT_MATCH_LIMIT = 1000000
+PCRE_DEFAULT_MATCH_LIMIT_RECURSION = 100000
 
 
 class PcreJitStack:
@@ -126,26 +194,54 @@ class PcreMatch:
         self.matched_string = matched_string
 
 
+class PcreOptions:
+
+    def __init__(
+                self,
+                caseless: bool = False,
+                match_limit: int = PCRE_DEFAULT_MATCH_LIMIT,
+                match_limit_recursion: int = PCRE_DEFAULT_MATCH_LIMIT_RECURSION
+            ):
+        self.caseless = caseless
+        self.match_limit = match_limit
+        self.match_limit_recursion = match_limit_recursion
+        self._compilation_options = None
+
+    def _get_compilation_options(self) -> c_int:
+        if self._compilation_options is None:
+            options = 0
+            if self.caseless:
+                options |= PCRE_CASELESS
+            self._compilation_options = c_int(options)
+        return self._compilation_options
+
+
+PCRE_DEFAULT_OPTIONS = PcreOptions()
+
+
 class PcrePattern:
 
-    def __init__(self, pattern: str):
-        self._compile(pattern)
+    def __init__(
+                self,
+                pattern: str,
+                options: PcreOptions = PCRE_DEFAULT_OPTIONS
+            ):
+        self._compile(pattern, options)
 
-    def _compile(self, pattern: str) -> c_void_p:
+    def _compile(self, pattern: str, options: PcreOptions) -> c_void_p:
         pattern_cstr = c_char_p(pattern.encode('utf8'))
-        error_buffer = create_string_buffer(100)
+        error_message = c_char_p(None)
         error_offset = c_int(-1)
-        options = c_int(PCRE_CASELESS)
         self.compiled = _pcre_compile(
                 pattern_cstr,
-                options,
-                byref(error_buffer),
+                options._get_compilation_options(),
+                byref(error_message),
                 byref(error_offset),
                 None
             )
         if not self.compiled:
             offset = error_offset.value
-            message = error_buffer.value
+            message = error_message.value.decode('utf8')
             raise PcreException(
                     f'Pattern compilation failed at offset {offset}: {message}'
                 )
@@ -153,13 +249,14 @@ class PcrePattern:
         self.extra = _pcre_study(
                 self.compiled,
                 study_options,
-                byref(error_buffer)
+                byref(error_message)
             )
         self.extra.flags = c_ulong(
                 PCRE_EXTRA_MATCH_LIMIT | PCRE_EXTRA_MATCH_LIMIT_RECURSION
             )
-        self.extra.match_limit = c_ulong(100000)
-        self.extra.match_limit_recursion = c_ulong(100000)
+        self.extra.match_limit = c_ulong(options.match_limit)
+        self.extra.match_limit_recursion = \
+            c_ulong(options.match_limit_recursion)
 
     def match(
                 self,
@@ -215,4 +312,12 @@ class PcrePattern:
             return PcreMatch(matched_string)
 
     def _free(self) -> None:
-        _pcre_free_study(self.extra)
+        if self.extra is not None:
+            _pcre_free_study(self.extra)
+            self.extra = None
+        if self.compiled is not None:
+            _pcre_free(self.compiled)
+            self.compiled = None
+
+    def __del__(self) -> None:
+        self._free()

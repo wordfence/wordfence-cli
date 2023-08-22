@@ -9,8 +9,7 @@ from typing import Any
 from wordfence import scanning, api
 from wordfence.api.licensing import LicenseSpecific
 from wordfence.scanning import filtering
-from wordfence.util import caching
-from wordfence.util import updater
+from wordfence.util import caching, updater, pcre
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import log
@@ -146,6 +145,13 @@ class ScanCommand:
                 filter.add(filtering.filter_images)
         return filter
 
+    def _get_pcre_options(self) -> pcre.PcreOptions:
+        return pcre.PcreOptions(
+                    caseless=True,
+                    match_limit=self.config.pcre_backtrack_limit,
+                    match_limit_recursion=self.config.pcre_recursion_limit
+                )
+
     def execute(self) -> int:
         if self.config.purge_cache:
             self.cache.purge()
@@ -159,9 +165,10 @@ class ScanCommand:
                 workers=int(self.config.workers),
                 signatures=self._get_signatures(),
                 chunk_size=self.config.chunk_size,
-                max_file_size=int(self.config.max_file_size),
+                max_file_size=int(self.config.scanned_content_limit),
                 file_filter=self._initialize_file_filter(),
-                match_all=self.config.match_all
+                match_all=self.config.match_all,
+                pcre_options=self._get_pcre_options()
             )
         if self._should_read_stdin():
             options.path_source = StreamReader(
@@ -213,6 +220,8 @@ signal.signal(signal.SIGINT, handle_interrupt)
 
 def display_version() -> None:
     print(f"Wordfence CLI {__version__}")
+    jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
+    print(f"PCRE Version: {pcre.VERSION} - JIT Supported: {jit_support_text}")
 
 
 def main(config) -> int:
