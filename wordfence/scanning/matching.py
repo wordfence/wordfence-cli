@@ -57,9 +57,16 @@ class RegexMatcherContext(MatcherContext):
         common_string_counts = {}
         for index, common_string in enumerate(self.matcher.common_strings):
             if not self.common_string_states[index]:
-                match = common_string.pattern.match(chunk)
-                if match is not None:
-                    self.common_string_states[index] = True
+                try:
+                    match = common_string.pattern.match(chunk)
+                    if match is not None:
+                        self.common_string_states[index] = True
+                except PcreException as e:
+                    log.debug(
+                            'Common string matching failed for '
+                            f'{common_string.common_string.string} with error:'
+                            f' {e}'
+                        )
             if self.common_string_states[index]:
                 for identifier in common_string.common_string.signature_ids:
                     if identifier in self.matches:
@@ -95,7 +102,7 @@ class RegexMatcherContext(MatcherContext):
                         match.matched_string
                 return True
         except PcreException as e:
-            log.warning(
+            log.debug(
                     'Signature matching failed for '
                     f'{signature.signature.identifier}, {e}'
                 )
