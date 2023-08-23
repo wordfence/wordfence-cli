@@ -41,4 +41,3 @@ By default, `wordfence-cli.ini` will reside in `~/.config/wordfence/wordfence-cl
 - `--configure`: Interactively configure Wordfence CLI.
 - `--version`: Display the version of Wordfence CLI.
 - `--check-for-update`: Whether or not to run the update check.
-- `--noc1-url`: URL to use for accessing the NOC1 API.

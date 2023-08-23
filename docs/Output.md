@@ -1,6 +1,24 @@
 # Output
 
-TODO
+By default Wordfence CLI will print a banner followed by which paths it was supplied for scanning:
+
+	                             
+	             ▓▓▓                                                                   
+	        ▓▓▓▓▓   ▓▓▓▓▓          _       __               __  ____                   
+	  ▓▓▓▓▓▓▓           ▓▓▓▓▓▓▓   | |     / /___  _________/ / / __/__  ____  ________ 
+	 ▓▓           ▓           ▓▓  | | /| / / __ \/ ___/ __  /_/ /_/ _ \/ __ \/ ___/ _ \
+	▓▓     ▓▓    ▓▓▓    ▓▓     ▓▓ | |/ |/ / /_/ / /  / /_/ /_  __/  __/ / / / /__/  __/
+	▓▓      ▓     ▓     ▓      ▓▓ |__/|__/\____/_/   \____/ /_/  \___/_/ /_/\___/\___/ 
+	▓▓    ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    ▓▓                                       ____ _     ___ 
+	▓▓  ▓▓▓ ▓    ▓▓▓    ▓ ▓▓▓  ▓▓                                      / ___| |   |_ _|
+	▓▓▓▓▓   ▓    ▓▓▓    ▓   ▓▓▓▓▓                                     | |   | |    | | 
+	 ▓▓     ▓   ▓▓ ▓▓   ▓     ▓▓                                      | |___| |___ | | 
+	  ▓▓▓▓▓▓▓▓▓▓▓▓ ▓▓▓▓▓▓▓▓▓▓▓▓                                        \____|_____|___|
+	                                                                                   
+	Scanning path: /var/www/
+	Scanning path: /home/user/
+
+Files found that match a siganture matches are printed in the output as well. There are additionally the `--verbose` and `--debug` options that can be used to get further information about what Wordfence CLI is doing unde the hood.
 
 ## Report Formats
 
