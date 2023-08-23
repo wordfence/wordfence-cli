@@ -357,7 +357,7 @@ class ProgressDisplay:
     def handle_update(self, update: ScanProgressUpdate) -> None:
         curses.update_lines_cols()
         self._display_metrics(update.metrics)
-        # self.refresh()
+        self.refresh()
 
     @staticmethod
     def metric_boxes_per_row(columns: int, padding: int = METRICS_PADDING):
@@ -426,7 +426,10 @@ class ProgressDisplay:
         return ProgressDisplay.get_layout_values(worker_count,
                                                  banner_height, cols, rows)
 
-    def scan_finished_handler(self, metrics: ScanMetrics, timer: timing.Timer) -> None:
+    def scan_finished_handler(
+                self, metrics: ScanMetrics,
+                timer: timing.Timer
+            ) -> None:
         messages = get_scan_finished_messages(metrics, timer)
         vals = self._get_layout_values()
         vertical_offset = (vals.last_metric_line +

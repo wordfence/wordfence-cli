@@ -386,12 +386,16 @@ ScanResultCallback = Callable[[ScanResult], None]
 ProgressReceiverCallback = Callable[[ScanProgressUpdate], None]
 ScanFinishedCallback = Callable[[ScanMetrics, timing.Timer], None]
 
+
 class ScanFinishedMessages(NamedTuple):
     results: str
     timeouts: Optional[str]
 
 
-def get_scan_finished_messages(metrics: ScanMetrics, timer: timing.Timer) -> ScanFinishedMessages:
+def get_scan_finished_messages(
+            metrics: ScanMetrics,
+            timer: timing.Timer
+        ) -> ScanFinishedMessages:
     match_count = metrics.get_total_matches()
     total_count = metrics.get_total_count()
     byte_count = metrics.get_total_bytes()
@@ -407,7 +411,10 @@ def get_scan_finished_messages(metrics: ScanMetrics, timer: timing.Timer) -> Sca
     return ScanFinishedMessages(results_message, timeouts_message)
 
 
-def default_scan_finished_handler(metrics: ScanMetrics, timer: timing.Timer) -> None:
+def default_scan_finished_handler(
+            metrics: ScanMetrics,
+            timer: timing.Timer
+        ) -> None:
     """Used as the default ScanFinishedCallback"""
     messages = get_scan_finished_messages(metrics, timer)
     if messages.timeouts:
@@ -441,7 +448,6 @@ class ScanWorkerPool:
         self._scanned_content_limit = scanned_content_limit
         self._started = False
         self._use_log_events = use_log_events
-
 
     def __enter__(self):
         self.start()

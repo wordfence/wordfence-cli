@@ -174,7 +174,7 @@ class ScanCommand:
         if self.config.progress:
             global screen_handler
             if ProgressDisplay.requirements_met(int(self.config.workers),
-                                          self.config.banner):
+                                                self.config.banner):
                 progress = ProgressDisplay(int(self.config.workers))
                 screen_handler = progress.get_log_handler()
                 remove_initial_handler()
