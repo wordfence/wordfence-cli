@@ -250,7 +250,7 @@ class LayoutValues(NamedTuple):
 class ProgressDisplay:
 
     METRICS_PADDING = 1
-    METRICS_COUNT = 4
+    METRICS_COUNT = 3
     MIN_MESSAGE_BOX_HEIGHT = 4
 
     def __init__(self, worker_count: int):
