@@ -18,7 +18,7 @@ By default Wordfence CLI will print a banner followed by which paths it was supp
 	Scanning path: /var/www/
 	Scanning path: /home/user/
 
-Files found that match a siganture matches are printed in the output as well. There are additionally the `--verbose` and `--debug` options that can be used to get further information about what Wordfence CLI is doing unde the hood.
+Files found that match a signature matches are printed in the output as well. There are additionally the `--verbose` and `--debug` options that can be used to get further information about what Wordfence CLI is doing under the hood.
 
 ## Report Formats
 
