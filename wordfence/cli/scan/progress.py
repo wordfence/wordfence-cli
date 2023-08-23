@@ -1,10 +1,14 @@
 import curses
+import logging
 import os
+import unicodedata
 from math import ceil
 from typing import List, Optional, NamedTuple
 
-from wordfence.scanning.scanner import ScanProgressUpdate, ScanMetrics, get_scan_finished_messages
+from wordfence.scanning.scanner import (ScanProgressUpdate, ScanMetrics,
+                                        get_scan_finished_messages)
 from ..banner.banner import get_welcome_banner, should_show_welcome_banner
+from ...logging.Handlers import CursesHandler
 from ...util import timing
 from ...logging import log
 
@@ -37,6 +41,20 @@ def compute_center_offset_str(string: str, cols=None) -> int:
     return compute_center_offset(len(string), cols)
 
 
+class StreamToWindow:
+
+    def __init__(self, window: curses.window, parent: curses.window):
+        self.window = window
+        self.parent = parent
+
+    def write(self, line):
+        window = self.window
+        # strip control characters
+        line = "".join(ch for ch in line if unicodedata.category(ch)[0] != "C")
+        window.addstr(f"\n {line}")
+        window.refresh()
+
+
 class Box:
 
     def __init__(
@@ -56,14 +74,16 @@ class Box:
         if True or self.parent is None:
             window = curses.newwin(height, width, 0, 0)
         else:
-            # from `man subwin`: The subwindow functions (subwin, derwin,
-            # mvderwin,  wsyncup,  wsyncdown,  wcursyncup, syncok) are
-            # flaky, incompletely implemented, and not well tested
             window = self.parent.subwin(height, width, 0, 0)
         return window
 
     def set_position(self, y: int, x: int) -> None:
-        self.window.mvwin(y, x)
+        try:
+            self.window.mvwin(y, x)
+        except Exception:
+            raise ValueError(f"error moving window: y: {y}, x: {x}; width:"
+                             f" {self.get_width()}; "
+                             f"height: {self.get_height()}")
 
     def compute_size(self) -> (int, int):
         height = self.get_height()
@@ -112,6 +132,43 @@ class Metric:
     def __init__(self, label: str, value):
         self.label = label
         self.value = str(value)
+
+
+class MessageBox(Box):
+    def __init__(
+                self,
+                parent,
+                height: int,
+                title: Optional[str] = None
+            ):
+        self._height = height
+        super().__init__(parent, title=title, border=False)
+        self.window.nodelay(True)
+        self.window.scrollok(True)
+        self.window.idlok(True)
+        self.window.addstr(" Scan messages will display here")
+        self.window.refresh()
+        self.parent.refresh()
+
+    def resize(self) -> None:
+        pass
+
+    def render(self) -> None:
+        pass
+
+    def get_width(self) -> int:  # take the full width
+        # take the full width, taking borders into account
+        return self.parent.getmaxyx()[1] - 2
+
+    def get_height(self) -> int:
+        return self._height
+
+    def draw_content(self) -> None:
+        pass
+
+    def update(self) -> None:
+        self.window.syncup()
+        self.window.noutrefresh()
 
 
 class MetricBox(Box):
@@ -172,6 +229,7 @@ class BoxLayout:
 
     def position(self, box: Box) -> None:
         height, width = box.compute_size()
+        # check for wrapping
         if self.cols - self.x < width:
             self.y += self.max_row_height + self.padding
             self.x = 0
@@ -179,7 +237,6 @@ class BoxLayout:
         box.set_position(self.y, self.x)
         self.max_row_height = max(height, self.max_row_height)
         self.x += width + self.padding
-        # self.y += height + self.padding
 
 
 class LayoutValues(NamedTuple):
@@ -190,12 +247,14 @@ class LayoutValues(NamedTuple):
     metric_height: int
     banner_height: int
     last_metric_line: int
+    ideal_message_box_height: int
 
 
 class ProgressDisplay:
 
     METRICS_PADDING = 1
     METRICS_COUNT = 4
+    MIN_MESSAGE_BOX_HEIGHT = 4
 
     def __init__(self, worker_count: int):
         _displays.append(self)
@@ -209,8 +268,10 @@ class ProgressDisplay:
         curses.curs_set(0)
         self.clear()
         # self.banner_offset = self.display_banner()
-        self.banner_box = self.initialize_banner()
+        self.banner_box = self._initialize_banner()
         self.metric_boxes = self._initialize_metric_boxes()
+        self.message_box = self._initialize_message_box()
+        self._initialize_layout()
         self.refresh()
 
     def _setup_colors(self) -> None:
@@ -233,7 +294,7 @@ class ProgressDisplay:
         curses.endwin()
         _displays.remove(self)
 
-    def initialize_banner(self) -> Optional[BannerBox]:
+    def _initialize_banner(self) -> Optional[BannerBox]:
         banner = get_welcome_banner()
         if banner is None:
             return None
@@ -258,12 +319,15 @@ class ProgressDisplay:
             raise ValueError("Metrics count is out of sync")
         return metrics
 
+    def _initialize_message_box(self) -> MessageBox:
+        layout_values = self._get_layout_values()
+        # raise ValueError(layout_values)
+        return MessageBox(self.stdscr,
+                          layout_values.ideal_message_box_height,
+                          "scan messages")
+
     def _initialize_metric_boxes(self) -> List[MetricBox]:
         default_metrics = ScanMetrics(self.worker_count)
-        layout = BoxLayout(curses.LINES, curses.COLS, self.METRICS_PADDING)
-        if self.banner_box is not None:
-            layout.position(self.banner_box)
-            self.banner_box.update()
         boxes = []
         for worker_index in range(0, self.worker_count):
             display_index = worker_index + 1
@@ -272,11 +336,20 @@ class ProgressDisplay:
                     self._get_metrics(default_metrics, worker_index),
                     title=f'Worker {display_index}'
                 )
+            boxes.append(box)
+        return boxes
+
+    def _initialize_layout(self) -> None:
+        layout = BoxLayout(curses.LINES, curses.COLS, self.METRICS_PADDING)
+        if self.banner_box is not None:
+            layout.position(self.banner_box)
+            self.banner_box.update()
+        for box in self.metric_boxes:
             layout.position(box)
             box.update()
-            boxes.append(box)
+        layout.position(self.message_box)
+        self.message_box.update()
         self.refresh()
-        return boxes
 
     def _display_metrics(self, metrics: ScanMetrics) -> None:
         layout = BoxLayout(curses.LINES, curses.COLS)
@@ -309,7 +382,7 @@ class ProgressDisplay:
                           rows: Optional[int] = None):
         if banner_height is None:
             banner = get_welcome_banner()
-            banner_height = len(banner.rows) if banner is not None else 0
+            banner_height = len(banner.rows) + 1 if banner is not None else 0
         if cols is None or rows is None:
             _cols, _rows = os.get_terminal_size()
             cols = _cols if cols is None else cols
@@ -318,19 +391,44 @@ class ProgressDisplay:
         metric_height = ProgressDisplay.METRICS_COUNT + 2
         metrics_per_row = ProgressDisplay.metric_boxes_per_row(cols)
         metric_rows = ceil(worker_count / metrics_per_row)
-        padding = (0 if banner_height == 0 else 2) + (metric_rows - 1)
+        padding = (0 if banner_height == 0 else 3) + (metric_rows - 1)
         last_metric_line = ((metric_height * metric_rows) + banner_height +
                             padding) - 1
+        ideal_message_box_height = 0
+        top_and_bottom_adjustment = 2
+        final_message_spaceholder = 2
+        min_message_box_space = (ProgressDisplay.MIN_MESSAGE_BOX_HEIGHT +
+                                 top_and_bottom_adjustment)
+        if (last_metric_line + min_message_box_space +
+                final_message_spaceholder <= rows):
+            max_height = (rows - last_metric_line - top_and_bottom_adjustment
+                          - final_message_spaceholder)
+            extra_rows = max_height - ProgressDisplay.MIN_MESSAGE_BOX_HEIGHT
+            if extra_rows <= 2:
+                ideal_message_box_height = max_height + extra_rows
+            else:
+                ideal_message_box_height = max_height - 1
         return LayoutValues(rows, cols, metrics_per_row, metric_rows,
-                            metric_height, banner_height, last_metric_line)
+                            metric_height, banner_height, last_metric_line,
+                            ideal_message_box_height)
+
+    def get_log_handler(self) -> logging.Handler:
+        return CursesHandler(self.message_box.window, self.message_box.parent)
+
+    def get_output_stream(self) -> StreamToWindow:
+        return StreamToWindow(self.message_box.window, self.message_box.parent)
 
     @staticmethod
     def requirements_met(worker_count: int, show_banner: True):
         banner_height = None if should_show_welcome_banner(show_banner) else 0
         layout_values = ProgressDisplay.get_layout_values(
             worker_count, banner_height)
-        return layout_values.rows >= layout_values.last_metric_line and \
-            layout_values.cols >= (METRIC_BOX_WIDTH + 2)
+        # raise ValueError(layout_values)
+        combined_height = (layout_values.last_metric_line +
+                           layout_values.ideal_message_box_height)
+        return (layout_values.rows >= combined_height and
+                layout_values.ideal_message_box_height > 0 and
+                layout_values.cols >= (METRIC_BOX_WIDTH + 2))
 
     def _get_layout_values(self) -> LayoutValues:
         rows, cols = self.stdscr.getmaxyx()
@@ -342,7 +440,8 @@ class ProgressDisplay:
     def scan_finished_handler(self, metrics: ScanMetrics, timer: timing.Timer) -> None:
         messages = get_scan_finished_messages(metrics, timer)
         vals = self._get_layout_values()
-        vertical_offset = vals.last_metric_line + 1
+        vertical_offset = (vals.last_metric_line +
+                           vals.ideal_message_box_height) + 1
         exit_message = "Press any key to exit"
         message_lines = ceil(len(messages.results) / vals.cols) + (
                         ceil(len(exit_message) / vals.cols))
