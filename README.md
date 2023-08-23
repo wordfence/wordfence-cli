@@ -28,7 +28,9 @@ Visit [https://www.wordfence.com/products/wordfence-cli/](https://www.wordfence.
 
 You can run `wordfence scan --help` for a full list of options that can be passed to Wordfence CLI. Read more about the [configuration options](/wordfence/wordfence-cli/blob/main/docs/Configuration.md) that can be passed to Wordfence CLI.
 
-Recursively scanning the `/var/www` directory and writing the results to `/home/username/wordfence-cli.csv`. 
+#### Example
+
+Recursively scanning the `/var/www` directory and writing the results to `/home/username/wordfence-cli.csv`:
 
 	wordfence scan --output-path /home/username/wordfence-cli.csv /var/www
 
