@@ -20,6 +20,10 @@ MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
 QUEUE_READ_TIMEOUT = 0
 DEFAULT_CHUNK_SIZE = 1024 * 1024
+FILE_LOCATOR_WORKER_INDEX = 0
+"""Used by the file locator process when sending events"""
+
+LoggerCallback = Callable[[str, str], None]
 
 
 class ScanConfigurationException(ScanningException):
@@ -48,11 +52,22 @@ class Status(IntEnum):
 
 class FileLocator:
 
-    def __init__(self, path: str, queue: Queue, file_filter: FileFilter):
+    def __init__(self, path: str,
+                 queue: Queue,
+                 file_filter: FileFilter,
+                 logger_callback: Optional[LoggerCallback] = None):
         self.path = path
         self.queue = queue
         self.file_filter = file_filter
         self.located_count = 0
+        self._logger_callback = logger_callback
+
+    def _log(self, level: str, message: str):
+        if self._logger_callback:
+            self._logger_callback(level, message)
+        else:
+            method = getattr(log, level.lower())
+            method(message)
 
     def search_directory(self, path: str):
         try:
@@ -73,7 +88,7 @@ class FileLocator:
         real_path = os.path.realpath(self.path)
         if os.path.isdir(real_path):
             for path in self.search_directory(real_path):
-                log.debug(f'File added to scan queue: {path}')
+                self._log('debug', f'File added to scan queue: {path}')
                 self.queue.put(path)
         else:
             self.queue.put(real_path)
@@ -85,9 +100,16 @@ class FileLocatorProcess(Process):
                 self,
                 input_queue_size: int = 10,
                 output_queue_size: int = MAX_PENDING_FILES,
-                file_filter: FileFilter = None
+                file_filter: FileFilter = None,
+                use_log_events: bool = False,
+                event_queue: Optional[Queue] = None
             ):
         self._input_queue = Queue(input_queue_size)
+        if use_log_events and not event_queue:
+            raise ValueError("An event queue is required when using log "
+                             "events")
+        self._use_log_events = use_log_events
+        self._event_queue = event_queue
         self.output_queue = Queue(output_queue_size)
         self.file_filter = file_filter \
             if file_filter is not None \
@@ -95,9 +117,23 @@ class FileLocatorProcess(Process):
         self._path_count = 0
         super().__init__(name='file-locator')
 
+    def _log(self, level: str, message: str) -> None:
+        if self._use_log_events:
+            data = {
+                'level': level,
+                'message': message
+            }
+            self._event_queue.put(
+                ScanEvent(ScanEventType.LOG_MESSAGE, data,
+                          worker_index=FILE_LOCATOR_WORKER_INDEX)
+            )
+        else:
+            method = getattr(log, level.lower())
+            method(message)
+
     def add_path(self, path: str):
         self._path_count += 1
-        log.info(f'Scanning path: {path}')
+        self._log('info', f'Scanning path: {path}')
         self._input_queue.put(path)
 
     def finalize_paths(self):
@@ -116,7 +152,8 @@ class FileLocatorProcess(Process):
                 locator = FileLocator(
                         path=path,
                         file_filter=self.file_filter,
-                        queue=self.output_queue
+                        queue=self.output_queue,
+                        logger_callback=self._log
                     )
                 locator.locate()
             self.output_queue.put(None)
@@ -131,6 +168,7 @@ class ScanEventType(IntEnum):
     EXCEPTION = 3
     FATAL_EXCEPTION = 4
     PROGRESS_UPDATE = 5
+    LOG_MESSAGE = 6
 
 
 class ScanEvent:
@@ -151,9 +189,9 @@ class ScanEvent:
 
 class ScanProgressMonitor(Process):
 
-    def __init__(self, status: Value, result_queue: Queue):
+    def __init__(self, status: Value, event_queue: Queue):
         super().__init__(name='progress-monitor')
-        self._result_queue = result_queue
+        self._event_queue = event_queue
         self._status = status
 
     def is_scan_running(self) -> bool:
@@ -163,7 +201,7 @@ class ScanProgressMonitor(Process):
     def run(self):
         while self.is_scan_running():
             time.sleep(1)
-            self._result_queue.put(ScanEvent(ScanEventType.PROGRESS_UPDATE))
+            self._event_queue.put(ScanEvent(ScanEventType.PROGRESS_UPDATE))
 
 
 class ScanWorker(Process):
@@ -173,28 +211,39 @@ class ScanWorker(Process):
                 index: int,
                 status: Value,
                 work_queue: Queue,
-                result_queue: Queue,
+                event_queue: Queue,
                 matcher: Matcher,
                 chunk_size: int = DEFAULT_CHUNK_SIZE,
-                scanned_content_limit: Optional[int] = None
+                scanned_content_limit: Optional[int] = None,
+                use_log_events: bool = False
             ):
         self.index = index
         self._status = status
         self._work_queue = work_queue
-        self._result_queue = result_queue
+        self._event_queue = event_queue
         self._matcher = matcher
         self._chunk_size = chunk_size
         self._working = True
         self._scanned_content_limit = scanned_content_limit
+        self._use_log_events = use_log_events
         self.complete = Value(c_bool, False)
         super().__init__(name=self._generate_name())
 
     def _generate_name(self) -> str:
         return 'worker-' + str(self.index)
 
+    def _log(self, level: str, message: str) -> None:
+        if self._use_log_events:
+            self._put_event(ScanEventType.LOG_MESSAGE,
+                            {'level': level, 'message': message})
+        else:
+            method = getattr(log, level.lower())
+            method(message)
+
     def work(self):
         self._working = True
-        log.debug(f'Worker {self.index} started, PID:' + str(os.getpid()))
+        self._log('debug',
+                  f'Worker {self.index} started, PID:' + str(os.getpid()))
         with PcreJitStack() as jit_stack:
             while self._working:
                 try:
@@ -216,7 +265,7 @@ class ScanWorker(Process):
     def _put_event(self, event_type: ScanEventType, data: dict = None) -> None:
         if data is None:
             data = {}
-        self._result_queue.put(
+        self._event_queue.put(
                 ScanEvent(event_type, data, worker_index=self.index)
             )
 
@@ -238,7 +287,7 @@ class ScanWorker(Process):
 
     def _process_file(self, path: str, jit_stack: PcreJitStack):
         try:
-            log.debug(f'Processing file: {path}')
+            self._log('debug', f'Processing file: {path}')
             with open(path, mode='rb') as file, \
                     self._matcher.create_context() as context:
                 length = 0
@@ -337,7 +386,6 @@ ScanResultCallback = Callable[[ScanResult], None]
 ProgressReceiverCallback = Callable[[ScanProgressUpdate], None]
 ScanFinishedCallback = Callable[[ScanMetrics, timing.Timer], None]
 
-
 class ScanFinishedMessages(NamedTuple):
     results: str
     timeouts: Optional[str]
@@ -373,22 +421,27 @@ class ScanWorkerPool:
                 self,
                 size: int,
                 work_queue: Queue,
+                event_queue: Queue,
                 matcher: Matcher,
                 metrics: ScanMetrics,
                 timer: timing.Timer,
                 progress_receiver: Optional[ProgressReceiverCallback] = None,
                 chunk_size: int = DEFAULT_CHUNK_SIZE,
-                scanned_content_limit: Optional[int] = None
+                scanned_content_limit: Optional[int] = None,
+                use_log_events: bool = False
             ):
         self.size = size
         self._matcher = matcher
         self._work_queue = work_queue
+        self._event_queue = event_queue
         self.metrics = metrics
         self._timer = timer
         self._progress_receiver = progress_receiver
         self._chunk_size = chunk_size
         self._scanned_content_limit = scanned_content_limit
         self._started = False
+        self._use_log_events = use_log_events
+
 
     def __enter__(self):
         self.start()
@@ -415,12 +468,11 @@ class ScanWorkerPool:
         if self._started:
             raise ScanningException('Worker pool has already been started')
         self._status = Value(c_uint, Status.LOCATING_FILES)
-        self._result_queue = Queue(MAX_PENDING_RESULTS)
         self._workers = []
         if self.has_progress_receiver():
             self._monitor = ScanProgressMonitor(
                     self._status,
-                    self._result_queue
+                    self._event_queue
                 )
             self._monitor.start()
             self._send_progress_update()
@@ -431,10 +483,11 @@ class ScanWorkerPool:
                     i,
                     self._status,
                     self._work_queue,
-                    self._result_queue,
+                    self._event_queue,
                     self._matcher,
                     self._chunk_size,
-                    self._scanned_content_limit
+                    self._scanned_content_limit,
+                    self._use_log_events
                 )
             worker.start()
             self._workers.append(worker)
@@ -471,16 +524,19 @@ class ScanWorkerPool:
             ):
         self._assert_started()
         while True:
-            event = self._result_queue.get()
+            event = self._event_queue.get()
             if event is None:
                 log.debug('All workers have completed and all results have '
                           'been processed.')
                 self._status.value = Status.COMPLETE
                 return
             elif event.type == ScanEventType.COMPLETED:
-                log.debug(f'Worker {event.worker_index} completed')
+                if event.worker_index != FILE_LOCATOR_WORKER_INDEX:
+                    log.debug(f'Worker {event.worker_index} completed')
+                else:
+                    log.debug("File locator process exited")
                 if self.is_complete():
-                    self._result_queue.put(None)
+                    self._event_queue.put(None)
             elif event.type == ScanEventType.FILE_PROCESSED:
                 result = ScanResult(
                         event.data['path'],
@@ -512,6 +568,10 @@ class ScanWorkerPool:
                 raise event.data['exception']
             elif event.type == ScanEventType.PROGRESS_UPDATE:
                 self._send_progress_update()
+            elif event.type == ScanEventType.LOG_MESSAGE:
+                message: str = event.data['message']
+                method = getattr(log, event.data['level'].lower())
+                method(message)
 
     def is_failed(self) -> bool:
         return self._status.value == Status.FAILED
@@ -527,26 +587,21 @@ class Scanner:
         self.failed += 1
         raise error
 
-    def _initialize_worker(
-                self,
-                status: Value,
-                work_queue: Queue,
-                result_queue: Queue
-            ):
-        worker = ScanWorker(status, work_queue, result_queue)
-        worker.work()
-
     def scan(
                 self,
                 result_processor: ScanResultCallback,
                 progress_receiver: Optional[ProgressReceiverCallback] = None,
                 scan_finished_handler: ScanFinishedCallback =
-                default_scan_finished_handler
+                default_scan_finished_handler,
+                use_log_events: bool = False
             ):
         """Run a scan"""
         timer = timing.Timer()
+        event_queue = Queue(MAX_PENDING_RESULTS)
         file_locator_process = FileLocatorProcess(
-                file_filter=self.options.file_filter
+                file_filter=self.options.file_filter,
+                use_log_events=use_log_events,
+                event_queue=event_queue if use_log_events else None
             )
         file_locator_process.start()
         for path in self.options.paths:
@@ -562,12 +617,14 @@ class Scanner:
         with ScanWorkerPool(
                     size=worker_count,
                     work_queue=file_locator_process.output_queue,
+                    event_queue=event_queue,
                     matcher=matcher,
                     metrics=metrics,
                     timer=timer,
                     progress_receiver=progress_receiver,
                     chunk_size=self.options.chunk_size,
                     scanned_content_limit=self.options.scanned_content_limit,
+                    use_log_events=use_log_events
                 ) as worker_pool:
             if self.options.path_source is not None:
                 log.debug('Reading input paths...')
