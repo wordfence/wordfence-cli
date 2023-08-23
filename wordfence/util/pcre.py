@@ -1,6 +1,7 @@
 from ctypes import cdll, c_char_p, c_void_p, c_int, c_ulong, c_ubyte, byref, \
-        create_string_buffer, Structure, POINTER, CFUNCTYPE
+        Structure, POINTER, CFUNCTYPE
 from ctypes.util import find_library
+from enum import IntEnum
 from typing import Optional
 
 
@@ -27,8 +28,40 @@ _pcre_version.restype = c_char_p
 VERSION = _pcre_version().decode('ascii')
 
 
-PCRE_ERROR_NOMATCH = -1
-PCRE_ERROR_BADOPTION = 3
+class PcreError(IntEnum):
+    NOMATCH = -1
+    NULL = -2
+    BADOPTION = -3
+    BADMAGIN = -4
+    UNKNOWN_OPCODE = -5
+    NOMEMORY = -6
+    NOSUBSTRING = -7
+    MATCHLIMIT = -8
+    CALLOUT = -9
+    BADUTF = -10
+    BASEUTF_OFFSET = -11
+    PARTIAL = -12
+    BADPARTIAL = -13
+    INTERNAL = -14
+    BADCOUNT = -15
+    DFA_UITEM = -16
+    DFA_COND = -17
+    DFA_UMLIMIT = -18
+    DFA_WSSIZE = -19
+    DFA_RECURSE = -20
+    RECURSION_LIMIT = -21
+    NULLWSLIMIT = -22
+    BADNEWLINE = -23
+    BADOFFSET = -24
+    SHORTUTF = -25
+    RECURSELOOP = -26
+    JIT_STACKLIMIT = -27
+    BADMODE = -28
+    BADENDIANNESS = -29
+    DFA_BADRESTART = -30
+    JIT_BADOPTION = -31
+    BADLENGTH = -32
+    UNSET = -33
 
 
 _pcre_config = pcre.pcre_config
@@ -301,11 +334,18 @@ class PcrePattern:
         if temporary_jit_stack:
             jit_stack.free()
         if result < 0:
-            if result == PCRE_ERROR_NOMATCH:
-                return None
-            else:
+            try:
+                error = PcreError(result)
+                if error is PcreError.NOMATCH:
+                    return None
+                else:
+                    raise PcreException(
+                            'Matching failed with error: '
+                            f'{error.name}({error.value})'
+                        )
+            except ValueError:
                 raise PcreException(
-                        f'Matching failed with error code: {result}'
+                        f'Matching failed with unknown error: {result}'
                     )
         else:
             matched_string = subject[ovector[0]:ovector[1]]
