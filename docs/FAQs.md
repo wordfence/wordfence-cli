@@ -18,9 +18,9 @@ Wordfence CLI is a stand-alone, command-line, malware scanner written in Python.
 
 #### If I have Wordfence CLI, do I need the Wordfence plugin too?
 
-If you are a WordPress site owner who is looking for a security solution, the Wordfence plugin offers comprehensive protection and intrustion detection. Wordfence CLI can be used alongside the Wordfence plugin. Wordfence CLI would be used instead of the malware detection functionality of the Wordfence plugin's scan. 
+If you are a WordPress site owner who is looking for a security solution, the Wordfence plugin offers comprehensive protection and intrusion detection. Wordfence CLI can be used alongside the Wordfence plugin. Wordfence CLI would be used instead of the malware detection functionality of the Wordfence plugin's scan. 
 
-#### If I want to run Wordfence CLI alongside the Wordfence plugin, as a replacement for the malware scanner. Are there any scanner settings I can turn off in the plugin to reduce redundancy?
+#### If I want to run Wordfence CLI alongside the Wordfence plugin, as a replacement for the malware scanner, are there any scanner settings I can turn off in the plugin to reduce redundancy?
 
 Yes. Within the Wordfence plugin scan options, you can disable the "Scan file contents for backdoors, trojans and suspicious code" scan option and rely on Wordfence CLI to perform the malware scan.
 
@@ -46,7 +46,7 @@ Or
 
 #### How often are signatures refreshed locally?
 
-Once every 24 hours. You can use the `--purge-cache` command line argument to refresh the siganture set.
+Once every 24 hours. You can use the `--purge-cache` command line argument to refresh the signature set.
 
 #### How many workers can I run on my system?
 
