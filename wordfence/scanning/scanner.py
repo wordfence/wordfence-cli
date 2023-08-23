@@ -6,6 +6,7 @@ from enum import IntEnum
 from multiprocessing import Queue, Process, Value
 from dataclasses import dataclass
 from typing import Set, Optional, Callable, Dict, NamedTuple
+from logging import Handler
 
 from .exceptions import ScanningException
 from .matching import Matcher, RegexMatcher
@@ -14,7 +15,7 @@ from ..util import timing
 from ..util.io import StreamReader
 from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
 from ..intel.signatures import SignatureSet
-from ..logging import log
+from ..logging import log, remove_initial_handler
 
 MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
@@ -23,11 +24,49 @@ DEFAULT_CHUNK_SIZE = 1024 * 1024
 FILE_LOCATOR_WORKER_INDEX = 0
 """Used by the file locator process when sending events"""
 
-LoggerCallback = Callable[[str, str], None]
-
 
 class ScanConfigurationException(ScanningException):
     pass
+
+
+class ScanEventType(IntEnum):
+    COMPLETED = 0
+    FILE_QUEUE_EMPTIED = 1
+    FILE_PROCESSED = 2
+    EXCEPTION = 3
+    FATAL_EXCEPTION = 4
+    PROGRESS_UPDATE = 5
+    LOG_MESSAGE = 6
+
+
+class EventQueueLogHandler(Handler):
+
+    def __init__(self, event_queue: Queue, worker_index: int):
+        self._event_queue = event_queue
+        self._worker_index = worker_index
+        Handler.__init__(self)
+
+    def emit(self, record):
+        data = {
+                'level': record.levelname,
+                'message': record.getMessage()
+            }
+        self._event_queue.put(
+            ScanEvent(
+                ScanEventType.LOG_MESSAGE,
+                data,
+                worker_index=self._worker_index
+            )
+        )
+
+
+def use_event_queue_log_handler(event_queue: Queue, worker_index: int) -> None:
+    handler = EventQueueLogHandler(
+            event_queue,
+            worker_index
+        )
+    remove_initial_handler()
+    log.addHandler(handler)
 
 
 @dataclass
@@ -55,19 +94,11 @@ class FileLocator:
     def __init__(self, path: str,
                  queue: Queue,
                  file_filter: FileFilter,
-                 logger_callback: Optional[LoggerCallback] = None):
+                 ):
         self.path = path
         self.queue = queue
         self.file_filter = file_filter
         self.located_count = 0
-        self._logger_callback = logger_callback
-
-    def _log(self, level: str, message: str):
-        if self._logger_callback:
-            self._logger_callback(level, message)
-        else:
-            method = getattr(log, level.lower())
-            method(message)
 
     def search_directory(self, path: str):
         try:
@@ -88,7 +119,7 @@ class FileLocator:
         real_path = os.path.realpath(self.path)
         if os.path.isdir(real_path):
             for path in self.search_directory(real_path):
-                self._log('debug', f'File added to scan queue: {path}')
+                log.debug(f'File added to scan queue: {path}')
                 self.queue.put(path)
         else:
             self.queue.put(real_path)
@@ -105,35 +136,20 @@ class FileLocatorProcess(Process):
                 event_queue: Optional[Queue] = None
             ):
         self._input_queue = Queue(input_queue_size)
-        if use_log_events and not event_queue:
-            raise ValueError("An event queue is required when using log "
-                             "events")
-        self._use_log_events = use_log_events
-        self._event_queue = event_queue
         self.output_queue = Queue(output_queue_size)
         self.file_filter = file_filter \
             if file_filter is not None \
             else FileFilter([filter_any])
+        if use_log_events and not event_queue:
+            raise ValueError('Using log events requires an event queue')
+        self._use_log_events = use_log_events
+        self._event_queue = event_queue
         self._path_count = 0
         super().__init__(name='file-locator')
 
-    def _log(self, level: str, message: str) -> None:
-        if self._use_log_events:
-            data = {
-                'level': level,
-                'message': message
-            }
-            self._event_queue.put(
-                ScanEvent(ScanEventType.LOG_MESSAGE, data,
-                          worker_index=FILE_LOCATOR_WORKER_INDEX)
-            )
-        else:
-            method = getattr(log, level.lower())
-            method(message)
-
     def add_path(self, path: str):
         self._path_count += 1
-        self._log('info', f'Scanning path: {path}')
+        log.info(f'Scanning path: {path}')
         self._input_queue.put(path)
 
     def finalize_paths(self):
@@ -147,28 +163,22 @@ class FileLocatorProcess(Process):
         return self.output_queue.get()
 
     def run(self):
+        if self._use_log_events:
+            use_event_queue_log_handler(
+                    self._event_queue,
+                    FILE_LOCATOR_WORKER_INDEX
+                )
         try:
             while (path := self._input_queue.get()) is not None:
                 locator = FileLocator(
                         path=path,
                         file_filter=self.file_filter,
-                        queue=self.output_queue,
-                        logger_callback=self._log
+                        queue=self.output_queue
                     )
                 locator.locate()
             self.output_queue.put(None)
         except ScanningException as exception:
             self.output_queue.put(exception)
-
-
-class ScanEventType(IntEnum):
-    COMPLETED = 0
-    FILE_QUEUE_EMPTIED = 1
-    FILE_PROCESSED = 2
-    EXCEPTION = 3
-    FATAL_EXCEPTION = 4
-    PROGRESS_UPDATE = 5
-    LOG_MESSAGE = 6
 
 
 class ScanEvent:
@@ -232,18 +242,9 @@ class ScanWorker(Process):
     def _generate_name(self) -> str:
         return 'worker-' + str(self.index)
 
-    def _log(self, level: str, message: str) -> None:
-        if self._use_log_events:
-            self._put_event(ScanEventType.LOG_MESSAGE,
-                            {'level': level, 'message': message})
-        else:
-            method = getattr(log, level.lower())
-            method(message)
-
     def work(self):
         self._working = True
-        self._log('debug',
-                  f'Worker {self.index} started, PID:' + str(os.getpid()))
+        log.debug(f'Worker {self.index} started, PID:' + str(os.getpid()))
         with PcreJitStack() as jit_stack:
             while self._working:
                 try:
@@ -287,7 +288,7 @@ class ScanWorker(Process):
 
     def _process_file(self, path: str, jit_stack: PcreJitStack):
         try:
-            self._log('debug', f'Processing file: {path}')
+            log.debug(f'Processing file: {path}')
             with open(path, mode='rb') as file, \
                     self._matcher.create_context() as context:
                 length = 0
@@ -312,6 +313,8 @@ class ScanWorker(Process):
             self._put_event(ScanEventType.EXCEPTION, {'exception': error})
 
     def run(self):
+        if self._use_log_events:
+            use_event_queue_log_handler(self._event_queue, self.index)
         self.work()
 
 
@@ -373,6 +376,13 @@ class ScanMetrics:
 
     def get_total_timeouts(self) -> int:
         return self._aggregate_int_metric(self.timeouts)
+
+    def get_int_metric(self, metric: str, worker_index: Optional[int] = None):
+        values = getattr(self, metric)
+        if worker_index is not None:
+            return values[worker_index]
+        else:
+            return self._aggregate_int_metric(values)
 
 
 class ScanProgressUpdate:

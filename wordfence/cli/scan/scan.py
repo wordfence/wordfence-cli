@@ -173,15 +173,10 @@ class ScanCommand:
         progress = None
         if self.config.progress:
             global screen_handler
-            if ProgressDisplay.requirements_met(int(self.config.workers),
-                                                self.config.banner):
-                progress = ProgressDisplay(int(self.config.workers))
-                screen_handler = progress.get_log_handler()
-                remove_initial_handler()
-                log.addHandler(screen_handler)
-            else:
-                log.info("Terminal is too small to show --progress console: "
-                         "falling back to normal output")
+            progress = ProgressDisplay(int(self.config.workers))
+            screen_handler = progress.get_log_handler()
+            remove_initial_handler()
+            log.addHandler(screen_handler)
 
         paths = set()
         for argument in self.config.trailing_arguments:

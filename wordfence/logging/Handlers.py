@@ -14,8 +14,8 @@ class CursesHandler(Handler):
     def emit(self, record):
         try:
             message = self.format(record)
-            self.window.addstr(f"\n {message}")
+            self.window.addstr(f"{message}\n")
             self.window.refresh()
-            self.parent.refresh()
+            #self.parent.refresh()
         except Exception:
             self.handleError(record)

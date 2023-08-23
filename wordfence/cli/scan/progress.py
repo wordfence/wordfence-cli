@@ -4,13 +4,13 @@ import os
 import unicodedata
 from math import ceil
 from typing import List, Optional, NamedTuple
+from logging import Handler
+from collections import deque
 
 from wordfence.scanning.scanner import (ScanProgressUpdate, ScanMetrics,
-                                        get_scan_finished_messages)
-from ..banner.banner import get_welcome_banner, should_show_welcome_banner
-from ...logging.Handlers import CursesHandler
+                                        default_scan_finished_handler)
+from ..banner.banner import get_welcome_banner
 from ...util import timing
-from ...logging import log
 
 _displays = []
 
@@ -22,6 +22,21 @@ The actual width taken up will be the hard-coded value +2 to account for the
 left and right borders. Each box on the same row will be separated by the
 padding value as well.
 """
+
+
+class NullLogHandler(Handler):
+
+    def __init__(self):
+        Handler.__init__(self)
+
+    def emit(self, record):
+        pass
+
+
+class NullStream:
+
+    def write(self, line):
+        pass
 
 
 def reset_terminal() -> None:
@@ -51,7 +66,7 @@ class StreamToWindow:
         window = self.window
         # strip control characters
         line = "".join(ch for ch in line if unicodedata.category(ch)[0] != "C")
-        window.addstr(f"\n {line}")
+        window.addstr(f"{line}\n")
         window.refresh()
 
 
@@ -66,24 +81,33 @@ class Box:
         self.parent = parent
         self.border = border
         self.title = title
-        self.window = self._initialize_window()
-        self.render()
+        self.window = None
 
-    def _initialize_window(self) -> curses.window:
+    def _initialize_window(self, y: int = 0, x: int = 0) -> None:
         height, width = self.compute_size()
-        if True or self.parent is None:
-            window = curses.newwin(height, width, 0, 0)
+        if self.parent is None:
+            self.window = curses.newwin(height, width, y, x)
         else:
-            window = self.parent.subwin(height, width, 0, 0)
-        return window
+            self.window = self.parent.subwin(height, width, y, x)
+        self._post_initialize_window()
+
+    def _post_initialize_window(self) -> None:
+        pass
 
     def set_position(self, y: int, x: int) -> None:
-        try:
-            self.window.mvwin(y, x)
-        except Exception:
-            raise ValueError(f"error moving window: y: {y}, x: {x}; width:"
-                             f" {self.get_width()}; "
-                             f"height: {self.get_height()}")
+        if self.window is None:
+            self._initialize_window(y, x)
+        else:
+            try:
+                self.window.mvwin(y, x)
+            except Exception:
+                raise ValueError(f"error moving window: y: {y}, x: {x}; width:"
+                                 f" {self.get_width()}; "
+                                 f"height: {self.get_height()}")
+
+    def _require_window(self) -> None:
+        if self.window is None:
+            self._initialize_window()
 
     def compute_size(self) -> (int, int):
         height = self.get_height()
@@ -103,6 +127,7 @@ class Box:
         self.title = title
 
     def render(self) -> None:
+        self._require_window()
         height, width = self.compute_size()
         if self.border:
             self.window.border()
@@ -133,48 +158,13 @@ class Metric:
         self.value = str(value)
 
 
-class MessageBox(Box):
-    def __init__(
-                self,
-                parent,
-                height: int,
-                title: Optional[str] = None
-            ):
-        self._height = height
-        super().__init__(parent, title=title, border=False)
-        self.window.scrollok(True)
-        self.window.idlok(True)
-        self.window.addstr(" Scan messages will display here")
-        self.window.refresh()
-        self.parent.refresh()
-
-    def resize(self) -> None:
-        pass
-
-    def render(self) -> None:
-        pass
-
-    def get_width(self) -> int:
-        return self.parent.getmaxyx()[1] - 1
-
-    def get_height(self) -> int:
-        return self._height
-
-    def draw_content(self) -> None:
-        pass
-
-    def update(self) -> None:
-        self.window.syncup()
-        self.window.noutrefresh()
-
-
 class MetricBox(Box):
 
     def __init__(
                 self,
-                parent,
                 metrics: List[Metric],
-                title: Optional[str] = None
+                title: Optional[str] = None,
+                parent: Optional[curses.window] = None
             ):
         self.metrics = metrics
         super().__init__(parent, title=title)
@@ -197,13 +187,18 @@ class MetricBox(Box):
 
 class BannerBox(Box):
 
-    def __init__(self, parent, banner):
+    def __init__(
+                self,
+                banner,
+                parent: Optional[curses.window] = None
+            ):
         self.banner = banner
         super().__init__(parent, border=False)
 
     def get_width(self):
         # take the full width
-        return self.parent.getmaxyx()[1]
+        # return self.parent.getmaxyx()[1]
+        return self.banner.column_count
 
     def get_height(self):
         return self.banner.row_count
@@ -214,26 +209,134 @@ class BannerBox(Box):
             self.window.addstr(index + offset, offset, row)
 
 
+class LogBox(Box):
+
+    def __init__(
+                self,
+                columns: int,
+                lines: int,
+                parent: Optional[curses.window] = None
+            ):
+        self.columns = columns
+        self.lines = lines
+        self.messages = deque()
+        super().__init__(parent, border=True)
+
+    def get_width(self):
+        return self.columns
+
+    def get_height(self):
+        return self.lines
+
+    def _post_initialize_window(self) -> None:
+        pass
+
+    def draw_content(self) -> None:
+        offset = self.get_border_offset()
+        line = offset
+        for message in self.messages:
+            message = message[:self.columns].ljust(self.columns)
+            message = "".join(
+                    ch for ch in message if unicodedata.category(ch)[0] != "C"
+                )
+            self.window.addstr(line, offset, message)
+            line += 1
+
+    def add_message(self, message: str) -> None:
+        self.messages.append(message)
+        while len(self.messages) > self.lines:
+            self.messages.popleft()
+        self.update()
+
+
+class LogBoxHandler(Handler):
+
+    def __init__(self, log_box: LogBox):
+        self.log_box = log_box
+        Handler.__init__(self)
+
+    def emit(self, record):
+        self.log_box.add_message(record.getMessage())
+
+
+class LogBoxStream():
+
+    def __init__(self, log_box: LogBox):
+        self.log_box = log_box
+
+    def write(self, line):
+        self.log_box.add_message(line)
+
+
 class BoxLayout:
 
     def __init__(self, lines: int, cols: int, padding: int = 1):
         self.lines = lines
         self.cols = cols
         self.padding = padding
-        self.x = 0
-        self.y = 0
-        self.max_row_height = 0
+        self.current_line = 0
+        self._content = []
+        self._unpositioned = []
+        self.max_row_width = 0
 
-    def position(self, box: Box) -> None:
-        height, width = box.compute_size()
-        # check for wrapping
-        if self.cols - self.x < width:
-            self.y += self.max_row_height + self.padding
-            self.x = 0
-            self.max_row_height = 0
-        box.set_position(self.y, self.x)
-        self.max_row_height = max(height, self.max_row_height)
-        self.x += width + self.padding
+    def add_box(self, box: Box) -> None:
+        self._content.append(box)
+        self._unpositioned.append(box)
+
+    def add_break(self) -> None:
+        self._content.append(None)
+        self._unpositioned.append(None)
+
+    def _position_row(self, row: list) -> list:
+        positioned = []
+        extra = []
+        row_width = 0
+        unpadded_row_width = 0
+        row_height = 0
+        for box in row:
+            height, width = box.compute_size()
+            required_width = width + self.padding
+            if len(positioned) and (
+                        len(extra) or
+                        row_width + required_width > self.cols
+                    ):
+                extra.append(box)
+            else:
+                row_width += required_width
+                unpadded_row_width += width
+                row_height = max(row_height, height)
+                positioned.append((box, height, width))
+        box_count = len(positioned)
+        padding = int((self.cols - unpadded_row_width) / (box_count + 1))
+        padded_width = unpadded_row_width + padding * (box_count + 1)
+        x = padding + int((self.cols - padded_width) / 2)
+        final_row_width = 0
+        previous_padding = 0
+        for (box, height, width) in positioned:
+            final_row_width += previous_padding
+            y = self.current_line + round((row_height - height) / 2)
+            box.set_position(y, x)
+            x += width + padding
+            final_row_width += width
+            previous_padding = padding
+            box.update()
+        self.current_line += row_height + self.padding
+        self.max_row_width = max(self.max_row_width, final_row_width)
+        return extra
+
+    def position(self, reset: bool = False) -> None:
+        if reset:
+            self.current_line = 0
+        row = []
+        items = self._content if reset else self._unpositioned
+        for item in items:
+            if item is None:
+                row = self._position_row(row)
+            else:
+                row.append(item)
+        while len(row):
+            row = self._position_row(row)
+        self._unpositioned = []
 
 
 class LayoutValues(NamedTuple):
@@ -250,7 +353,7 @@ class LayoutValues(NamedTuple):
 class ProgressDisplay:
 
     METRICS_PADDING = 1
-    METRICS_COUNT = 3
+    METRICS_COUNT = 5
     MIN_MESSAGE_BOX_HEIGHT = 4
 
     def __init__(self, worker_count: int):
@@ -262,13 +365,12 @@ class ProgressDisplay:
         self.stdscr = curses.initscr()
         self._setup_colors()
         curses.noecho()
-        curses.curs_set(0)
+        curses.curs_set(2)
         self.clear()
-        # self.banner_offset = self.display_banner()
         self.banner_box = self._initialize_banner()
         self.metric_boxes = self._initialize_metric_boxes()
-        self.message_box = self._initialize_message_box()
-        self._initialize_layout()
+        self.layout = self._initialize_layout()
+        self.log_box = self._initialize_log_box()
         self.refresh()
 
     def _setup_colors(self) -> None:
@@ -295,67 +397,88 @@ class ProgressDisplay:
         banner = get_welcome_banner()
         if banner is None:
             return None
-        return BannerBox(self.stdscr, banner)
+        return BannerBox(banner=banner, parent=self.stdscr)
 
-    def display_banner(self) -> int:
-        banner = get_welcome_banner()
-        offset = compute_center_offset(banner.column_count)
-        for index, row in enumerate(banner.rows):
-            self.stdscr.addstr(index, offset, row, self.color_brand)
-        return index + 1
+    def _compute_rate(self, value: int, elapsed_time: float) -> int:
+        if elapsed_time > 0:
+            return int(value / elapsed_time)
+        return 0
 
-    def _get_metrics(self, metrics: ScanMetrics, worker_index: int) -> \
-            List[Metric]:
+    def _get_metrics(
+                self,
+                update: ScanProgressUpdate,
+                worker_index: Optional[int] = None
+            ) -> List[Metric]:
+        file_count = update.metrics.get_int_metric('counts', worker_index)
+        byte_count = update.metrics.get_int_metric('bytes', worker_index)
+        match_count = update.metrics.get_int_metric('matches', worker_index)
+        file_rate = self._compute_rate(file_count, update.elapsed_time)
+        byte_rate = self._compute_rate(byte_count, update.elapsed_time)
         metrics = [
-                Metric('Files Processed', metrics.counts[worker_index]),
-                Metric('Bytes Processed', metrics.bytes[worker_index]),
-                Metric('Matches Found', metrics.matches[worker_index]),
+                Metric('Files Processed', file_count),
+                Metric('Bytes Processed', byte_count),
+                Metric('Matches Found', match_count),
+                Metric('Files / Second', file_rate),
+                Metric('Bytes / Second', byte_rate)
             ]
         if len(metrics) > self.METRICS_COUNT:
             raise ValueError("Metrics count is out of sync")
         return metrics
 
-    def _initialize_message_box(self) -> MessageBox:
-        layout_values = self._get_layout_values()
-        # raise ValueError(layout_values)
-        return MessageBox(self.stdscr,
-                          layout_values.ideal_message_box_height,
-                          "scan messages")
-
     def _initialize_metric_boxes(self) -> List[MetricBox]:
         default_metrics = ScanMetrics(self.worker_count)
+        default_update = ScanProgressUpdate(
+                elapsed_time=0,
+                metrics=default_metrics
+            )
         boxes = []
-        for worker_index in range(0, self.worker_count):
-            display_index = worker_index + 1
+        for index in range(0, self.worker_count + 1):
+            if index == 0:
+                worker_index = None
+                title = 'Summary'
+            else:
+                worker_index = index - 1
+                title = f'Worker {index}'
             box = MetricBox(
-                    self.stdscr,
-                    self._get_metrics(default_metrics, worker_index),
-                    title=f'Worker {display_index}'
+                    self._get_metrics(default_update, worker_index),
+                    title=title,
+                    parent=self.stdscr
                 )
             boxes.append(box)
         return boxes
 
-    def _initialize_layout(self) -> None:
+    def _initialize_log_box(self) -> LogBox:
+        log_box = LogBox(
+                    columns=self.layout.max_row_width - 2,
+                    lines=curses.LINES - self.layout.current_line - 2,
+                    parent=self.stdscr
+                )
+        self.layout.add_box(log_box)
+        self.layout.position()
+        return log_box
+
+    def _initialize_layout(self) -> BoxLayout:
         layout = BoxLayout(curses.LINES, curses.COLS, self.METRICS_PADDING)
         if self.banner_box is not None:
-            layout.position(self.banner_box)
-            self.banner_box.update()
-        for box in self.metric_boxes:
-            layout.position(box)
-            box.update()
-        layout.position(self.message_box)
-        self.message_box.update()
-        self.refresh()
+            layout.add_box(self.banner_box)
+        for index, box in enumerate(self.metric_boxes):
+            layout.add_box(box)
+            if index == 0:
+                layout.add_break()
+        layout.position()
+        return layout
 
-    def _display_metrics(self, metrics: ScanMetrics) -> None:
-        for worker_index in range(0, self.worker_count):
-            box = self.metric_boxes[worker_index]
-            box.metrics = self._get_metrics(metrics, worker_index)
+    def _display_metrics(self, update: ScanProgressUpdate) -> None:
+        for index in range(0, self.worker_count + 1):
+            box = self.metric_boxes[index]
+            worker_index = None if index == 0 else index - 1
+            box.metrics = self._get_metrics(update, worker_index)
             box.update()
 
     def handle_update(self, update: ScanProgressUpdate) -> None:
         curses.update_lines_cols()
-        self._display_metrics(update.metrics)
+        self._display_metrics(update)
+        self.banner_box.render()
         self.refresh()
 
     @staticmethod
@@ -401,48 +524,14 @@ class ProgressDisplay:
                             ideal_message_box_height)
 
     def get_log_handler(self) -> logging.Handler:
-        return CursesHandler(self.message_box.window, self.message_box.parent)
+        return LogBoxHandler(self.log_box)
 
     def get_output_stream(self) -> StreamToWindow:
-        return StreamToWindow(self.message_box.window, self.message_box.parent)
-
-    @staticmethod
-    def requirements_met(worker_count: int, show_banner: True):
-        banner_height = None if should_show_welcome_banner(show_banner) else 0
-        layout_values = ProgressDisplay.get_layout_values(
-            worker_count, banner_height)
-        # raise ValueError(layout_values)
-        combined_height = (layout_values.last_metric_line +
-                           layout_values.ideal_message_box_height)
-        return (layout_values.rows >= combined_height and
-                layout_values.ideal_message_box_height > 0 and
-                layout_values.cols >= (METRIC_BOX_WIDTH + 2))
-
-    def _get_layout_values(self) -> LayoutValues:
-        rows, cols = self.stdscr.getmaxyx()
-        worker_count = len(self.metric_boxes)
-        banner_height = self.banner_box.get_height() if self.banner_box else 0
-        return ProgressDisplay.get_layout_values(worker_count,
-                                                 banner_height, cols, rows)
+        return LogBoxStream(self.log_box)
 
     def scan_finished_handler(
                 self, metrics: ScanMetrics,
                 timer: timing.Timer
             ) -> None:
-        messages = get_scan_finished_messages(metrics, timer)
-        vals = self._get_layout_values()
-        vertical_offset = (vals.last_metric_line +
-                           vals.ideal_message_box_height) + 1
-        exit_message = "Press any key to exit"
-        message_lines = ceil(len(messages.results) / vals.cols) + (
-                        ceil(len(exit_message) / vals.cols))
-        if (vertical_offset + message_lines) > vals.rows:
-            vertical_offset = vals.rows - message_lines
-        if messages.timeouts:
-            log.warning(messages.timeouts)
-        self.stdscr.move(vertical_offset, 0)
-        self.stdscr.clrtobot()
-        self.stdscr.addstr(vertical_offset, 0, messages.results)
-        self.stdscr.addstr(vertical_offset + message_lines - 1, 0,
-                           exit_message)
-        self.stdscr.refresh()
+        default_scan_finished_handler(metrics, timer)
+        self.log_box.add_message('Scan completed! Press any key to exit.')
