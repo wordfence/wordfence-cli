@@ -4,7 +4,7 @@ import os
 import logging
 from multiprocessing import parent_process
 from contextlib import nullcontext
-from typing import Any
+from typing import Any, Optional
 
 from wordfence import scanning, api
 from wordfence.api.licensing import LicenseSpecific
@@ -12,10 +12,22 @@ from wordfence.scanning import filtering
 from wordfence.util import caching, updater, pcre
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
-from wordfence.logging import log
+from wordfence.logging import (log, remove_initial_handler,
+                               restore_initial_handler)
 from wordfence.version import __version__
 from .reporting import Report, ReportFormat
 from .configure import Configurer
+from .progress import ProgressDisplay, reset_terminal
+
+
+screen_handler: Optional[logging.Handler] = None
+
+
+def revert_progress_changes() -> None:
+    global screen_handler
+    if screen_handler:
+        log.removeHandler(screen_handler)
+    restore_initial_handler()
 
 
 class ScanCommand:
@@ -157,6 +169,15 @@ class ScanCommand:
             self.cache.purge()
         if self.config.check_for_update:
             updater.Version.check(self.cache)
+
+        progress = None
+        if self.config.progress:
+            global screen_handler
+            progress = ProgressDisplay(int(self.config.workers))
+            screen_handler = progress.get_log_handler()
+            remove_initial_handler()
+            log.addHandler(screen_handler)
+
         paths = set()
         for argument in self.config.trailing_arguments:
             paths.add(argument)
@@ -187,7 +208,10 @@ class ScanCommand:
                     self.config.output_headers
                 )
             if self._should_write_stdout():
-                report.add_target(sys.stdout)
+                if progress:
+                    report.add_target(progress.get_output_stream())
+                else:
+                    report.add_target(sys.stdout)
             if output_file is not None:
                 report.add_target(output_file)
             if not report.has_writers():
@@ -198,19 +222,37 @@ class ScanCommand:
                     )
                 return 1
             scanner = scanning.scanner.Scanner(options)
-            scanner.scan(lambda result: report.add_result(result))
+            if progress:
+                use_log_events = True
+            else:
+                use_log_events = False
+            scanner.scan(
+                    report.add_result,
+                    progress.handle_update if progress is not None else None,
+                    progress.scan_finished_handler if progress is not None
+                    else None,
+                    use_log_events
+                )
+
+            if progress:
+                progress.end_on_input()
+                revert_progress_changes()
         return 0
 
 
 def handle_repeated_interrupt(signal_number: int, stack) -> None:
+    revert_progress_changes()
     if parent_process() is None:
         log.warning('Scan command terminating immediately...')
+        reset_terminal()
     os._exit(130)
 
 
 def handle_interrupt(signal_number: int, stack) -> None:
+    revert_progress_changes()
     if parent_process() is None:
         log.info('Scan command interrupted, stopping...')
+        reset_terminal()
     signal.signal(signal.SIGINT, handle_repeated_interrupt)
     sys.exit(130)
 
@@ -254,3 +296,5 @@ def main(config) -> int:
         else:
             log.error(f'Error: {exception}')
         return 1
+    finally:
+        reset_terminal()
