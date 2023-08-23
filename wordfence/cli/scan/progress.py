@@ -121,7 +121,6 @@ class Box:
         pass
 
     def update(self) -> None:
-        self.resize()
         self.render()
         self.window.syncup()
         self.window.noutrefresh()
@@ -143,7 +142,6 @@ class MessageBox(Box):
             ):
         self._height = height
         super().__init__(parent, title=title, border=False)
-        self.window.nodelay(True)
         self.window.scrollok(True)
         self.window.idlok(True)
         self.window.addstr(" Scan messages will display here")
@@ -156,8 +154,7 @@ class MessageBox(Box):
     def render(self) -> None:
         pass
 
-    def get_width(self) -> int:  # take the full width
-        # take the full width, taking borders into account
+    def get_width(self) -> int:
         return self.parent.getmaxyx()[1] - 2
 
     def get_height(self) -> int:
@@ -352,20 +349,15 @@ class ProgressDisplay:
         self.refresh()
 
     def _display_metrics(self, metrics: ScanMetrics) -> None:
-        layout = BoxLayout(curses.LINES, curses.COLS)
-        if self.banner_box is not None:
-            layout.position(self.banner_box)
-            self.banner_box.update()
         for worker_index in range(0, self.worker_count):
             box = self.metric_boxes[worker_index]
             box.metrics = self._get_metrics(metrics, worker_index)
-            layout.position(box)
             box.update()
 
     def handle_update(self, update: ScanProgressUpdate) -> None:
         curses.update_lines_cols()
         self._display_metrics(update.metrics)
-        self.refresh()
+        # self.refresh()
 
     @staticmethod
     def metric_boxes_per_row(columns: int, padding: int = METRICS_PADDING):
@@ -403,11 +395,8 @@ class ProgressDisplay:
                 final_message_spaceholder <= rows):
             max_height = (rows - last_metric_line - top_and_bottom_adjustment
                           - final_message_spaceholder)
-            extra_rows = max_height - ProgressDisplay.MIN_MESSAGE_BOX_HEIGHT
-            if extra_rows <= 2:
-                ideal_message_box_height = max_height + extra_rows
-            else:
-                ideal_message_box_height = max_height - 1
+
+            ideal_message_box_height = max_height
         return LayoutValues(rows, cols, metrics_per_row, metric_rows,
                             metric_height, banner_height, last_metric_line,
                             ideal_message_box_height)
