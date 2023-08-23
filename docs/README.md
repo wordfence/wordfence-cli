@@ -6,6 +6,7 @@ Wordfence CLI is a high performance, multi-process, command-line malware scanner
 
 - [Installation](Installation.md)
 	- [Binaries](Installation.md#binaries)
+	- [Wheel Archive](Installation.md#pip-installation-of-the-wheel-archive-file)
 	- [Docker](Installation.md#docker)
 	- [Manual installation](Installation.md#manual-installation)
 - [Configuration](Configuration.md)
