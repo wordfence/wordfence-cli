@@ -155,7 +155,7 @@ class MessageBox(Box):
         pass
 
     def get_width(self) -> int:
-        return self.parent.getmaxyx()[1] - 2
+        return self.parent.getmaxyx()[1] - 1
 
     def get_height(self) -> int:
         return self._height
