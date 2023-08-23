@@ -310,7 +310,6 @@ class ProgressDisplay:
                 Metric('Files Processed', metrics.counts[worker_index]),
                 Metric('Bytes Processed', metrics.bytes[worker_index]),
                 Metric('Matches Found', metrics.matches[worker_index]),
-                Metric('Index', worker_index)
             ]
         if len(metrics) > self.METRICS_COUNT:
             raise ValueError("Metrics count is out of sync")
