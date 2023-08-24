@@ -210,7 +210,7 @@ class ScanProgressMonitor(Process):
 
     def run(self):
         while self.is_scan_running():
-            time.sleep(1)
+            time.sleep(0.1)
             self._event_queue.put(ScanEvent(ScanEventType.PROGRESS_UPDATE))
 
 
