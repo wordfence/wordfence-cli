@@ -8,9 +8,16 @@ We have a number of installation methods to install Wordfence CLI in our [instal
 
 	git clone git@github.com:wordfence/wordfence-cli.git
 	cd ./wordfence-cli
-	pip install -r requirements.txt
-	python setup.py
+	pip install .
 	python main.py scan --version
+
+You can additionally build the wheel archive and generate an executable:
+	
+	pip install build~=0.10
+	python -m build --wheel
+	pip install dist/wordfence-*.whl
+
+The executable should be installed to `~/.local/bin/wordfence`.
 
 ### Requirements
 
