@@ -17,7 +17,10 @@ class Version:
         try:
             response = requests.get(API).json()
             if 'tag_name' in response.keys():
-                return response['tag_name']
+                latest = response['tag_name']
+                if latest[0] == 'v':
+                    latest = latest[1:]
+                return latest
             else:
                 return None
         except requests.exceptions.RequestException:
@@ -33,10 +36,12 @@ class Version:
             )
         except NoCachedValueException:
             latest_version = Version.get_latest()
-            caching.Cache.put(cache, 'latest_version', latest_version)
-            log.error('Unable to fetch the latest version. '
-                      'The version you are using may be out of date!')
-            return
+            if latest_version is None:
+                log.error('Unable to fetch the latest version. '
+                          'The version you are using may be out of date!')
+                return
+            else:
+                caching.Cache.put(cache, 'latest_version', latest_version)
 
         if latest_version is None:
             return
