@@ -9,8 +9,7 @@ from typing import Any
 from wordfence import scanning, api
 from wordfence.api.licensing import LicenseSpecific
 from wordfence.scanning import filtering
-from wordfence.util import caching
-from wordfence.util import updater
+from wordfence.util import caching, updater, pcre
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import log
@@ -62,16 +61,29 @@ class ScanCommand:
         return caching.RuntimeCache()
 
     def filter_signatures(self, signatures: SignatureSet) -> None:
-        if self.config.exclude_signatures is None:
-            return
-        for identifier in self.config.exclude_signatures:
-            if signatures.remove_signature(identifier):
-                log.debug(f'Excluded signature {identifier}')
-            else:
-                log.warning(
-                        f'Signature {identifier} is not in the existing set. '
-                        'It will not be used in the scan.'
-                    )
+        if self.config.include_signatures:
+            for identifier in list(signatures.signatures.keys()):
+                if identifier not in self.config.include_signatures:
+                    signatures.remove_signature(identifier)
+            for identifier in self.config.include_signatures:
+                if identifier in signatures.signatures:
+                    log.debug(f'Including signature: {identifier}')
+                else:
+                    log.warning(
+                                f'Signature {identifier} was not found and '
+                                'could not be included'
+                            )
+        if self.config.exclude_signatures is not None:
+            for identifier in self.config.exclude_signatures:
+                if signatures.remove_signature(identifier):
+                    log.debug(f'Excluded signature {identifier}')
+                else:
+                    log.warning(
+                            f'Signature {identifier} is not in the existing '
+                            'set. It will not be used in the scan.'
+                        )
+        signature_count = len(signatures.signatures)
+        log.debug(f'Filtered signature count: {signature_count}')
 
     def _get_signatures(self) -> SignatureSet:
         if self.cacheable_signatures is None:
@@ -130,8 +142,15 @@ class ScanCommand:
             filter.add(filtering.filter_html)
             filter.add(filtering.filter_js)
             if self.config.images:
-                filter.add(filtering.filter_pattern(self.config.images))
+                filter.add(filtering.filter_images)
         return filter
+
+    def _get_pcre_options(self) -> pcre.PcreOptions:
+        return pcre.PcreOptions(
+                    caseless=True,
+                    match_limit=self.config.pcre_backtrack_limit,
+                    match_limit_recursion=self.config.pcre_recursion_limit
+                )
 
     def execute(self) -> int:
         if self.config.purge_cache:
@@ -143,12 +162,13 @@ class ScanCommand:
             paths.add(argument)
         options = scanning.scanner.Options(
                 paths=paths,
-                threads=int(self.config.threads),
+                workers=int(self.config.workers),
                 signatures=self._get_signatures(),
                 chunk_size=self.config.chunk_size,
-                max_file_size=int(self.config.max_file_size),
+                scanned_content_limit=int(self.config.scanned_content_limit),
                 file_filter=self._initialize_file_filter(),
-                match_all=self.config.match_all
+                match_all=self.config.match_all,
+                pcre_options=self._get_pcre_options()
             )
         if self._should_read_stdin():
             options.path_source = StreamReader(
@@ -200,6 +220,8 @@ signal.signal(signal.SIGINT, handle_interrupt)
 
 def display_version() -> None:
     print(f"Wordfence CLI {__version__}")
+    jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
+    print(f"PCRE Version: {pcre.VERSION} - JIT Supported: {jit_support_text}")
 
 
 def main(config) -> int:
@@ -227,6 +249,8 @@ def main(config) -> int:
         log.error('A valid Wordfence CLI license is required')
         return 1
     except BaseException as exception:
-        log.error(f'Error: {exception}')
-        raise exception
+        if config.debug:
+            raise exception
+        else:
+            log.error(f'Error: {exception}')
         return 1

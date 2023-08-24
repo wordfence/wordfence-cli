@@ -93,7 +93,7 @@ class Configurer:
         cpus = cpu_count()
         processes = prompt_int(
                     f'Number of worker processes ({cpus} CPUs available)',
-                    self.config.threads
+                    self.config.workers
                 )
         return processes
 
@@ -124,7 +124,7 @@ class Configurer:
                 pass
             set_config('license', self.config.license)
             set_config('cache_directory', self.config.cache_directory)
-            set_config('threads', str(self.config.threads))
+            set_config('workers', str(self.config.workers))
             file.truncate(0)
             file.seek(0)
             log.info('Writing config...')
@@ -136,7 +136,7 @@ class Configurer:
             return
         self.config.license = self._prompt_for_license()
         self.config.cache_directory = self._prompt_for_cache_directory()
-        self.config.threads = self._prompt_for_worker_count()
+        self.config.workers = self._prompt_for_worker_count()
         self.write_config()
 
     def check_config(self) -> None:

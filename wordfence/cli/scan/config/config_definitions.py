@@ -3,6 +3,7 @@ from typing import Dict, Any
 
 from ..reporting import ReportFormat, ReportColumn
 from wordfence.cli.config.defaults import INI_DEFAULT_PATH
+from wordfence.util.pcre import PCRE_DEFAULT_MATCH_LIMIT, PCRE_DEFAULT_MATCH_LIMIT_RECURSION
 
 KIBIBYTE = 1024
 MEBIBYTE = 1024 * 1024
@@ -89,9 +90,21 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": None
     },
     "exclude-signatures": {
+        "short_name": "e",
+        "description": "Specify rule IDs to exclude from the scan. Can be "
+                       "comma-delimited and/or specified multiple times.",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": None,
+        "meta": {
+            "separator": ",",
+            "value_type": int
+        }
+    },
+    "include-signatures": {
         "short_name": "i",
-        "description": "Specify a rule ID to exclude from the scan. Can be "
-                       "used multiple times.",
+        "description": "Specify rule IDs to include in the scan. Can be "
+                       "comma-delimited and/or specified multiple times.",
         "context": "ALL",
         "argument_type": "OPTION_REPEATABLE",
         "default": None,
@@ -163,12 +176,13 @@ config_definitions: Dict[str, Dict[str, Any]] = {
             "value_type": byte_length
         }
     },
-    "max-file-size": {
+    "scanned-content-limit": {
         "short_name": "M",
-        "description": "Files above this limit will not be scanned. Defaults"
-                       " to 50 mebibytes. Use a whole number followed by one"
-                       " config the following suffixes: b (byte), k (kibibyte)"
-                       ", m (mebibyte).",
+        "description": "The maximum amount of data to scan in each file."
+                       " Content beyond this limit will not be scanned."
+                       " Defaults to 50 mebibytes. Use a whole number followed"
+                       " by one of the following suffixes: b (byte),"
+                       " k (kibibyte), m (mebibyte).",
         "context": "ALL",
         "argument_type": "OPTION",
         "default": byte_length('50m'),
@@ -184,10 +198,28 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": False
     },
-    "threads": {
-        "short_name": "t",
-        "description": "Number of scanner threads (processes). Defaults to 1 "
-                       "worker.",
+    "pcre-backtrack-limit": {
+        "description": "The regex backtracking limit for signature evaluation",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": PCRE_DEFAULT_MATCH_LIMIT,
+        "meta": {
+            "value_type": int
+        }
+    },
+    "pcre-recursion-limit": {
+        "description": "The regex recursion limit for signature evaluation",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": PCRE_DEFAULT_MATCH_LIMIT_RECURSION,
+        "meta": {
+            "value_type": int
+        }
+    },
+    "workers": {
+        "short_name": "w",
+        "description": "Number of worker processes used to perform scanning. "
+                       "Defaults to 1 worker process.",
         "context": "ALL",
         "argument_type": "OPTION",
         "default": 1
