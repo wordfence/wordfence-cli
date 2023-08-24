@@ -365,7 +365,7 @@ class ProgressDisplay:
         self.stdscr = curses.initscr()
         self._setup_colors()
         curses.noecho()
-        curses.curs_set(2)
+        curses.curs_set(0)
         self.clear()
         self.banner_box = self._initialize_banner()
         self.metric_boxes = self._initialize_metric_boxes()
