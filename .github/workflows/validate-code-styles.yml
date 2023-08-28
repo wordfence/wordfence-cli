@@ -5,5 +5,5 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - run: apt-get install flake8
+      - run: sudo apt-get install -y flake8
       - run: flake8
