@@ -130,7 +130,7 @@ _pcre_exec.argtypes = [
         c_int,
         c_int,
         c_int,
-        POINTER(c_int),
+        c_void_p,
         c_int
     ]
 _pcre_exec.restype = c_int
