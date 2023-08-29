@@ -2,8 +2,9 @@ name: "Validate Code Styles"
 on: [push]
 jobs:
   flake8:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get install -y flake8
-      - run: flake8
+      - run: sudo apt-get install -y flake8 python3-pip
+      - run: pip3 install flake8-bugbear
+      - run: flake8 --require-plugins pycodestyle,flake8-bugbear
