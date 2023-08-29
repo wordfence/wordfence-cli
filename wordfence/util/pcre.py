@@ -371,6 +371,6 @@ class PcrePattern:
             }
 
     def __setstate__(self, state) -> None:
-        self.pattern = state.pattern
-        self.options = state.options
+        self.pattern = state['pattern']
+        self.options = state['options']
         self._compile(self.pattern, self.options)
