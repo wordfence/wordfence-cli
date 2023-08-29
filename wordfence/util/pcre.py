@@ -259,6 +259,8 @@ class PcrePattern:
                 pattern: str,
                 options: PcreOptions = PCRE_DEFAULT_OPTIONS
             ):
+        self.pattern = pattern
+        self.options = options
         self._compile(pattern, options)
 
     def _compile(self, pattern: str, options: PcreOptions) -> c_void_p:
@@ -361,3 +363,14 @@ class PcrePattern:
 
     def __del__(self) -> None:
         self._free()
+
+    def __getstate__(self) -> dict:
+        return {
+                'pattern': self.pattern,
+                'options': self.options
+            }
+
+    def __setstate__(self, state) -> None:
+        self.pattern = state.pattern
+        self.options = state.options
+        self._compile(self.pattern, self.options)
