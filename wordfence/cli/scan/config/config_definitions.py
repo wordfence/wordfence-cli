@@ -3,7 +3,8 @@ from typing import Dict, Any
 
 from ..reporting import ReportFormat, ReportColumn
 from wordfence.cli.config.defaults import INI_DEFAULT_PATH
-from wordfence.util.pcre import PCRE_DEFAULT_MATCH_LIMIT, PCRE_DEFAULT_MATCH_LIMIT_RECURSION
+from wordfence.util.pcre import PCRE_DEFAULT_MATCH_LIMIT, \
+        PCRE_DEFAULT_MATCH_LIMIT_RECURSION
 
 KIBIBYTE = 1024
 MEBIBYTE = 1024 * 1024
