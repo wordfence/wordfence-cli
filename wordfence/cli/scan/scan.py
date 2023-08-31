@@ -29,6 +29,7 @@ def revert_progress_changes() -> None:
     if screen_handler:
         log.removeHandler(screen_handler)
     restore_initial_handler()
+    reset_terminal()
 
 
 class ScanCommand:
@@ -261,6 +262,18 @@ def handle_interrupt(signal_number: int, stack) -> None:
 signal.signal(signal.SIGINT, handle_interrupt)
 
 
+def print_error(message: str) -> None:
+    if sys.stderr is not None:
+        print(message, file=sys.stderr)
+    else:
+        print(message)
+
+
+def reset_terminal_with_error(message: str) -> None:
+    reset_terminal()
+    print_error(message)
+
+
 def display_version() -> None:
     print(f"Wordfence CLI {__version__}")
     jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
@@ -289,18 +302,17 @@ def main(config) -> int:
             command.execute()
         return 0
     except api.licensing.LicenseRequiredException:
-        log.error('A valid Wordfence CLI license is required')
+        reset_terminal_with_error('A valid Wordfence CLI license is required')
         return 1
     except BaseException as exception:
+        reset_terminal()
         if isinstance(exception, ExceptionContainer):
             if config.debug:
-                log.error(exception.trace)
+                print_error(exception.trace)
                 return 1
             exception = exception.exception
         if config.debug:
             raise exception
         else:
-            log.error(f'Error: {exception}')
+            print_error(f'Error: {exception}')
         return 1
-    finally:
-        reset_terminal()
