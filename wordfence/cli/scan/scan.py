@@ -9,6 +9,7 @@ from typing import Any, Optional
 from wordfence import scanning, api
 from wordfence.api.licensing import LicenseSpecific
 from wordfence.scanning import filtering
+from wordfence.scanning.scanner import ExceptionContainer
 from wordfence.util import caching, updater, pcre
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
@@ -291,6 +292,11 @@ def main(config) -> int:
         log.error('A valid Wordfence CLI license is required')
         return 1
     except BaseException as exception:
+        if isinstance(exception, ExceptionContainer):
+            if config.debug:
+                log.error(exception.trace)
+                return 1
+            exception = exception.exception
         if config.debug:
             raise exception
         else:

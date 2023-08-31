@@ -1,6 +1,7 @@
 import os
 import queue
 import time
+import traceback
 from ctypes import c_bool, c_uint
 from enum import IntEnum
 from multiprocessing import Queue, Process, Value
@@ -24,6 +25,17 @@ PROGRESS_UPDATE_INTERVAL = 100
 DEFAULT_CHUNK_SIZE = 1024 * 1024
 FILE_LOCATOR_WORKER_INDEX = 0
 """Used by the file locator process when sending events"""
+
+
+class ExceptionContainer(Exception):
+
+    def __init__(self, exception: BaseException):
+        self.exception = exception
+        self.trace = traceback.format_exc()
+        message = str(exception)
+        super().__init__(
+                f'An exception occurred in a child process: {message}'
+            )
 
 
 class ScanConfigurationException(ScanningException):
@@ -113,7 +125,9 @@ class FileLocator:
                     self.located_count += 1
                     yield item.path
         except OSError as os_error:
-            raise ScanningException('Directory search failed') from os_error
+            detail = str(os_error)
+            raise ScanningException(f'Directory search failed ({detail})') \
+                from os_error
 
     def locate(self):
         # TODO: Handle links and prevent loops
@@ -179,7 +193,7 @@ class FileLocatorProcess(Process):
                 locator.locate()
             self.output_queue.put(None)
         except ScanningException as exception:
-            self.output_queue.put(exception)
+            self.output_queue.put(ExceptionContainer(exception))
 
 
 class ScanEvent:
@@ -254,7 +268,7 @@ class ScanWorker(Process):
                     if item is None:
                         self._put_event(ScanEventType.FILE_QUEUE_EMPTIED)
                         self._complete()
-                    elif isinstance(item, BaseException):
+                    elif isinstance(item, ExceptionContainer):
                         self._put_event(
                                 ScanEventType.FATAL_EXCEPTION,
                                 {'exception': item}
@@ -312,7 +326,9 @@ class ScanWorker(Process):
                         }
                     )
         except OSError as error:
-            self._put_event(ScanEventType.EXCEPTION, {'exception': error})
+            self._put_event(ScanEventType.EXCEPTION, {
+                    'exception': ExceptionContainer(error)
+                })
 
     def run(self):
         if self._use_log_events:
@@ -590,7 +606,7 @@ class ScanWorkerPool:
             elif event.type == ScanEventType.EXCEPTION:
                 log.error(
                         'Exception occurred while processing file: ' +
-                        str(event.data['exception'])
+                        str(event.data['exception'].trace)
                     )
             elif event.type == ScanEventType.FATAL_EXCEPTION:
                 self._status.value = Status.FAILED
