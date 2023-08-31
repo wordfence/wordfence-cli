@@ -94,9 +94,9 @@ class RegexMatcherContext(MatcherContext):
         if signature.anchored_to_start and not start:
             return False
         try:
-            signal.alarm(self.matcher.timeout)
+            signal.setitimer(signal.ITIMER_VIRTUAL, self.matcher.timeout)
             match = signature.get_pattern().match(chunk)
-            signal.alarm(0)  # Clear the alarm
+            signal.setitimer(signal.ITIMER_VIRTUAL, 0)  # Clear timeout
             if match is not None:
                 self.matches[signature.signature.identifier] = \
                         match.matched_string
@@ -132,7 +132,7 @@ class RegexMatcherContext(MatcherContext):
             raise TimeoutException()
 
         self._previous_alarm_handler = signal.signal(
-                signal.SIGALRM,
+                signal.SIGVTALRM,
                 handle_timeout
             )
         if self._previous_alarm_handler is None:
@@ -140,8 +140,7 @@ class RegexMatcherContext(MatcherContext):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
-        signal.signal(signal.SIGALRM, self._previous_alarm_handler)
-        pass
+        signal.signal(signal.SIGVTALRM, self._previous_alarm_handler)
 
 
 class RegexCommonString:

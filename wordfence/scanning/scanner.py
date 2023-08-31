@@ -20,6 +20,7 @@ from ..logging import log, remove_initial_handler
 MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
 QUEUE_READ_TIMEOUT = 0
+PROGRESS_UPDATE_INTERVAL = 100
 DEFAULT_CHUNK_SIZE = 1024 * 1024
 FILE_LOCATOR_WORKER_INDEX = 0
 """Used by the file locator process when sending events"""
@@ -209,8 +210,9 @@ class ScanProgressMonitor(Process):
         return status != Status.COMPLETE and status != Status.FAILED
 
     def run(self):
+        interval = PROGRESS_UPDATE_INTERVAL / 1000  # MS to seconds
         while self.is_scan_running():
-            time.sleep(0.1)
+            time.sleep(interval)
             self._event_queue.put(ScanEvent(ScanEventType.PROGRESS_UPDATE))
 
 
@@ -479,6 +481,15 @@ class ScanWorkerPool:
                     metrics=self.metrics
                 )
             self._progress_receiver(update)
+            self._progress_timer.reset()
+
+    def _is_progress_update_due(self) -> bool:
+        if self._progress_timer is None:
+            return False
+        elapsed = self._progress_timer.get_elapsed(
+                timing.unit_milliseconds
+            )
+        return elapsed >= PROGRESS_UPDATE_INTERVAL
 
     def start(self):
         if self._started:
@@ -486,6 +497,7 @@ class ScanWorkerPool:
         self._status = Value(c_uint, Status.LOCATING_FILES)
         self._workers = []
         if self.has_progress_receiver():
+            self._progress_timer = timing.Timer()
             self._monitor = ScanProgressMonitor(
                     self._status,
                     self._event_queue
@@ -493,6 +505,7 @@ class ScanWorkerPool:
             self._monitor.start()
             self._send_progress_update()
         else:
+            self._progress_timer = None
             self._monitor = None
         for i in range(self.size):
             worker = ScanWorker(
@@ -545,6 +558,7 @@ class ScanWorkerPool:
                 log.debug('All workers have completed and all results have '
                           'been processed.')
                 self._status.value = Status.COMPLETE
+                self._send_progress_update()
                 return
             elif event.type == ScanEventType.COMPLETED:
                 if event.worker_index != FILE_LOCATOR_WORKER_INDEX:
@@ -583,7 +597,8 @@ class ScanWorkerPool:
                 self.terminate()
                 raise event.data['exception']
             elif event.type == ScanEventType.PROGRESS_UPDATE:
-                self._send_progress_update()
+                if self._is_progress_update_due():
+                    self._send_progress_update()
             elif event.type == ScanEventType.LOG_MESSAGE:
                 message: str = event.data['message']
                 method = getattr(log, event.data['level'].lower())
