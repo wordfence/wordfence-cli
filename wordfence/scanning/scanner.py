@@ -113,12 +113,29 @@ class FileLocator:
         self.file_filter = file_filter
         self.located_count = 0
 
-    def search_directory(self, path: str):
+    def _is_loop(self, path: str, parents: list):
+        realpath = os.path.realpath(path)
+        for parent in parents:
+            if realpath == parent:
+                log.warning(
+                    f'Recursive symlink detected at {path}'
+                    )
+                return True
+        return False
+
+    def search_directory(self, path: str, parents: Optional[list] = None):
         try:
+            if parents is None:
+                parents = [path]
             contents = os.scandir(path)
             for item in contents:
+                if item.is_symlink() and self._is_loop(item.path, parents):
+                    continue
                 if item.is_dir():
-                    yield from self.search_directory(item.path)
+                    yield from self.search_directory(
+                            item.path,
+                            parents + [item.path]
+                        )
                 elif item.is_file():
                     if not self.file_filter.filter(item.path):
                         continue
