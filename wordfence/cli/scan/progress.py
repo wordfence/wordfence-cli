@@ -407,6 +407,7 @@ class ProgressDisplay:
         curses.doupdate()
 
     def end_on_input(self):
+        curses.flushinp()
         self.stdscr.getkey()
         self.end()
 
