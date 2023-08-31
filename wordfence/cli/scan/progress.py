@@ -359,6 +359,7 @@ class ProgressDisplay:
     def __init__(self, worker_count: int):
         _displays.append(self)
         self.worker_count = worker_count
+        self.results_message = None
         self._setup_curses()
 
     def _setup_curses(self) -> None:
@@ -533,5 +534,6 @@ class ProgressDisplay:
                 self, metrics: ScanMetrics,
                 timer: timing.Timer
             ) -> None:
-        default_scan_finished_handler(metrics, timer)
+        messages = default_scan_finished_handler(metrics, timer)
+        self.results_message = messages.results
         self.log_box.add_message('Scan completed! Press any key to exit.')
