@@ -465,6 +465,7 @@ def default_scan_finished_handler(
     if messages.timeouts:
         log.warning(messages.timeouts)
     log.info(messages.results)
+    return messages
 
 
 class ScanWorkerPool:

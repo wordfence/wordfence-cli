@@ -239,6 +239,8 @@ class ScanCommand:
             if progress:
                 progress.end_on_input()
                 revert_progress_changes()
+                if progress.results_message:
+                    print(progress.results_message)
         return 0
 
 
