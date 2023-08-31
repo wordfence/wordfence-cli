@@ -1,11 +1,9 @@
 import curses
 import logging
-import os
 import unicodedata
-from math import ceil
 from typing import List, Optional, NamedTuple
 from logging import Handler
-from collections import deque
+from collections import deque, namedtuple
 
 from wordfence.scanning.scanner import (ScanProgressUpdate, ScanMetrics,
                                         default_scan_finished_handler)
@@ -70,6 +68,9 @@ class StreamToWindow:
         window.refresh()
 
 
+Position = namedtuple('Position', ['y', 'x'])
+
+
 class Box:
 
     def __init__(
@@ -82,6 +83,7 @@ class Box:
         self.border = border
         self.title = title
         self.window = None
+        self.position = None
 
     def _initialize_window(self, y: int = 0, x: int = 0) -> None:
         height, width = self.compute_size()
@@ -89,6 +91,7 @@ class Box:
             self.window = curses.newwin(height, width, y, x)
         else:
             self.window = self.parent.subwin(height, width, y, x)
+        self.position = Position(y, x)
         self._post_initialize_window()
 
     def _post_initialize_window(self) -> None:
@@ -100,6 +103,7 @@ class Box:
         else:
             try:
                 self.window.mvwin(y, x)
+                self.position = (y, x)
             except Exception:
                 raise ValueError(f"error moving window: y: {y}, x: {x}; width:"
                                  f" {self.get_width()}; "
@@ -220,6 +224,7 @@ class LogBox(Box):
         self.columns = columns
         self.lines = lines
         self.messages = deque()
+        self.cursor_position = None
         super().__init__(parent, border=True)
 
     def get_width(self):
@@ -234,19 +239,34 @@ class LogBox(Box):
     def draw_content(self) -> None:
         offset = self.get_border_offset()
         line = offset
+        line_length = 0
         for message in self.messages:
-            message = message[:self.columns].ljust(self.columns)
+            message = message[:self.columns]
+            line_length = len(message)
+            message = message.ljust(self.columns)
             message = "".join(
                     ch for ch in message if unicodedata.category(ch)[0] != "C"
                 )
             self.window.addstr(line, offset, message)
             line += 1
+        self.cursor_offset = Position(line - 1, line_length)
 
     def add_message(self, message: str) -> None:
         self.messages.append(message)
         while len(self.messages) > self.lines:
             self.messages.popleft()
         self.update()
+
+    def get_cursor_position(self) -> Position:
+        y = 0
+        x = 0
+        if self.position is not None:
+            y += self.position.y
+            x += self.position.x
+        if self.cursor_offset is not None:
+            y += self.cursor_offset.y
+            x += self.cursor_offset.x
+        return Position(y, x)
 
 
 class LogBoxHandler(Handler):
@@ -489,40 +509,6 @@ class ProgressDisplay:
         display_length = (per_row * METRIC_BOX_WIDTH) + (padding * per_row - 1)
         return per_row if display_length <= columns else per_row - 1
 
-    @staticmethod
-    def get_layout_values(worker_count: int,
-                          banner_height: Optional[int] = None,
-                          cols: Optional[int] = None,
-                          rows: Optional[int] = None):
-        if banner_height is None:
-            banner = get_welcome_banner()
-            banner_height = len(banner.rows) + 1 if banner is not None else 0
-        if cols is None or rows is None:
-            _cols, _rows = os.get_terminal_size()
-            cols = _cols if cols is None else cols
-            rows = _rows if rows is None else rows
-        # one line per metric + two for the top and bottom borders
-        metric_height = ProgressDisplay.METRICS_COUNT + 2
-        metrics_per_row = ProgressDisplay.metric_boxes_per_row(cols)
-        metric_rows = ceil(worker_count / metrics_per_row)
-        padding = (0 if banner_height == 0 else 3) + (metric_rows - 1)
-        last_metric_line = ((metric_height * metric_rows) + banner_height +
-                            padding) - 1
-        ideal_message_box_height = 0
-        top_and_bottom_adjustment = 2
-        final_message_spaceholder = 2
-        min_message_box_space = (ProgressDisplay.MIN_MESSAGE_BOX_HEIGHT +
-                                 top_and_bottom_adjustment)
-        if (last_metric_line + min_message_box_space +
-                final_message_spaceholder <= rows):
-            max_height = (rows - last_metric_line - top_and_bottom_adjustment
-                          - final_message_spaceholder)
-
-            ideal_message_box_height = max_height
-        return LayoutValues(rows, cols, metrics_per_row, metric_rows,
-                            metric_height, banner_height, last_metric_line,
-                            ideal_message_box_height)
-
     def get_log_handler(self) -> logging.Handler:
         return LogBoxHandler(self.log_box)
 
@@ -535,3 +521,7 @@ class ProgressDisplay:
             ) -> None:
         default_scan_finished_handler(metrics, timer)
         self.log_box.add_message('Scan completed! Press any key to exit.')
+        cursor_position = self.log_box.get_cursor_position()
+        curses.curs_set(1)
+        if cursor_position is not None:
+            self.stdscr.move(cursor_position.y, cursor_position.x + 1)
