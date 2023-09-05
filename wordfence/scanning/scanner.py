@@ -647,6 +647,7 @@ class Scanner:
     def __init__(self, options: Options):
         self.options = options
         self.failed = 0
+        self.active = []
 
     def _handle_worker_error(self, error: Exception):
         self.failed += 1
@@ -668,6 +669,7 @@ class Scanner:
                 use_log_events=use_log_events,
                 event_queue=event_queue if use_log_events else None
             )
+        self.active.append(file_locator_process)
         file_locator_process.start()
         for path in self.options.paths:
             file_locator_process.add_path(path)
@@ -691,6 +693,7 @@ class Scanner:
                     scanned_content_limit=self.options.scanned_content_limit,
                     use_log_events=use_log_events
                 ) as worker_pool:
+            self.active.append(worker_pool)
             if self.options.path_source is not None:
                 log.debug('Reading input paths...')
                 while True:
@@ -705,3 +708,7 @@ class Scanner:
         scan_finished_handler = scan_finished_handler if scan_finished_handler\
             else default_scan_finished_handler
         scan_finished_handler(metrics, timer)
+
+    def terminate(self) -> None:
+        for active in self.active:
+            active.terminate()

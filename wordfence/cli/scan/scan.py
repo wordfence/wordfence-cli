@@ -18,7 +18,7 @@ from wordfence.logging import (log, remove_initial_handler,
 from wordfence.version import __version__
 from .reporting import Report, ReportFormat
 from .configure import Configurer
-from .progress import ProgressDisplay, reset_terminal
+from .progress import ProgressDisplay, ProgressException, reset_terminal
 
 
 screen_handler: Optional[logging.Handler] = None
@@ -223,12 +223,12 @@ class ScanCommand:
                         'output'
                     )
                 return 1
-            scanner = scanning.scanner.Scanner(options)
+            self.scanner = scanning.scanner.Scanner(options)
             if progress:
                 use_log_events = True
             else:
                 use_log_events = False
-            scanner.scan(
+            self.scanner.scan(
                     report.add_result,
                     progress.handle_update if progress is not None else None,
                     progress.scan_finished_handler if progress is not None
@@ -243,25 +243,22 @@ class ScanCommand:
                     print(progress.results_message)
         return 0
 
-
-def handle_repeated_interrupt(signal_number: int, stack) -> None:
-    revert_progress_changes()
-    if parent_process() is None:
-        log.warning('Scan command terminating immediately...')
-        reset_terminal()
-    os._exit(130)
+    def terminate(self) -> None:
+        if hasattr(self, 'scanner') and self.scanner is not None:
+            self.scanner.terminate()
 
 
-def handle_interrupt(signal_number: int, stack) -> None:
-    revert_progress_changes()
-    if parent_process() is None:
-        log.info('Scan command interrupted, stopping...')
-        reset_terminal()
-    signal.signal(signal.SIGINT, handle_repeated_interrupt)
-    sys.exit(130)
+def initialize_interrupt_handling(command: ScanCommand) -> None:
 
+    def handle_interrupt(signal_number: int, stack) -> None:
+        revert_progress_changes()
+        if parent_process() is None:
+            log.info('Scan command interrupted, stopping...')
+            command.terminate()
+            reset_terminal()
+        sys.exit(130)
 
-signal.signal(signal.SIGINT, handle_interrupt)
+    signal.signal(signal.SIGINT, handle_interrupt)
 
 
 def print_error(message: str) -> None:
@@ -301,12 +298,15 @@ def main(config) -> int:
         configurer.check_config()
         if not config.configure:
             command = ScanCommand(config)
+            initialize_interrupt_handling(command)
             command.execute()
         return 0
     except api.licensing.LicenseRequiredException:
         reset_terminal_with_error('A valid Wordfence CLI license is required')
         return 1
     except BaseException as exception:
+        if command is not None:
+            command.terminate()
         reset_terminal()
         if isinstance(exception, ExceptionContainer):
             if config.debug:
@@ -316,5 +316,14 @@ def main(config) -> int:
         if config.debug:
             raise exception
         else:
-            print_error(f'Error: {exception}')
+            if isinstance(exception, ProgressException):
+                print_error(
+                        'The current terminal size is inadequate for '
+                        'displaying progress output for the current scan '
+                        'options'
+                    )
+            elif isinstance(exception, SystemExit):
+                raise exception
+            else:
+                print_error(f'Error: {exception}')
         return 1
