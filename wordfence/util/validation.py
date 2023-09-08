@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 
 class ValidationException(Exception):
@@ -36,8 +36,31 @@ class Validator:
 
 class DictionaryValidator(Validator):
 
-    def __init__(self, expected: dict = None):
-        self.expected = expected
+    def __init__(
+                self,
+                expected: Optional[dict] = None,
+                validator: Validator = None,
+                allow_empty: bool = False
+            ):
+        self.expected = expected if expected is not None else dict()
+        self.validator = validator
+        self.allow_empty = allow_empty
+
+    def _validate_expected_fields(self, data: dict, parent_key: list) -> None:
+        for key, expected_type in self.expected.items():
+            aggregate_key = parent_key + [key]
+            try:
+                value = data[key]
+                self.validate_type(aggregate_key, value, expected_type)
+            except KeyError:
+                raise ValidationException(aggregate_key, 'Key not present')
+
+    def _validate_all_fields(self, data: dict, parent_key: list) -> None:
+        if self.validator is None:
+            return
+        for key, value in data.items():
+            if key not in self.expected:
+                self.validator.validate(value, parent_key + [key])
 
     def validate(self, data, parent_key: Optional[list] = None) -> None:
         if parent_key is None:
@@ -48,13 +71,13 @@ class DictionaryValidator(Validator):
                     'Element must be a dictionary',
                     data
                 )
-        for key, expected_type in self.expected.items():
-            aggregate_key = parent_key + [key]
-            try:
-                value = data[key]
-                self.validate_type(aggregate_key, value, expected_type)
-            except KeyError:
-                raise ValidationException(aggregate_key, 'Key not present')
+        if self.allow_empty and len(data) == 0:
+            return
+        self._validate_expected_fields(data, parent_key)
+        self._validate_all_fields(data, parent_key)
+
+    def add_field(self, key: Any, expected):
+        self.expected[key] = expected
 
 
 class ListValidator(Validator):
@@ -85,3 +108,48 @@ class ListValidator(Validator):
         else:
             for index, value in enumerate(data):
                 self.validate_type(parent_key + [index], value, self.expected)
+
+
+class AllowedValueValidator(Validator):
+
+    def __init__(self, allowed: set):
+        self.allowed = allowed
+
+    def validate(self, data, parent_key: Optional[list] = None) -> None:
+        for value in self.allowed:
+            if data == value:
+                return
+        raise ValidationException(
+                parent_key,
+                'Value is not in allowed set: ' + repr(data)
+            )
+
+
+class OptionalValueValidator(Validator):
+
+    def __init__(self, expected):
+        self.expected = expected
+
+    def validate(self, data, parent_key: Optional[list] = None) -> None:
+        if data is None:
+            return
+        if parent_key is None:
+            parent_key = []
+        if isinstance(self.expected, Validator):
+            self.expected.validate(data, parent_key)
+        else:
+            self.validate_type(parent_key, data, self.expected)
+
+
+class NumberValidator(Validator):
+
+    def __init__(self):
+        pass
+
+    def validate(self, data, parent_key: Optional[list] = None) -> None:
+        if isinstance(data, int) or isinstance(data, float):
+            return
+        raise ValidationException(
+                parent_key,
+                'Value is not a valid number: ' + repr(data)
+            )
