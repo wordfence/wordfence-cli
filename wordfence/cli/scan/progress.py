@@ -1,9 +1,8 @@
 import curses
 import logging
-import unicodedata
 import signal
 import os
-from typing import List, Optional
+from typing import List, Optional, Deque
 from logging import Handler
 from collections import deque, namedtuple
 from time import sleep
@@ -12,6 +11,7 @@ from wordfence.scanning.scanner import (ScanProgressUpdate, ScanMetrics,
                                         default_scan_finished_handler)
 from ..banner.banner import get_welcome_banner
 from ...util import timing
+from ...util.unicode import filter_control_characters
 
 
 class ProgressException(Exception):
@@ -229,19 +229,33 @@ class BannerBox(Box):
             self.window.addstr(index + offset, offset, row)
 
 
+DEFAULT_MAX_MESSAGES = 512
+
+
 class LogBox(Box):
 
     def __init__(
                 self,
                 columns: int,
                 lines: int,
+                max_messages: int = 0,
                 parent: Optional[curses.window] = None
             ):
         self.columns = columns
         self.lines = lines
-        self.messages = deque()
+        self.messages = deque(
+                maxlen=self._determine_max_messages(max_messages)
+            )
         self.cursor_position = None
         super().__init__(parent, border=True)
+
+    def _determine_max_messages(self, max_messages: int = 0) -> Optional[int]:
+        if max_messages < 0:
+            return None
+        elif max_messages == 0:
+            return max(self.lines, DEFAULT_MAX_MESSAGES)
+        else:
+            return max_messages
 
     def get_width(self):
         return self.columns
@@ -249,33 +263,42 @@ class LogBox(Box):
     def get_height(self):
         return self.lines
 
-    def _limit_messages(self) -> None:
-        while len(self.messages) > self.lines:
-            self.messages.popleft()
+    def _map_messages_to_lines(self, offset: int) -> Deque[str]:
+        lines = deque(maxlen=self.lines)
+        remaining_lines = self.lines
+        for message in reversed(self.messages):
+            if remaining_lines == 0:
+                break
+            message_lines = []
+            while len(message):
+                if remaining_lines == 0:
+                    break
+                line = message[:self.columns]
+                message = message[self.columns:]
+                message_lines.append(line)
+                remaining_lines -= 1
+            for line in reversed(message_lines):
+                lines.appendleft(line)
+        return lines
 
     def draw_content(self) -> None:
         offset = self.get_border_offset()
-        line = offset
-        line_length = 0
-        self._limit_messages()
-        for message in self.messages:
-            message = message[:self.columns]
-            line_length = len(message)
-            message = message.ljust(self.columns)
-            message = "".join(
-                    ch for ch in message if unicodedata.category(ch)[0] != "C"
-                )
+        line_number = offset
+        last_line_number = line_number
+        last_line_length = 0
+        for line in self._map_messages_to_lines(offset):
+            last_line_number = line_number
+            last_line_length = len(line)
+            line = line.ljust(self.columns)
             try:
-                self.window.addstr(line, offset, message)
+                self.window.addstr(line_number, offset, line)
             except Exception:
                 break
-            line += 1
-        self.cursor_offset = Position(line - 1, line_length)
+            line_number += 1
+        self.cursor_offset = Position(last_line_number, last_line_length)
 
     def add_message(self, message: str) -> None:
-        self.messages.append(message)
-        while len(self.messages) > self.lines:
-            self.messages.popleft()
+        self.messages.append(filter_control_characters(message))
         self.update()
 
     def get_cursor_position(self) -> Position:
