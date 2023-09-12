@@ -39,7 +39,7 @@ class NocClient:
         query = self.build_query(action, query)
         url = self.base_url + '?' + urlencode(query)
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=self.timeout)
             return response.json()
         except Exception as error:
             raise ApiException('Request failed') from error
