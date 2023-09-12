@@ -258,7 +258,13 @@ class ScanWorker(Process):
                                 {'exception': item}
                             )
                     else:
-                        self._process_file(item, jit_stack)
+                        try:
+                            self._process_file(item, jit_stack)
+                        except OSError as error:
+                            self._put_event(
+                                    ScanEventType.FATAL_EXCEPTION,
+                                    {'exception': error}
+                                )
                 except queue.Empty:
                     if self._status.value == Status.PROCESSING_FILES:
                         self._complete()
@@ -287,30 +293,27 @@ class ScanWorker(Process):
             return min(self._scanned_content_limit - length, self._chunk_size)
 
     def _process_file(self, path: str, jit_stack: PcreJitStack):
-        try:
-            log.debug(f'Processing file: {path}')
-            with open(path, mode='rb') as file, \
-                    self._matcher.create_context() as context:
-                length = 0
-                while (chunk_size := self._get_next_chunk_size(length)):
-                    chunk = file.read(chunk_size)
-                    if not chunk:
-                        break
-                    first = length == 0
-                    length += len(chunk)
-                    if context.process_chunk(chunk, first, jit_stack):
-                        break
-                self._put_event(
-                        ScanEventType.FILE_PROCESSED,
-                        {
-                            'path': path,
-                            'length': length,
-                            'matches': context.matches,
-                            'timeouts': context.timeouts
-                        }
-                    )
-        except OSError as error:
-            self._put_event(ScanEventType.EXCEPTION, {'exception': error})
+        log.debug(f'Processing file: {path}')
+        with open(path, mode='rb') as file, \
+                self._matcher.create_context() as context:
+            length = 0
+            while (chunk_size := self._get_next_chunk_size(length)):
+                chunk = file.read(chunk_size)
+                if not chunk:
+                    break
+                first = length == 0
+                length += len(chunk)
+                if context.process_chunk(chunk, first, jit_stack):
+                    break
+            self._put_event(
+                    ScanEventType.FILE_PROCESSED,
+                    {
+                        'path': path,
+                        'length': length,
+                        'matches': context.matches,
+                        'timeouts': context.timeouts
+                    }
+                )
 
     def run(self):
         if self._use_log_events:
