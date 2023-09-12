@@ -1,37 +1,13 @@
-import re
-from typing import Dict, Any
-
-from ..reporting import ReportFormat, ReportColumn
-from wordfence.cli.config.defaults import INI_DEFAULT_PATH
 from wordfence.util.pcre import PCRE_DEFAULT_MATCH_LIMIT, \
         PCRE_DEFAULT_MATCH_LIMIT_RECURSION
+from wordfence.util.units import byte_length
 
-KIBIBYTE = 1024
-MEBIBYTE = 1024 * 1024
-
-sizings_map = {
-    'b': 1,
-    'k': KIBIBYTE,
-    'kb': KIBIBYTE,
-    'kib': KIBIBYTE,
-    'm': MEBIBYTE,
-    'mb': MEBIBYTE,
-    'mib': MEBIBYTE
-}
-"""maps suffixes to byte multipliers; k/kb/kib are synonyms, as are m/mb/mib"""
+from ..subcommands import SubcommandDefinition
+from ..config.typing import ConfigDefinitions
+from .reporting import ReportFormat, ReportColumn
 
 
-def byte_length(conversion_value: str) -> int:
-    match = re.search(r"(\d+)([^0-9].*)", conversion_value)
-    if not match:
-        raise ValueError("Invalid format for byte length type")
-    suffix = match.group(2).lower()
-    if not sizings_map.get(suffix, False):
-        raise ValueError("Unrecognized byte length suffix")
-    return int(match.group(1)) * sizings_map.get(suffix)
-
-
-config_definitions: Dict[str, Dict[str, Any]] = {
+config_definitions: ConfigDefinitions = {
     "read-stdin": {
         "description": "Read paths from stdin. If not specified, paths will "
                        "automatically be read from stdin when input is not "
@@ -233,21 +209,6 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTION",
         "default": 1
     },
-    "configuration": {
-        "short_name": "c",
-        "description": "Path to a configuration INI file to use (defaults to"
-                       f" \"{INI_DEFAULT_PATH}\").",
-        "context": "CLI",
-        "argument_type": "OPTION",
-        "default": INI_DEFAULT_PATH
-    },
-    "license": {
-        "short_name": "l",
-        "description": "Specify the license to use.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": None
-    },
     "cache-directory": {
         "description": "A path to use for cache files.",
         "context": "ALL",
@@ -282,20 +243,6 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "FLAG",
         "default": False
     },
-    "quiet": {
-        "short_name": "q",
-        "description": "Suppress all output other than scan results.",
-        "context": "ALL",
-        "argument_type": "FLAG",
-        "default": False
-    },
-    "banner": {
-        "description": "Display the Wordfence banner in command output when "
-                       "running in a TTY/terminal.",
-        "context": "ALL",
-        "argument_type": "FLAG",
-        "default": True
-    },
     "progress": {
         "description": "Display scan progress in the terminal with a curses "
                        "interface",
@@ -309,12 +256,6 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "argument_type": "OPTIONAL_FLAG",
         "default": None
     },
-    "version": {
-        "description": "Display the version of Wordfence CLI.",
-        "context": "CLI",
-        "argument_type": "FLAG",
-        "default": False
-    },
     "check-for-update": {
         "description": "Whether or not to run the update check.",
         "context": "ALL",
@@ -322,11 +263,11 @@ config_definitions: Dict[str, Dict[str, Any]] = {
         "default": True,
         "hidden": True
     },
-    "noc1-url": {
-        "description": "URL to use for accessing the NOC1 API.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": None,
-        "hidden": True
-    },
 }
+
+definition = SubcommandDefinition(
+    name='scan',
+    description='Scan files for malware',
+    config_definitions=config_definitions,
+    config_section='SCAN'
+)

@@ -15,7 +15,6 @@ from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import (log, remove_initial_handler,
                                restore_initial_handler)
-from wordfence.version import __version__
 from .reporting import Report, ReportFormat
 from .configure import Configurer
 from .progress import ProgressDisplay, ProgressException, reset_terminal
@@ -276,18 +275,9 @@ def reset_terminal_with_error(message: str) -> None:
     print_error(message)
 
 
-def display_version() -> None:
-    print(f"Wordfence CLI {__version__}")
-    jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
-    print(f"PCRE Version: {pcre.VERSION} - JIT Supported: {jit_support_text}")
-
-
 def main(config) -> int:
     command = None
     try:
-        if config.version:
-            display_version()
-            return 0
         if config.quiet:
             log.setLevel(logging.CRITICAL)
         elif config.debug:
@@ -304,9 +294,6 @@ def main(config) -> int:
             initialize_interrupt_handling(command)
             command.execute()
         return 0
-    except api.licensing.LicenseRequiredException:
-        reset_terminal_with_error('A valid Wordfence CLI license is required')
-        return 1
     except BaseException as exception:
         if command is not None:
             command.terminate()
