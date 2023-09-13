@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Set, Optional, Callable, Dict, NamedTuple
 from logging import Handler
 
-from .exceptions import ScanningException
+from .exceptions import ScanningException, ScanningIoException
 from .matching import Matcher, RegexMatcher
 from .filtering import FileFilter, filter_any
 from ..util import timing
@@ -80,6 +80,7 @@ class Options:
     file_filter: Optional[FileFilter] = None
     match_all: bool = False
     pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
+    allow_io_errors: bool = False
 
 
 class Status(IntEnum):
@@ -112,7 +113,8 @@ class FileLocator:
                     self.located_count += 1
                     yield item.path
         except OSError as os_error:
-            raise ScanningException('Directory search failed') from os_error
+            raise ScanningIoException(f'Directory search of {path} failed') \
+                from os_error
 
     def locate(self):
         # TODO: Handle links and prevent loops
@@ -176,9 +178,9 @@ class FileLocatorProcess(Process):
                         queue=self.output_queue
                     )
                 locator.locate()
-            self.output_queue.put(None)
         except ScanningException as exception:
             self.output_queue.put(exception)
+        self.output_queue.put(None)
 
 
 class ScanEvent:
@@ -225,7 +227,8 @@ class ScanWorker(Process):
                 matcher: Matcher,
                 chunk_size: int = DEFAULT_CHUNK_SIZE,
                 scanned_content_limit: Optional[int] = None,
-                use_log_events: bool = False
+                use_log_events: bool = False,
+                allow_io_errors: bool = False
             ):
         self.index = index
         self._status = status
@@ -236,6 +239,7 @@ class ScanWorker(Process):
         self._working = True
         self._scanned_content_limit = scanned_content_limit
         self._use_log_events = use_log_events
+        self._allow_io_errors = allow_io_errors
         self.complete = Value(c_bool, False)
         super().__init__(name=self._generate_name())
 
@@ -252,6 +256,8 @@ class ScanWorker(Process):
                     if item is None:
                         self._put_event(ScanEventType.FILE_QUEUE_EMPTIED)
                         self._complete()
+                    elif isinstance(item, ScanningIoException):
+                        self._put_io_error(item)
                     elif isinstance(item, BaseException):
                         self._put_event(
                                 ScanEventType.FATAL_EXCEPTION,
@@ -261,10 +267,7 @@ class ScanWorker(Process):
                         try:
                             self._process_file(item, jit_stack)
                         except OSError as error:
-                            self._put_event(
-                                    ScanEventType.FATAL_EXCEPTION,
-                                    {'exception': error}
-                                )
+                            self._put_io_error(error)
                 except queue.Empty:
                     if self._status.value == Status.PROCESSING_FILES:
                         self._complete()
@@ -274,6 +277,14 @@ class ScanWorker(Process):
             data = {}
         self._event_queue.put(
                 ScanEvent(event_type, data, worker_index=self.index)
+            )
+
+    def _put_io_error(self, error) -> None:
+        event_type = ScanEventType.EXCEPTION if self._allow_io_errors \
+                else ScanEventType.FATAL_EXCEPTION
+        self._put_event(
+                event_type,
+                {'exception': error}
             )
 
     def _complete(self):
@@ -448,7 +459,8 @@ class ScanWorkerPool:
                 progress_receiver: Optional[ProgressReceiverCallback] = None,
                 chunk_size: int = DEFAULT_CHUNK_SIZE,
                 scanned_content_limit: Optional[int] = None,
-                use_log_events: bool = False
+                use_log_events: bool = False,
+                allow_io_errors: bool = False
             ):
         self.size = size
         self._matcher = matcher
@@ -461,6 +473,7 @@ class ScanWorkerPool:
         self._scanned_content_limit = scanned_content_limit
         self._started = False
         self._use_log_events = use_log_events
+        self._allow_io_errors = allow_io_errors
 
     def __enter__(self):
         self.start()
@@ -506,7 +519,8 @@ class ScanWorkerPool:
                     self._matcher,
                     self._chunk_size,
                     self._scanned_content_limit,
-                    self._use_log_events
+                    self._use_log_events,
+                    self._allow_io_errors
                 )
             worker.start()
             self._workers.append(worker)
@@ -577,8 +591,8 @@ class ScanWorkerPool:
             elif event.type == ScanEventType.FILE_QUEUE_EMPTIED:
                 self._status.value = Status.PROCESSING_FILES
             elif event.type == ScanEventType.EXCEPTION:
-                log.error(
-                        'Exception occurred while processing file: ' +
+                log.warning(
+                        'Exception occurred during scanning: ' +
                         str(event.data['exception'])
                     )
             elif event.type == ScanEventType.FATAL_EXCEPTION:
@@ -643,7 +657,8 @@ class Scanner:
                     progress_receiver=progress_receiver,
                     chunk_size=self.options.chunk_size,
                     scanned_content_limit=self.options.scanned_content_limit,
-                    use_log_events=use_log_events
+                    use_log_events=use_log_events,
+                    allow_io_errors=self.options.allow_io_errors
                 ) as worker_pool:
             if self.options.path_source is not None:
                 log.debug('Reading input paths...')

@@ -165,6 +165,14 @@ config_definitions: Dict[str, Dict[str, Any]] = {
             "separator": ","
         }
     },
+    "allow-io-errors": {
+        "description": "Allow scanning to continue if IO errors are "
+                       "encountered. Files that cannot be read will "
+                       "be skipped and a warning will be logged.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": False
+    },
     "chunk-size": {
         "short_name": "z",
         "description": "Size of file chunks that will be scanned. Use a whole "
