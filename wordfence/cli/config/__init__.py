@@ -1,6 +1,4 @@
-from argparse import ArgumentParser
-from types import SimpleNamespace
-from typing import Any, List, Dict, Optional
+from typing import List, Dict, Tuple
 
 from .cli_parser import CliCanonicalValueExtractor, get_cli_values
 from .config_items import ConfigItemDefinition, \
@@ -9,44 +7,7 @@ from .ini_parser import load_ini, get_ini_value_extractor, \
         get_default_ini_value_extractor
 from ..subcommands import SubcommandDefinition
 from .base_config_definitions import config_map as base_config_map
-
-
-class Config(SimpleNamespace):
-
-    def __init__(
-                self,
-                definitions,
-                parser: ArgumentParser,
-                subcommand: Optional[str],
-                ini_path: Optional[str] = None
-            ):
-        super().__init__()
-        self._definitions = definitions
-        self._parser = parser
-        self.subcommand = subcommand
-        self.ini_path = ini_path
-        self.trailing_arguments = None
-
-    def values(self) -> Dict[str, Any]:
-        result: Dict[str, Any] = dict()
-        for prop, value in vars(self).items():
-            if (prop.startswith('_') or callable(value) or
-                    isinstance(value, classmethod)):
-                continue
-            result[prop] = value
-        return result
-
-    def get(self, property_name, default=None) -> Any:
-        return getattr(self, property_name, default)
-
-    def define(self, property_name) -> ConfigItemDefinition:
-        return self._definitions[property_name]
-
-    def has_ini_file(self) -> bool:
-        return self.ini_path is not None
-
-    def display_help(self) -> None:
-        self._parser.print_help()
+from .config import Config
 
 
 value_extractors: List = []
@@ -97,7 +58,9 @@ def create_config_object(
     return target
 
 
-def load_config(subcommand_definitions: Dict[str, SubcommandDefinition]):
+def load_config(
+            subcommand_definitions: Dict[str, SubcommandDefinition]
+        ) -> Tuple[Config, SubcommandDefinition]:
     cli_values, trailing_arguments, parser = get_cli_values(
             subcommand_definitions
         )
@@ -129,4 +92,4 @@ def load_config(subcommand_definitions: Dict[str, SubcommandDefinition]):
             cli_values
         )
     instance.ini_path = ini_path
-    return instance
+    return instance, subcommand_definition

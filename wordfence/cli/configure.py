@@ -10,7 +10,7 @@ from wordfence.api import noc1
 from wordfence.api.licensing import License, LICENSE_URL
 from wordfence.api.exceptions import ApiException
 from wordfence.logging import log
-from ..config.defaults import INI_DEFAULT_PATH
+from .config.defaults import INI_DEFAULT_PATH
 
 
 class Configurer:

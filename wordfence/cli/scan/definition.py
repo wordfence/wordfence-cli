@@ -209,40 +209,6 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTION",
         "default": 1
     },
-    "cache-directory": {
-        "description": "A path to use for cache files.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": "~/.cache/wordfence"
-    },
-    "cache": {
-        "description": "Whether or not to enable the cache.",
-        "context": "ALL",
-        "argument_type": "FLAG",
-        "default": True
-    },
-    "purge-cache": {
-        "description": "Purge any existing values from the cache.",
-        "context": "CLI",
-        "argument_type": "FLAG",
-        "default": False
-    },
-    "verbose": {
-        "short_name": "v",
-        "description": "Enable verbose logging. If not specified, verbose "
-                       "logging will be enabled automatically if stdout is a "
-                       "TTY. Use --no-verbose to disable.",
-        "context": "ALL",
-        "argument_type": "OPTIONAL_FLAG",
-        "default": None
-    },
-    "debug": {
-        "short_name": "d",
-        "description": "Enable debug logging.",
-        "context": "ALL",
-        "argument_type": "FLAG",
-        "default": False
-    },
     "progress": {
         "description": "Display scan progress in the terminal with a curses "
                        "interface",
@@ -250,24 +216,20 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "FLAG",
         "default": False
     },
-    "configure": {
-        "description": "Interactively configure Wordfence CLI.",
-        "context": "CLI",
-        "argument_type": "OPTIONAL_FLAG",
-        "default": None
-    },
-    "check-for-update": {
-        "description": "Whether or not to run the update check.",
-        "context": "ALL",
-        "argument_type": "FLAG",
-        "default": True,
-        "hidden": True
-    },
+}
+
+
+cacheable_types = {
+    'wordfence.intel.signatures.SignatureSet',
+    'wordfence.intel.signatures.CommonString',
+    'wordfence.intel.signatures.Signature',
+    'wordfence.api.licensing.License'
 }
 
 definition = SubcommandDefinition(
     name='scan',
     description='Scan files for malware',
     config_definitions=config_definitions,
-    config_section='SCAN'
+    config_section='SCAN',
+    cacheable_types=cacheable_types
 )

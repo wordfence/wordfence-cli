@@ -1,23 +1,20 @@
 import sys
 import signal
-import os
 import logging
 from multiprocessing import parent_process
 from contextlib import nullcontext
-from typing import Any, Optional
+from typing import Optional
 
 from wordfence import scanning, api
-from wordfence.api.licensing import LicenseSpecific
 from wordfence.scanning import filtering
-from wordfence.scanning.scanner import ExceptionContainer
-from wordfence.util import caching, updater, pcre
+from wordfence.util import caching, pcre
 from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import (log, remove_initial_handler,
                                restore_initial_handler)
+from ..subcommands import Subcommand
 from .reporting import Report, ReportFormat
-from .configure import Configurer
-from .progress import ProgressDisplay, ProgressException, reset_terminal
+from .progress import ProgressDisplay, reset_terminal
 
 
 screen_handler: Optional[logging.Handler] = None
@@ -31,49 +28,12 @@ def revert_progress_changes() -> None:
     reset_terminal()
 
 
-class ScanCommand:
+class ScanSubcommand(Subcommand):
 
-    CACHEABLE_TYPES = {
-            'wordfence.intel.signatures.SignatureSet',
-            'wordfence.intel.signatures.CommonString',
-            'wordfence.intel.signatures.Signature',
-            'wordfence.api.licensing.License'
-        }
-
-    def __init__(self, config):
-        self.config = config
-        self.cache = self._initialize_cache()
-        self.license = None
-        self.cache.add_filter(self.filter_cache_entry)
-        self.cacheable_signatures = None
-
-    def filter_cache_entry(self, value: Any) -> Any:
-        if isinstance(value, LicenseSpecific):
-            if not value.is_compatible_with_license(self._get_license()):
-                raise caching.InvalidCachedValueException(
-                        'Incompatible license'
-                    )
-        return value
-
-    def _get_license(self) -> api.licensing.License:
-        if self.license is None:
-            if self.config.license is None:
-                raise api.licensing.LicenseRequiredException()
-            self.license = api.licensing.License(self.config.license)
-        return self.license
-
-    def _initialize_cache(self) -> caching.Cache:
-        if self.config.cache:
-            try:
-                return caching.CacheDirectory(
-                        os.path.expanduser(self.config.cache_directory),
-                        self.CACHEABLE_TYPES
-                    )
-            except caching.CacheException as e:
-                log.warning('Failed to initialize cache directory: ' + str(e))
-        return caching.RuntimeCache()
-
-    def filter_signatures(self, signatures: SignatureSet) -> None:
+    def _filter_signatures(
+                self,
+                signatures: SignatureSet,
+            ) -> None:
         if self.config.include_signatures:
             for identifier in list(signatures.signatures.keys()):
                 if identifier not in self.config.include_signatures:
@@ -99,20 +59,19 @@ class ScanCommand:
         log.debug(f'Filtered signature count: {signature_count}')
 
     def _get_signatures(self) -> SignatureSet:
-        if self.cacheable_signatures is None:
-            def fetch_signatures() -> SignatureSet:
-                noc1_client = api.noc1.Client(
-                        self._get_license(),
-                        base_url=self.config.noc1_url
-                    )
-                return noc1_client.get_malware_signatures()
-            self.cacheable_signatures = caching.Cacheable(
-                    'signatures',
-                    fetch_signatures,
-                    86400  # Cache signatures for 24 hours
+        def fetch_signatures() -> SignatureSet:
+            noc1_client = api.noc1.Client(
+                    self.context.require_license(),
+                    base_url=self.config.noc1_url
                 )
+            return noc1_client.get_malware_signatures()
+        self.cacheable_signatures = caching.Cacheable(
+                'signatures',
+                fetch_signatures,
+                86400  # Cache signatures for 24 hours
+            )
         signatures = self.cacheable_signatures.get(self.cache)
-        self.filter_signatures(signatures)
+        self._filter_signatures(signatures)
         return signatures
 
     def _should_read_stdin(self) -> bool:
@@ -165,11 +124,20 @@ class ScanCommand:
                     match_limit_recursion=self.config.pcre_recursion_limit
                 )
 
-    def execute(self) -> int:
-        if self.config.purge_cache:
-            self.cache.purge()
-        if self.config.check_for_update:
-            updater.Version.check(self.cache)
+    def _initialize_interrupt_handling(self) -> None:
+
+        def handle_interrupt(signal_number: int, stack) -> None:
+            revert_progress_changes()
+            if parent_process() is None:
+                log.info('Scan command interrupted, stopping...')
+                self.terminate()
+                reset_terminal()
+            sys.exit(130)
+
+        signal.signal(signal.SIGINT, handle_interrupt)
+
+    def invoke(self) -> int:
+        self._initialize_interrupt_handling()
 
         progress = None
         if self.config.progress:
@@ -248,72 +216,7 @@ class ScanCommand:
     def terminate(self) -> None:
         if hasattr(self, 'scanner') and self.scanner is not None:
             self.scanner.terminate()
-
-
-def initialize_interrupt_handling(command: ScanCommand) -> None:
-
-    def handle_interrupt(signal_number: int, stack) -> None:
-        revert_progress_changes()
-        if parent_process() is None:
-            log.info('Scan command interrupted, stopping...')
-            command.terminate()
-            reset_terminal()
-        sys.exit(130)
-
-    signal.signal(signal.SIGINT, handle_interrupt)
-
-
-def print_error(message: str) -> None:
-    if sys.stderr is not None:
-        print(message, file=sys.stderr)
-    else:
-        print(message)
-
-
-def reset_terminal_with_error(message: str) -> None:
-    reset_terminal()
-    print_error(message)
-
-
-def main(config) -> int:
-    command = None
-    try:
-        if config.quiet:
-            log.setLevel(logging.CRITICAL)
-        elif config.debug:
-            log.setLevel(logging.DEBUG)
-        elif config.verbose or (
-                    config.verbose is None
-                    and sys.stdout is not None and sys.stdout.isatty()
-                ):
-            log.setLevel(logging.INFO)
-        configurer = Configurer(config)
-        configurer.check_config()
-        if not config.configure:
-            command = ScanCommand(config)
-            initialize_interrupt_handling(command)
-            command.execute()
-        return 0
-    except BaseException as exception:
-        if command is not None:
-            command.terminate()
         reset_terminal()
-        if isinstance(exception, ExceptionContainer):
-            if config.debug:
-                print_error(exception.trace)
-                return 1
-            exception = exception.exception
-        if config.debug:
-            raise exception
-        else:
-            if isinstance(exception, ProgressException):
-                print_error(
-                        'The current terminal size is inadequate for '
-                        'displaying progress output for the current scan '
-                        'options'
-                    )
-            elif isinstance(exception, SystemExit):
-                raise exception
-            else:
-                print_error(f'Error: {exception}')
-        return 1
+
+
+factory = ScanSubcommand

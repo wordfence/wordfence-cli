@@ -24,9 +24,19 @@ config_definitions = {
         "argument_type": "OPTION",
         "default": None
     },
-    "version": {
-        "description": "Display the version of Wordfence CLI.",
-        "context": "CLI",
+    "verbose": {
+        "short_name": "v",
+        "description": "Enable verbose logging. If not specified, verbose "
+                       "logging will be enabled automatically if stdout is a "
+                       "TTY. Use --no-verbose to disable.",
+        "context": "ALL",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
+    },
+    "debug": {
+        "short_name": "d",
+        "description": "Enable debug logging.",
+        "context": "ALL",
         "argument_type": "FLAG",
         "default": False
     },
@@ -36,6 +46,44 @@ config_definitions = {
         "context": "ALL",
         "argument_type": "FLAG",
         "default": False
+    },
+    "cache-directory": {
+        "description": "A path to use for cache files.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": "~/.cache/wordfence"
+    },
+    "cache": {
+        "description": "Whether or not to enable the cache.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
+    },
+    "purge-cache": {
+        "description": "Purge any existing values from the cache.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False
+    },
+    "configure": {
+        "description": "Interactively configure Wordfence CLI.",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
+    },
+    "version": {
+        "description": "Display the version of Wordfence CLI.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False
+    },
+    # Hidden options
+    "check-for-update": {
+        "description": "Whether or not to run the update check.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True,
+        "hidden": True
     },
     "noc1-url": {
         "description": "URL to use for accessing the NOC1 API.",
