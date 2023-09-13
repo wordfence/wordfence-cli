@@ -198,13 +198,13 @@ class MetricBox(Box):
         return len(self.metrics)
 
     def draw_content(self) -> None:
-        width = self.get_width()
         offset = self.get_border_offset()
+        width = self.get_width()
         for index, metric in enumerate(self.metrics):
             line = index + offset
-            self.window.addstr(line, offset, f'{metric.label}:')
-            value_offset = offset + width - len(metric.value)
-            self.window.addstr(line, value_offset, metric.value)
+            label = f'{metric.label}:'
+            value_string = metric.value.rjust(width - len(label))
+            self.window.addstr(line, offset, label + value_string)
 
 
 class BannerBox(Box):
