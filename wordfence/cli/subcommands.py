@@ -45,6 +45,12 @@ class Subcommand:
     def terminate() -> None:
         pass
 
+    def generate_exception_message(
+                self,
+                exception: BaseException
+            ) -> Optional[str]:
+        return None
+
 
 class SubcommandDefinition:
 

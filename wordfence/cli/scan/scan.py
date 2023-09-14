@@ -14,7 +14,7 @@ from wordfence.logging import (log, remove_initial_handler,
                                restore_initial_handler)
 from ..subcommands import Subcommand
 from .reporting import Report, ReportFormat
-from .progress import ProgressDisplay, reset_terminal
+from .progress import ProgressDisplay, ProgressException, reset_terminal
 
 
 screen_handler: Optional[logging.Handler] = None
@@ -217,6 +217,18 @@ class ScanSubcommand(Subcommand):
         if hasattr(self, 'scanner') and self.scanner is not None:
             self.scanner.terminate()
         reset_terminal()
+
+    def generate_exception_message(
+                self,
+                exception: BaseException
+            ) -> Optional[str]:
+        if isinstance(exception, ProgressException):
+            return (
+                    'The current terminal size is inadequate for '
+                    'displaying progress output for the current scan '
+                    'options'
+                )
+        return super().generate_exception_message(exception)
 
 
 factory = ScanSubcommand
