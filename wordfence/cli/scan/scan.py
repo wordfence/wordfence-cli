@@ -191,7 +191,9 @@ class ScanCommand:
                 scanned_content_limit=int(self.config.scanned_content_limit),
                 file_filter=self._initialize_file_filter(),
                 match_all=self.config.match_all,
-                pcre_options=self._get_pcre_options()
+                pcre_options=self._get_pcre_options(),
+                allow_io_errors=self.config.allow_io_errors,
+                debug=self.config.debug
             )
         if self._should_read_stdin():
             options.path_source = StreamReader(
