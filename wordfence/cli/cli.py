@@ -1,7 +1,6 @@
 import sys
 import os
 import logging
-from typing import Dict
 
 from ..version import __version__
 from ..util import pcre, updater
@@ -10,9 +9,8 @@ from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
 from ..logging import log
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
-from .config import Config, load_config
-from .subcommands import SubcommandDefinition, Subcommand, \
-        load_subcommand_definitions
+from .config import load_config
+from .subcommands import load_subcommand_definitions
 from .context import CliContext
 from .configure import Configurer
 
