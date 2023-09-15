@@ -92,6 +92,13 @@ config_definitions = {
         "default": None,
         "hidden": True
     },
+    "wfi-url": {
+        "description": "Base URL for accessing the Wordfence Intelligence API",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": None,
+        "hidden": True
+    },
 }
 
 config_map = config_definitions_to_config_map(config_definitions)

@@ -5,7 +5,7 @@ from multiprocessing import parent_process
 from contextlib import nullcontext
 from typing import Optional
 
-from wordfence import scanning, api
+from wordfence import scanning
 from wordfence.scanning import filtering
 from wordfence.util import caching, pcre
 from wordfence.util.io import StreamReader
@@ -60,15 +60,12 @@ class ScanSubcommand(Subcommand):
 
     def _get_signatures(self) -> SignatureSet:
         def fetch_signatures() -> SignatureSet:
-            noc1_client = api.noc1.Client(
-                    self.context.require_license(),
-                    base_url=self.config.noc1_url
-                )
+            noc1_client = self.context.get_noc1_client()
             return noc1_client.get_malware_signatures()
         self.cacheable_signatures = caching.Cacheable(
                 'signatures',
                 fetch_signatures,
-                86400  # Cache signatures for 24 hours
+                caching.DURATION_ONE_DAY
             )
         signatures = self.cacheable_signatures.get(self.cache)
         self._filter_signatures(signatures)

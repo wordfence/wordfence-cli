@@ -42,7 +42,7 @@ class Subcommand:
     def invoke(self) -> int:
         return 0
 
-    def terminate() -> None:
+    def terminate(self) -> None:
         pass
 
     def generate_exception_message(

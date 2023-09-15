@@ -1,0 +1,7 @@
+name: "Unit Testing"
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+      steps:
+        - python3 -m unittest

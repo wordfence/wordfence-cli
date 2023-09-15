@@ -80,7 +80,12 @@ class WordfenceCli:
             if isinstance(exception, SystemExit):
                 raise exception
             else:
-                message = self.subcommand.generate_exception_message(exception)
+                if self.subcommand is None:
+                    message = None
+                else:
+                    message = self.subcommand.generate_exception_message(
+                            exception
+                        )
                 if message is None:
                     message = f'Error: {exception}'
                 self.print_error(message)

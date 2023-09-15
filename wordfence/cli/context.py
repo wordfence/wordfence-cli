@@ -1,5 +1,6 @@
 from typing import Optional, Any
 
+from ..api import noc1, intelligence
 from ..util.caching import Cache, InvalidCachedValueException
 from ..api.licensing import License, LicenseRequiredException, LicenseSpecific
 from .config.config import Config
@@ -12,6 +13,8 @@ class CliContext:
         cache.add_filter(self.filter_cache_entry)
         self.cache = cache
         self._license = None
+        self._noc1_client = None
+        self._wfi_client = None
 
     def get_license(self) -> Optional[License]:
         if self._license is None and self.config.license is not None:
@@ -31,3 +34,18 @@ class CliContext:
                         'Incompatible license'
                     )
         return value
+
+    def get_noc1_client(self) -> noc1.Client:
+        if self._noc1_client is None:
+            self._noc1_client = noc1.Client(
+                    self.require_license(),
+                    self.config.noc1_url
+                )
+        return self._noc1_client
+
+    def get_wfi_client(self) -> intelligence.Client:
+        if self._wfi_client is None:
+            self._wfi_client = intelligence.Client(
+                    self.config.wfi_url
+                )
+        return self._wfi_client

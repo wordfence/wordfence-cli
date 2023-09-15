@@ -246,14 +246,14 @@ class VulnerabilityFeedVariant(Enum):
         return self.validator
 
 
-class WordfenceIntelligenceClient:
+class Client:
 
     def __init__(
                 self,
-                base_url: str = DEFAULT_BASE_URL,
+                base_url: Optional[str] = None,
                 timeout: int = DEFAULT_TIMEOUT
             ):
-        self.base_url = base_url
+        self.base_url = base_url if base_url is not None else DEFAULT_BASE_URL
         self.timeout = timeout
 
     def _build_url(self, path: str) -> str:
