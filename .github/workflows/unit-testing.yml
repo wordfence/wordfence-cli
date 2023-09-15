@@ -4,4 +4,5 @@ jobs:
   test:
     runs-on: ubuntu-20.04
       steps:
-        - python3 -m unittest
+        - uses: actions/checkout@v3
+        - run: python3 -m unittest
