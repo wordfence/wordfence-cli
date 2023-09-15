@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict, Union, Optional, Callable, Any
+from typing import List, Dict, Union, Optional
 
 
 PHP_VERSION_DELIMITER = '.'
