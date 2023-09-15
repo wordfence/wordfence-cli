@@ -316,6 +316,10 @@ class LogBox(Box):
         self.columns = properties.max_row_width - 2
         self.lines = properties.lines - properties.current_line - 2
         self.cursor_position = None
+        if self.lines < 3:
+            raise ProgressException(
+                    'Insufficient space available to display log messages'
+                )
         return True
 
 
