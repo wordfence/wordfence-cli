@@ -122,8 +122,6 @@ def compare_version_components(
             a: Optional[PhpVersionComponent],
             b: Optional[PhpVersionComponent]
         ) -> int:
-    print(vars(a))
-    print(vars(b))
     if a.value == b.value:
         return 0
     if a.tier != b.tier:
