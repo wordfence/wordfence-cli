@@ -177,7 +177,8 @@ class ScanCommand:
             global screen_handler
             progress = ProgressDisplay(int(self.config.workers))
             screen_handler = progress.get_log_handler()
-            remove_initial_handler()
+            if sys.stderr is None or sys.stderr.isatty():
+                remove_initial_handler()
             log.addHandler(screen_handler)
 
         paths = set()
