@@ -5,6 +5,10 @@ def unit_seconds(ns: int) -> int:
     return ns / 1000000000
 
 
+def unit_milliseconds(ns: int) -> int:
+    return ns / 1000000
+
+
 class Timer:
 
     def __init__(self, start: bool = True):
@@ -19,6 +23,9 @@ class Timer:
 
     def start(self):
         self.start_time = self._capture_time()
+
+    def reset(self):
+        self.start()
 
     def stop(self):
         self.end_time = self._capture_time()

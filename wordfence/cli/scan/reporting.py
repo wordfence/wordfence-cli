@@ -204,6 +204,7 @@ class Report:
         for writer in self.writers:
             if writer.allows_headers():
                 writer.write_row(self.columns)
+        self.headers_written = True
 
     def add_result(self, result: ScanResult) -> None:
         self._write_headers()

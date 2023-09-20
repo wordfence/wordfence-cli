@@ -130,7 +130,7 @@ _pcre_exec.argtypes = [
         c_int,
         c_int,
         c_int,
-        POINTER(c_int),
+        c_void_p,
         c_int
     ]
 _pcre_exec.restype = c_int
@@ -259,15 +259,17 @@ class PcrePattern:
                 pattern: str,
                 options: PcreOptions = PCRE_DEFAULT_OPTIONS
             ):
-        self._compile(pattern, options)
+        self.pattern = pattern
+        self.options = options
+        self._compile()
 
-    def _compile(self, pattern: str, options: PcreOptions) -> c_void_p:
-        pattern_cstr = c_char_p(pattern.encode('utf8'))
+    def _compile(self) -> None:
+        pattern_cstr = c_char_p(self.pattern.encode('utf8'))
         error_message = c_char_p(None)
         error_offset = c_int(-1)
         self.compiled = _pcre_compile(
                 pattern_cstr,
-                options._get_compilation_options(),
+                self.options._get_compilation_options(),
                 byref(error_message),
                 byref(error_offset),
                 None
@@ -287,9 +289,9 @@ class PcrePattern:
         self.extra.flags = c_ulong(
                 PCRE_EXTRA_MATCH_LIMIT | PCRE_EXTRA_MATCH_LIMIT_RECURSION
             )
-        self.extra.match_limit = c_ulong(options.match_limit)
+        self.extra.match_limit = c_ulong(self.options.match_limit)
         self.extra.match_limit_recursion = \
-            c_ulong(options.match_limit_recursion)
+            c_ulong(self.options.match_limit_recursion)
 
     def match(
                 self,
@@ -361,3 +363,14 @@ class PcrePattern:
 
     def __del__(self) -> None:
         self._free()
+
+    def __getstate__(self) -> dict:
+        return {
+                'pattern': self.pattern,
+                'options': self.options
+            }
+
+    def __setstate__(self, state) -> None:
+        self.pattern = state['pattern']
+        self.options = state['options']
+        self._compile()
