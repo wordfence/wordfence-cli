@@ -86,7 +86,6 @@ class Box:
         if self.window is None:
             self._initialize_window(y, x)
         else:
-            # TODO: Prevent dynamic layout sizing from breaking positioning
             self.resize(1, 1)
             try:
                 self.window.erase()
