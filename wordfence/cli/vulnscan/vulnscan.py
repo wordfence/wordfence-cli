@@ -1,6 +1,9 @@
-from ...intel.vulnerabilities import VulnerabilityIndex
+from typing import Dict
+
+from ...intel.vulnerabilities import VulnerabilityIndex, Vulnerability
 from ...util.caching import Cacheable, DURATION_ONE_DAY
 from ...wordpress.site import WordpressSite
+from ...logging import log
 from ..subcommands import Subcommand
 
 
@@ -22,16 +25,41 @@ class VulnScanSubcommand(Subcommand):
                 self,
                 path: str,
                 vulnerability_index: VulnerabilityIndex
-            ) -> None:
-        pass
+            ) -> Dict[str, Vulnerability]:
         site = WordpressSite(path)
-        # TODO: Implement site scanning
-        del site
+        log.debug(f'Located WordPress files at {site.core_path}')
+        vulnerabilities = {}
+        version = site.get_version()
+        log.info(f'WordPress Core Version: {version}')
+        vulnerabilities.update(
+                vulnerability_index.get_core_vulnerabilties(version)
+            )
+        for plugin in site.get_plugins():
+            log.info(f'Plugin {plugin.slug}, version: {plugin.version}')
+            vulnerabilities.update(
+                    vulnerability_index.get_plugin_vulnerabilities(
+                            plugin.slug,
+                            plugin.version
+                        )
+                )
+        for theme in site.get_themes():
+            log.info(f'Theme {theme.slug}, version: {theme.version}')
+            vulnerabilities.update(
+                    vulnerability_index.get_theme_vulnerabilities(
+                        theme.slug,
+                        theme.version
+                    )
+                )
+        return vulnerabilities
 
     def invoke(self) -> int:
         vulnerability_index = self._load_vulnerability_index()
         for path in self.config.trailing_arguments:
-            self._scan(path, vulnerability_index)
+            log.info(f'Scanning site at {path}...')
+            vulnerabilities = self._scan(path, vulnerability_index)
+            for vulnerability in vulnerabilities.values():
+                print(f'Vulnerability {vulnerability.identifier}')
+            log.info(f'Found {len(vulnerabilities)} vulnerabilit(y|ies)')
         return 0
 
 

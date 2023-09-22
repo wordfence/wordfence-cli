@@ -1,0 +1,2 @@
+class WordpressException(Exception):
+    pass

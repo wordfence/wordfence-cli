@@ -27,7 +27,6 @@ FILE_LOCATOR_WORKER_INDEX = 0
 """Used by the file locator process when sending events"""
 
 
-# TODO: Make this class support pickle
 class ExceptionContainer(Exception):
 
     def __init__(self, exception: BaseException, trace: str = None):
