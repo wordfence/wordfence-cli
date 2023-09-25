@@ -1,11 +1,11 @@
 import os
 import os.path
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 from ..php.parsing import parse_php_file, PhpException
 from .exceptions import WordpressException
-from .plugin import Plugin
-from .theme import Theme
+from .plugin import Plugin, PluginLoader
+from .theme import Theme, ThemeLoader
 
 WP_BLOG_HEADER_NAME = 'wp-blog-header.php'
 
@@ -54,9 +54,8 @@ class WordpressSite:
                 basename = os.path.basename(path)
                 if basename == WP_BLOG_HEADER_NAME:
                     return os.path.dirname(path)
-        except PhpException as exception:
+        except PhpException:
             # If parsing fails, it's not a valid WordPress index file
-            raise exception
             pass
         return None
 
@@ -122,27 +121,13 @@ class WordpressSite:
         # TODO Parse WP config to determine plugin path
         return self.resolve_core_path('wp-content/plugins')
 
-    def _read_plugin_header(path: str) -> Dict[str, str]:
-        header = {}
-        # TODO:
-        return header
-
     def get_plugins(self) -> List[Plugin]:
-        plugins = []
-        directory = self.get_plugin_directory()
-        try:
-            for file in os.scandir(directory):
-                if file.is_file():
-                    header = self._read_plugin_header(file.path)
-                elif file.is_dir():
-                    # TODO
-                    pass
-                pass
-        except OSError as error:
-            raise WordpressException(
-                    f'Unable to scan plugins directory at {directory}'
-                ) from error
-        return plugins
+        loader = PluginLoader(self.get_plugin_directory())
+        return loader.load_all()
+
+    def get_theme_directory(self) -> str:
+        return self.resolve_core_path('wp-content/themes')
 
     def get_themes(self) -> List[Theme]:
-        return []
+        loader = ThemeLoader(self.get_theme_directory())
+        return loader.load_all()
