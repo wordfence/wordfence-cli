@@ -76,6 +76,9 @@ class SubcommandDefinition:
                 )
         return self.config_map
 
+    def accepts_option(self, name: str) -> bool:
+        return name in self.config_definitions
+
     def initialize_subcommand(self, context: CliContext) -> Subcommand:
         module = import_subcommand_module(self.name)
         assert hasattr(module, 'factory')

@@ -1,6 +1,7 @@
 import os.path
 from typing import IO, List, Optional, Any, Callable
 from enum import Enum
+from collections import deque
 
 from .lexing import Lexer, Token, TokenType, CharacterType, STRING_ESCAPE
 
@@ -34,8 +35,26 @@ class EvaluationException(PhpException):
     pass
 
 
+class PhpScope:
+
+    def __init__(self):
+        self.variables = {}
+
+    def assign(self, name: str, value: Any):
+        self.variables[name] = value
+
+
 class PhpState:
-    pass
+
+    def __init__(self):
+        self.global_scope = PhpScope()
+        self.scope = self.global_scope
+        self.constants = {}
+
+    def define_constant(self, name: str, value: Any) -> None:
+        if name in self.constants:
+            raise EvaluationException(f'Constant {name} is already defined')
+        self.constants[name] = value
 
 
 class PhpEntity:
@@ -61,6 +80,9 @@ class PhpIdentifiedEntity(PhpEntity):
         super().__init__()
         self.name = name
 
+    def __str__(self):
+        return type(self).__name__ + ':' + self.name
+
 
 class Evaluable:
 
@@ -85,6 +107,30 @@ class PhpLiteral(PhpEntity, Evaluable):
 OPERATOR_MAP = dict()
 
 
+class PhpUnaryOperator(PhpEntity):
+
+    def __init__(
+                self,
+                operator: str,
+                callable: Callable[[Any], Any]
+            ):
+        pass
+
+    def apply(self, value: Any) -> Any:
+        return self.callable(value)
+
+
+def _register_unary_operator(operator: str, callable: Callable[[Any], Any]) -> None:
+    instance = PhpUnaryOperator(operator, callable)
+    OPERATOR_MAP[operator] = instance
+
+
+_register_unary_operator(
+        '!',
+        lambda value: not value
+    )
+
+
 class PhpBinaryOperator(PhpEntity):
 
     def __init__(
@@ -100,12 +146,12 @@ class PhpBinaryOperator(PhpEntity):
         return self.callable(left, right)
 
 
-def _register_operator(operator: str, callable: Callable[[Any, Any], Any]):
+def _register_binary_operator(operator: str, callable: Callable[[Any, Any], Any]):
     operator_instance = PhpBinaryOperator(operator, callable)
     OPERATOR_MAP[operator] = operator_instance
 
 
-_register_operator(
+_register_binary_operator(
         '.',
         lambda left, right: left + right
     )
@@ -154,6 +200,9 @@ class PhpInstruction(PhpExpression):
     def __init__(self):
         pass
 
+    def evaluate(self, state: PhpState) -> Any:
+        pass
+
 
 class PhpVariable(PhpIdentifiedEntity):
     pass
@@ -176,6 +225,10 @@ class PhpMagicConstant(PhpEntity, Evaluable):
             raise EvaluationException('Unsupported magic constant')
 
 
+class PhpConstant(PhpIdentifiedEntity):
+    pass
+
+
 class PhpAssignment(PhpInstruction):
 
     def __init__(
@@ -185,6 +238,12 @@ class PhpAssignment(PhpInstruction):
             ):
         self.destination = destination
         self.source = source
+
+    def evaluate(self, state: PhpState) -> Any:
+        if not isinstance(self.destination, PhpVariable):
+            raise EvaluationException('Unsupported assignment')
+        value = self.source.evaluate(state)
+        state.scope.assign(self.destination.name, value)
 
 
 class PhpInclude(PhpInstruction):
@@ -208,6 +267,41 @@ class PhpInclude(PhpInstruction):
             )
 
 
+class PhpCallable:
+
+    pass
+
+
+class PhpFunction(PhpIdentifiedEntity, PhpCallable):
+
+    pass
+
+
+class PhpCallableInvocation(PhpEntity):
+
+    def __init__(
+                self,
+                callable: PhpCallable,
+                arguments: List[PhpExpression]
+            ):
+        self.callable = callable
+        self.arguments = arguments
+
+    def evaluate(self, state: PhpState) -> Any:
+        # arguments = [argument.evaluate(state) for argument in self.arguments]
+        # print(f'Invoking {self.callable} with arguments: {repr(arguments)}')
+        pass
+
+
+class PhpConditional(Evaluable):
+
+    def __init__(conditions: List[PhpExpression]):
+        pass
+
+    def evaluate(self, state: PhpState) -> Any:
+        pass
+
+
 class PhpContext:
 
     def __init__(self):
@@ -223,12 +317,21 @@ class PhpContext:
                         return instruction.source.evaluate(self.state)
         return None
 
+    def evaluate_constant(self, name: str) -> Any:
+        return None
+
     def get_includes(self) -> List[PhpInclude]:
         includes = []
         for instruction in self.instructions:
             if isinstance(instruction, PhpInclude):
                 includes.append(instruction)
         return includes
+
+    def evaluate(self) -> PhpState:
+        state = PhpState()
+        for instruction in self.instructions:
+            instruction.evaluate(state)
+        return state
 
 
 COMMENT_TOKEN_TYPES = {
@@ -268,9 +371,15 @@ class TokenStream:
     def __init__(self, lexer: Lexer):
         self.lexer = lexer
         self.pending_comments = []
+        self.pending_tokens = deque()
 
     def accept_token(self) -> Optional[Token]:
+        try:
+            return self.pending_tokens.popleft()
+        except IndexError:
+            pass  # No pending tokens
         while (token := self.lexer.get_next_token()) is not None:
+            # print(f"Token({token.type}): {token.value}")
             if token.type == TokenType.WHITESPACE:
                 continue
             if token.type in COMMENT_TOKEN_TYPES:
@@ -292,17 +401,23 @@ class TokenStream:
             return
         raise ParsingException('Expected semicolon')
 
-    def require_equals(self) -> None:
+    def require_character(self, type: CharacterType) -> None:
         token = self.require_token()
         if token.type == TokenType.CHARACTER \
-                and token.value == CharacterType.EQUALS:
+                and token.value == type:
             return
-        raise ParsingException('Expected equals sign')
+        raise ParsingException(f'Expected character: {type}')
+
+    def require_equals(self) -> None:
+        self.require_character(CharacterType.EQUALS)
 
     def take_comments(self) -> List[str]:
         comments = self.pending_comments
         self.pending_comments = []
         return comments
+
+    def push_token(self, token: Token) -> None:
+        self.pending_tokens.append(token)
 
 
 class Parser:
@@ -335,7 +450,12 @@ class Parser:
             raise ParsingException('Token is not a magic constant')
         return PhpMagicConstant(token.type, self.source.metadata)
 
-    def parse_binary_operator(self, token: Token) -> PhpBinaryOperator:
+    def parse_constant(self, token: Token) -> PhpConstant:
+        if token.type is not TokenType.STRING:
+            raise ParsingException('Token is not an identifier')
+        return PhpConstant(token.value)
+
+    def parse_operator(self, token: Token) -> PhpBinaryOperator:
         try:
             return OPERATOR_MAP[token.value]
         except KeyError:
@@ -348,9 +468,11 @@ class Parser:
             return self.parse_integer(token)
         elif token.type in MAGIC_CONSTANT_TOKEN_TYPES:
             return self.parse_magic_constant(token)
+        elif token.type == TokenType.STRING:
+            return self.parse_constant(token)
         elif token.type == TokenType.CHARACTER \
                 and token.value in BINARY_OPERATORS:
-            return self.parse_binary_operator(token)
+            return self.parse_operator(token)
         else:
             raise ParsingException(
                     f'Unrecognized token in expression({token.type.name}):'
@@ -365,6 +487,12 @@ class Parser:
         while True:
             token = token_stream.require_token()
             if token.is_semicolon():
+                break
+            if token.is_character({
+                        CharacterType.COMMA,
+                        CharacterType.CLOSE_PARENTHESIS
+                    }):
+                token_stream.push_token(token)
                 break
             component = self.parse_expression_component(token)
             expression.add_component(component)
@@ -395,6 +523,31 @@ class Parser:
                 once=token in INCLUDE_ONCE_TOKEN_TYPES
             )
 
+    def parse_invocation(
+                self,
+                token: Token,
+                token_stream: TokenStream
+            ) -> PhpCallableInvocation:
+        token_stream.require_character(CharacterType.OPEN_PARENTHESIS)
+        arguments = []
+        while True:
+            next = token_stream.accept_token()
+            if next.is_character(CharacterType.CLOSE_PARENTHESIS):
+                break
+            if next.is_character(CharacterType.COMMA):
+                continue
+            token_stream.push_token(next)
+            expression = self.parse_expression(token_stream)
+            arguments.append(expression)
+        if token.type == TokenType.STRING:
+            function = PhpFunction(token.value)
+        else:
+            raise ParsingException('Unsupported function invocation syntax')
+        return PhpCallableInvocation(
+                function,
+                arguments
+            )
+
     def parse(self) -> PhpContext:
         context = PhpContext()
         while (token := self.token_stream.accept_token()) is not None:
@@ -405,6 +558,9 @@ class Parser:
             if token.type in INCLUDE_TOKEN_TYPES:
                 include = self.parse_include(token, self.token_stream)
                 context.instructions.append(include)
+            if token.type == TokenType.STRING:
+                invocation = self.parse_invocation(token, self.token_stream)
+                context.instructions.append(invocation)
         return context
 
 

@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Set
 
 
 class ValidationException(Exception):
@@ -40,11 +40,13 @@ class DictionaryValidator(Validator):
                 self,
                 expected: Optional[dict] = None,
                 validator: Validator = None,
-                allow_empty: bool = False
+                allow_empty: bool = False,
+                optional_keys: Optional[Set[str]] = None
             ):
         self.expected = expected if expected is not None else dict()
         self.validator = validator
         self.allow_empty = allow_empty
+        self.optional_keys = optional_keys if optional_keys is not None else {}
 
     def _validate_expected_fields(self, data: dict, parent_key: list) -> None:
         for key, expected_type in self.expected.items():
@@ -53,7 +55,8 @@ class DictionaryValidator(Validator):
                 value = data[key]
                 self.validate_type(aggregate_key, value, expected_type)
             except KeyError:
-                raise ValidationException(aggregate_key, 'Key not present')
+                if key not in self.optional_keys:
+                    raise ValidationException(aggregate_key, 'Key not present')
 
     def _validate_all_fields(self, data: dict, parent_key: list) -> None:
         if self.validator is None:

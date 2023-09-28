@@ -37,6 +37,7 @@ def get_base_vulnerability_feed_validator() -> Validator:
                         'patched': bool,
                         'patched_versions': ListValidator(str)
                     })),
+                'informational': OptionalValueValidator(bool),
                 'references': ListValidator(str),
                 'published': OptionalValueValidator(str),
                 'copyrights': DictionaryValidator(
@@ -50,7 +51,7 @@ def get_base_vulnerability_feed_validator() -> Validator:
                         }),
                         allow_empty=True
                     )
-            })
+            }, optional_keys={'informational'})
         )
 
 
@@ -98,6 +99,8 @@ class VulnerabilityParser:
         properties = {}
         properties['identifier'] = record['id']
         properties['title'] = record['title']
+        if 'informational' in record:
+            properties['informational'] = record['informational']
         properties['references'] = record['references']
         properties['published'] = record['published']
         return properties

@@ -13,6 +13,7 @@ from .config import load_config
 from .subcommands import load_subcommand_definitions
 from .context import CliContext
 from .configure import Configurer
+from .terms import TermsManager
 
 
 class WordfenceCli:
@@ -104,17 +105,25 @@ class WordfenceCli:
         if self.config.check_for_update:
             updater.Version.check(self.cache)
 
-        if self.subcommand_definition is None:
-            self.config.display_help()
-            return 0
-
-        configurer = Configurer(self.config)
-        configurer.check_config()
-
         context = CliContext(
                 self.config,
                 self.cache
             )
+
+        terms_manager = TermsManager(context)
+        context.register_terms_update_hook(terms_manager.trigger_update)
+
+        configurer = Configurer(
+                self.config,
+                terms_manager,
+                self.subcommand_definition
+            )
+        configurer.check_config()
+
+        if self.subcommand_definition is None:
+            if not configurer.written:
+                self.config.display_help()
+            return 0
 
         self.subcommand = None
         try:

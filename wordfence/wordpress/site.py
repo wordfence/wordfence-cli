@@ -2,12 +2,13 @@ import os
 import os.path
 from typing import Optional, List
 
-from ..php.parsing import parse_php_file, PhpException
+from ..php.parsing import parse_php_file, PhpException, PhpState
 from .exceptions import WordpressException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
 
 WP_BLOG_HEADER_NAME = 'wp-blog-header.php'
+WP_CONFIG_NAME = 'wp-config.php'
 
 EXPECTED_CORE_FILES = {
         WP_BLOG_HEADER_NAME,
@@ -25,6 +26,11 @@ class WordpressSite:
     def __init__(self, path: str):
         self.path = path
         self.core_path = self._locate_core()
+        # self.config_state = self._parse_config_file()
+        # print(vars(self.config_state))
+        # print(repr(self.config_state.global_scope.variables))
+        # print(repr(self.config_state.constants))
+        # raise Exception('Test')
 
     def _is_core_directory(self, path: str) -> bool:
         missing_files = EXPECTED_CORE_FILES.copy()
@@ -104,6 +110,9 @@ class WordpressSite:
     def resolve_core_path(self, path: str) -> str:
         return self._resolve_path(path, self.core_path)
 
+    def resolve_content_path(self, path: str) -> str:
+        return self._resolve_path(path, self.get_content_directory())
+
     def get_version(self) -> str:
         version_path = self.resolve_core_path('wp-includes/version.php')
         context = parse_php_file(version_path)
@@ -117,16 +126,67 @@ class WordpressSite:
                 ) from exception
         raise WordpressException('Unable to determine WordPress version')
 
+    def _locate_config_file(self) -> str:
+        paths = [
+                self.resolve_core_path('wp-config.php'),
+                os.path.join(os.path.dirname(self.core_path), 'wp-config.php')
+            ]
+        for path in paths:
+            if os.path.isfile(path):
+                return path
+        return None
+
+    def _parse_config_file(self) -> PhpState:
+        config_path = self._locate_config_file()
+        try:
+            if config_path is not None:
+                print(f"Parsing config at {config_path}...")
+                context = parse_php_file(config_path)
+                return context.evaluate()
+        except PhpException:
+            raise  # TODO: Remove this
+            # Ignore config files that cannot be parsed
+            pass
+        return PhpState()
+
+    def _extract_string_from_config(self, constant: str, default: str) -> str:
+        try:
+            path = self.config_context.evaluate_constant(constant)
+            # print(repr(path))
+            # raise Exception('Exit')
+            if isinstance(path, str):
+                return path
+        except PhpException:
+            raise  # TODO: Remove this
+            # Just use the default if parsing errors occur
+            pass
+        return default
+
+    def _locate_content_directory(self) -> str:
+        return self.resolve_core_path('wp-content')
+        # return self._extract_string_from_config(
+        #         'WP_CONTENT_DIR',
+        #         self.resolve_core_path('wp-content')
+        #     )
+
+    def get_content_directory(self) -> str:
+        if not hasattr(self, 'content_path'):
+            self.content_path = self._locate_content_directory()
+        return self.content_path
+
     def get_plugin_directory(self) -> str:
-        # TODO Parse WP config to determine plugin path
-        return self.resolve_core_path('wp-content/plugins')
+        return self.resolve_content_path('plugins')
+        # return self._extract_string_from_config(
+        #         'WP_PLUGIN_DIR',
+        #         self.resolve_content_path('plugins')
+        #     )
 
     def get_plugins(self) -> List[Plugin]:
         loader = PluginLoader(self.get_plugin_directory())
         return loader.load_all()
 
     def get_theme_directory(self) -> str:
-        return self.resolve_core_path('wp-content/themes')
+        return self.resolve_content_path('themes')
 
     def get_themes(self) -> List[Theme]:
         loader = ThemeLoader(self.get_theme_directory())

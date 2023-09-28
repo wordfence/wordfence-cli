@@ -2,7 +2,7 @@ import re
 
 from collections import deque
 from enum import Enum, auto
-from typing import Generator, IO, Optional
+from typing import Generator, IO, Optional, Tuple, Union, Set
 
 
 class LexingException(Exception):
@@ -53,32 +53,48 @@ class OpenTagTokenMatcher(TokenMatcher):
 
     def match(self, value: str) -> MatchType:
         # TODO: Handle tag variations
-        # if value == '<?php':
-        #     return MatchType.FINAL_MATCH
-        # return MatchType.NONE
         return match_literal('<?php', value)
 
 
 DOC_COMMENT_START = '/*'
 DOC_COMMENT_END = '*/'
-DOC_COMMENT_END_LENGTH = len(DOC_COMMENT_END)
+COMMENT_START = '//'
+COMMENT_END = '\n'
 
 
-class DocCommentTokenMatcher(TokenMatcher):
+class EnclosedTokenMatcher(TokenMatcher):
+
+    def __init__(self, start: str, end: str):
+        self.start = start
+        self.end = end
+        self.end_length = len(end)
 
     def match(self, value: str) -> MatchType:
-        if value.find(DOC_COMMENT_START) == 0:
-            # print(" === DOC COMMENT === ")
-            # print(value)
-            # print(" === END DOC COM === ")
-            # print("End: " + str(value.find(DOC_COMMENT_END)))
-            # print("Expected: " + str(len(value) - 1))
-            if value.find(DOC_COMMENT_END) == \
-                    len(value) - DOC_COMMENT_END_LENGTH:
+        if value.find(self.start) == 0:
+            if value.find(self.end) == \
+                    len(value) - self.end_length:
                 return MatchType.FINAL_MATCH
             else:
                 return MatchType.PARTIAL_MATCH
         return MatchType.NONE
+
+
+class DocCommentTokenMatcher(EnclosedTokenMatcher):
+
+    def __init__(self):
+        super().__init__(
+                DOC_COMMENT_START,
+                DOC_COMMENT_END
+            )
+
+
+class CommentTokenMatcher(EnclosedTokenMatcher):
+
+    def __init__(self):
+        super().__init__(
+                COMMENT_START,
+                COMMENT_END
+            )
 
 
 VARIABLE_PREFIX = '$'
@@ -91,6 +107,14 @@ class VariableTokenMatcher(TokenMatcher):
         if value[0] == VARIABLE_PREFIX:
             if IDENTIFIER_PATTERN.match(value[1:]) is not None:
                 return MatchType.MATCH
+        return MatchType.NONE
+
+
+class IdentifierTokenMatcher(TokenMatcher):
+
+    def match(self, value: str) -> MatchType:
+        if IDENTIFIER_PATTERN.match(value):
+            return MatchType.MATCH
         return MatchType.NONE
 
 
@@ -121,7 +145,6 @@ class StringLiteralTokenMatcher(TokenMatcher):
                 character = value[index]
                 if escaped is None:
                     escaped = False
-                    continue
                 if character == quote and not escaped:
                     if index == end:
                         return MatchType.FINAL_MATCH
@@ -157,13 +180,10 @@ def _literal(value) -> LiteralTokenMatcher:
 # TODO: Add matchers for remaining token types
 class TokenType(Enum):
     # Custom matching types
-    # LNUMBER   "integer"
     # DNUMBER   "floating-point number"
-    # STRING    "identifier"
     # NAME_FULLY_QUALIFIED "fully qualified name"
     # NAME_RELATIVE "namespace-relative name"
     # NAME_QUALIFIED "namespaced name"
-    # VARIABLE  "variable"
     # INLINE_HTML
     # ENCAPSED_AND_WHITESPACE  "string content"
     # CONSTANT_ENCAPSED_STRING "quoted string"
@@ -178,9 +198,11 @@ class TokenType(Enum):
     OPEN_TAG = OpenTagTokenMatcher(),
     WHITESPACE = WhitespaceTokenMatcher(),
     DOC_COMMENT = DocCommentTokenMatcher(),
+    COMMENT = CommentTokenMatcher(),
     VARIABLE = VariableTokenMatcher(),
     CONSTANT_ENCAPSED_STRING = StringLiteralTokenMatcher(),
     LNUMBER = IntegerLiteralTokenMatcher(),
+    STRING = IdentifierTokenMatcher(),
 
     # Literal token types
     INCLUDE = _literal('include'),
@@ -320,7 +342,12 @@ class TokenType(Enum):
 
 class CharacterType(str, Enum):
     EQUALS = '=',
-    SEMICOLON = ';'
+    SEMICOLON = ';',
+    OPEN_PARENTHESIS = '(',
+    CLOSE_PARENTHESIS = ')',
+    COMMA = ',',
+    OPEN_BRACE = '{',
+    CLOSE_BRACE = '}'
 
 
 class Token:
@@ -329,9 +356,19 @@ class Token:
         self.type = type
         self.value = value
 
+    def is_character(
+                self,
+                type: Optional[Union[CharacterType, Set[CharacterType]]] = None
+            ) -> bool:
+        return self.type is TokenType.CHARACTER \
+            and (
+                type is None
+                or (isinstance(type, CharacterType) and self.value == type)
+                or self.value in type
+            )
+
     def is_semicolon(self) -> bool:
-        return self.type == TokenType.CHARACTER \
-            and self.value == CharacterType.SEMICOLON.value
+        return self.is_character(CharacterType.SEMICOLON)
 
 
 class Lexer:
@@ -387,40 +424,74 @@ class Lexer:
         self.offset = self.position
         return Token(token_type, value)
 
-    def get_next_token(self, allow_single: bool = False) -> Optional[Token]:
+    def consume_final_match(self, match: Tuple[TokenType, int]) -> Token:
+        self.position = match[1]
+        return self.consume_token(match[0])
+
+    def get_next_token(self, first_pass: bool = True) -> Optional[Token]:
         current = None
+        partial_matches = {}
+        potential_matches = []
+        final_match = None
         while self.step():
             current = self.get_current()
             # print(f" === CURRENT({self.position}, {self.offset}) === ")
             # print(current)
             # print(" === END === ")
-            for potential_match in self.potential_matches:
+            for potential_match in potential_matches:
                 if potential_match.match(current) == MatchType.NONE:
                     self.step_backwards()
+                    # print("Consuming potential match")
                     token = self.consume_token(potential_match)
                     # self.step()
-                    self.potential_matches = []
+                    potential_matches = []
                     return token
-            self.potential_matches = []
+            potential_matches = []
             for type in TokenType:
                 match_type = type.match(current)
                 if match_type == MatchType.FINAL_MATCH:
-                    return self.consume_token(type)
+                    final_match = (type, self.position)
                 elif match_type == MatchType.MATCH:
-                    self.potential_matches.append(type)
-            if len(current) == 1 and allow_single:
+                    potential_matches.append(type)
+                if match_type == MatchType.PARTIAL_MATCH:
+                    if type not in partial_matches:
+                        partial_matches[type] = self.position
+                elif type in partial_matches:
+                    del partial_matches[type]
+            if final_match is not None:
+                if first_pass:
+                    earliest_partial = None
+                    for position in partial_matches.values():
+                        if earliest_partial is None \
+                                or position < earliest_partial:
+                            earliest_partial = position
+                    if earliest_partial is not None \
+                            and final_match[1] >= earliest_partial:
+                        continue
+                # print("Consuming final match")
+                return self.consume_final_match(final_match)
+            if len(current) == 1 \
+                    and ((
+                            len(partial_matches) == 0
+                            and len(potential_matches) == 0
+                        ) or not first_pass):
+                # print("Consuming single char")
                 return self.consume_token(TokenType.CHARACTER)
+        if final_match is not None:
+            # print("Consuming final match outside of loop")
+            return self.consume_final_match(final_match)
         if current is not None and len(current) > 0:
             for potential_match in self.potential_matches:
+                # print("Consuming potential match outside of loop")
                 return self.consume_token(potential_match)
-            if allow_single:
+            if first_pass:
+                self.position = self.offset
+                self.potential_matches = []
+                return self.get_next_token(False)
+            else:
                 raise LexingException(
                         f'Input does not match any known token: {current}'
                     )
-            else:
-                self.position = self.offset
-                self.potential_matches = []
-                return self.get_next_token(True)
         return None
 
 

@@ -1,8 +1,12 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Set
 
 from ..util.versioning import PhpVersion, compare_php_versions
+from ..wordpress.site import WordpressSite
+from ..wordpress.extension import Extension
+from ..wordpress.plugin import Plugin
+from ..wordpress.theme import Theme
 
 
 VERSION_ANY = '*'
@@ -63,6 +67,7 @@ class Vulnerability:
     identifier: str
     title: str
     software: List[Software] = field(default_factory=list)
+    informational: bool = False
     references: List[str] = field(default_factory=list)
     published: Optional[str] = None
     copyright_information: Optional[CopyrightInformation] = None
@@ -184,3 +189,116 @@ class VulnerabilityIndex:
                 slug,
                 version
             )
+
+
+@dataclass
+class ScannableSoftware:
+    type: SoftwareType
+    slug: str
+    version: str
+
+
+class VulnerabilityFilter:
+
+    def __init__(
+                self,
+                excluded: Set[str],
+                included: Set[str],
+                informational: bool = False
+            ):
+        self.excluded = excluded
+        self.included = included
+        self.informational = informational
+
+    def allows(self, vulnerability: Vulnerability) -> bool:
+        if vulnerability.identifier in self.excluded:
+            return False
+        if len(self.included) and \
+                vulnerability.identifier not in self.included:
+            return False
+        if vulnerability.informational and not self.informational:
+            return False
+        return True
+
+    def filter(
+                self,
+                vulnerabilities: Dict[str, Vulnerability]
+            ) -> Dict[str, Vulnerability]:
+        return {
+                identifier: vulnerability for identifier, vulnerability
+                in vulnerabilities.items() if self.allows(vulnerability)
+            }
+
+
+DEFAULT_FILTER = VulnerabilityFilter(
+        excluded={},
+        included={},
+        informational=False
+    )
+
+
+class VulnerabilityScanner:
+
+    def __init__(
+                self,
+                index: VulnerabilityIndex,
+                filter: VulnerabilityFilter = DEFAULT_FILTER
+            ):
+        self.index = index
+        self.filter = filter
+        self.vulnerabilities = {}
+        self.affected = {}
+
+    def scan(self, software: ScannableSoftware) -> Dict[str, Vulnerability]:
+        vulnerabilities = self.index.get_vulnerabilities(
+                software.type,
+                software.slug,
+                software.version
+            )
+        vulnerabilities = self.filter.filter(vulnerabilities)
+        self.vulnerabilities.update(vulnerabilities)
+        for identifier in vulnerabilities:
+            if identifier not in self.affected:
+                self.affected[identifier] = []
+            self.affected[identifier].append(software)
+        return vulnerabilities
+
+    def scan_core(self, version: str) -> Dict[str, Vulnerability]:
+        return self.scan(
+                ScannableSoftware(
+                    type=SoftwareType.CORE,
+                    slug=SLUG_WORDPRESS,
+                    version=version
+                )
+            )
+
+    def scan_site(self, site: WordpressSite) -> Dict[str, Vulnerability]:
+        return self.scan_core(site.get_version())
+
+    def scan_extension(
+                self,
+                extension: Extension,
+                type: SoftwareType
+            ) -> Dict[str, Vulnerability]:
+        return self.scan(
+                ScannableSoftware(
+                    type=type,
+                    slug=extension.slug,
+                    version=extension.version
+                )
+            )
+
+    def scan_plugin(self, plugin: Plugin) -> Dict[str, Vulnerability]:
+        return self.scan_extension(plugin, SoftwareType.PLUGIN)
+
+    def scan_theme(self, theme: Theme) -> Dict[str, Vulnerability]:
+        return self.scan_extension(theme, SoftwareType.THEME)
+
+    def get_vulnerability_count(self) -> int:
+        return len(self.vulnerabilities)
+
+    def get_affected_count(self) -> int:
+        count = 0
+        for affected in self.affected.values():
+            count += len(affected)
+        return count

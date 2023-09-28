@@ -14,7 +14,11 @@ class CliContext:
         self.cache = cache
         self._license = None
         self._noc1_client = None
+        self._terms_update_hooks = []
         self._wfi_client = None
+
+    def register_terms_update_hook(self, callable: [[], None]) -> None:
+        self._terms_update_hooks.append(callable)
 
     def get_license(self) -> Optional[License]:
         if self._license is None and self.config.license is not None:
@@ -41,6 +45,8 @@ class CliContext:
                     self.require_license(),
                     self.config.noc1_url
                 )
+            for hook in self._terms_update_hooks:
+                self._noc1_client.register_terms_update_hook(hook)
         return self._noc1_client
 
     def get_wfi_client(self) -> intelligence.Client:
