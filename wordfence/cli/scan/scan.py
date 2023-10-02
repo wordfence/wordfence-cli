@@ -2,18 +2,16 @@ import sys
 import signal
 import logging
 from multiprocessing import parent_process
-from contextlib import nullcontext
 from typing import Optional
 
 from wordfence import scanning
 from wordfence.scanning import filtering
 from wordfence.util import caching, pcre
-from wordfence.util.io import StreamReader
 from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import (log, remove_initial_handler,
                                restore_initial_handler)
 from ..subcommands import Subcommand
-from .reporting import Report, ReportFormat
+from .reporting import ScanReport, ScanReportFormat, ScanReportManager
 from .progress import ProgressDisplay, ProgressException, reset_terminal
 
 
@@ -71,19 +69,6 @@ class ScanSubcommand(Subcommand):
         self._filter_signatures(signatures)
         return signatures
 
-    def _should_read_stdin(self) -> bool:
-        if sys.stdin is None:
-            return False
-        if self.config.read_stdin is None:
-            return not sys.stdin.isatty()
-        else:
-            return self.config.read_stdin
-
-    def _should_write_stdout(self) -> bool:
-        if sys.stdout is None or self.config.output is False:
-            return False
-        return self.config.output or self.config.output_path is None
-
     def _get_file_list_separator(self) -> str:
         if isinstance(self.config.file_list_separator, bytes):
             return self.config.file_list_separator.decode('utf-8')
@@ -135,6 +120,12 @@ class ScanSubcommand(Subcommand):
 
     def invoke(self) -> int:
         self._initialize_interrupt_handling()
+        signatures = self._get_signatures()
+        report_manager = ScanReportManager(
+                self.config,
+                signatures
+            )
+        io_manager = report_manager.get_io_manager()
 
         progress = None
         if self.config.progress:
@@ -144,6 +135,7 @@ class ScanSubcommand(Subcommand):
             if sys.stderr is None or sys.stderr.isatty():
                 remove_initial_handler()
             log.addHandler(screen_handler)
+            report_manager.set_progress_display(progress)
 
         paths = set()
         for argument in self.config.trailing_arguments:
@@ -151,7 +143,7 @@ class ScanSubcommand(Subcommand):
         options = scanning.scanner.Options(
                 paths=paths,
                 workers=int(self.config.workers),
-                signatures=self._get_signatures(),
+                signatures=signatures,
                 chunk_size=self.config.chunk_size,
                 scanned_content_limit=int(self.config.scanned_content_limit),
                 file_filter=self._initialize_file_filter(),
@@ -160,36 +152,13 @@ class ScanSubcommand(Subcommand):
                 allow_io_errors=self.config.allow_io_errors,
                 debug=self.config.debug
             )
-        if self._should_read_stdin():
-            options.path_source = StreamReader(
-                    sys.stdin,
-                    self._get_file_list_separator()
-                )
+        if io_manager.should_read_stdin():
+            options.path_source = io_manager.get_input_reader()
 
-        with open(self.config.output_path, 'w') if self.config.output_path \
-                is not None else nullcontext() as output_file:
-            output_format = ReportFormat(self.config.output_format)
-            output_columns = self.config.output_columns
-            report = Report(
-                    output_format,
-                    output_columns,
-                    options.signatures,
-                    self.config.output_headers
+        with report_manager.open_output_file() as output_file:
+            report = report_manager.initialize_report(
+                    output_file
                 )
-            if self._should_write_stdout():
-                if progress:
-                    report.add_target(progress.get_output_stream())
-                else:
-                    report.add_target(sys.stdout)
-            if output_file is not None:
-                report.add_target(output_file)
-            if not report.has_writers():
-                log.error(
-                        'Please specify an output file using the --output-path'
-                        ' option or add --output to write results to standard '
-                        'output'
-                    )
-                return 1
             self.scanner = scanning.scanner.Scanner(options)
             if progress:
                 use_log_events = True

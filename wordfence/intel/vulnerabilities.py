@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict, Optional, Union, Set
+from typing import List, Dict, Optional, Union, Set, Callable
+from urllib.parse import urlparse
 
 from ..util.versioning import PhpVersion, compare_php_versions
 from ..wordpress.site import WordpressSite
@@ -71,6 +72,16 @@ class Vulnerability:
     references: List[str] = field(default_factory=list)
     published: Optional[str] = None
     copyright_information: Optional[CopyrightInformation] = None
+
+    def get_wordfence_link(self) -> Optional[str]:
+        for url in self.references:
+            try:
+                components = urlparse(url)
+                if components.hostname == 'www.wordfence.com':
+                    return url
+            except ValueError:
+                continue
+        return None
 
 
 @dataclass
@@ -248,6 +259,24 @@ class VulnerabilityScanner:
         self.filter = filter
         self.vulnerabilities = {}
         self.affected = {}
+        self.callbacks = []
+
+    def register_result_callback(
+                    self,
+                    callback: Callable[
+                        [ScannableSoftware, Dict[str, Vulnerability]],
+                        None
+                    ]
+                ) -> None:
+        self.callbacks.append(callback)
+
+    def _trigger_callbacks(
+                self,
+                software: ScannableSoftware,
+                vulnerabilities: Dict[str, Vulnerability]
+            ) -> None:
+        for callback in self.callbacks:
+            callback(software, vulnerabilities)
 
     def scan(self, software: ScannableSoftware) -> Dict[str, Vulnerability]:
         vulnerabilities = self.index.get_vulnerabilities(
@@ -256,6 +285,7 @@ class VulnerabilityScanner:
                 software.version
             )
         vulnerabilities = self.filter.filter(vulnerabilities)
+        self._trigger_callbacks(software, vulnerabilities)
         self.vulnerabilities.update(vulnerabilities)
         for identifier in vulnerabilities:
             if identifier not in self.affected:

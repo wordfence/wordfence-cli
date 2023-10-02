@@ -8,6 +8,7 @@ from ...wordpress.plugin import PluginLoader, Plugin
 from ...wordpress.theme import ThemeLoader, Theme
 from ...logging import log
 from ..subcommands import Subcommand
+from .reporting import VulnScanReportManager
 
 
 class VulnScanSubcommand(Subcommand):
@@ -75,7 +76,7 @@ class VulnScanSubcommand(Subcommand):
             self._scan_plugins(site.get_plugins(), scanner)
             self._scan_themes(site.get_themes(), scanner)
 
-    def _output_results(self, scanner: VulnerabilityScanner) -> None:
+    def _output_summary(self, scanner: VulnerabilityScanner) -> None:
         vulnerability_count = scanner.get_vulnerability_count()
         affected_count = scanner.get_affected_count()
         suffix = 'y' if vulnerability_count == 1 else 'ies'
@@ -83,8 +84,6 @@ class VulnScanSubcommand(Subcommand):
                 f'Found {vulnerability_count} vulnerabilit{suffix} '
                 f'affecting {affected_count} installation(s)'
             )
-        for vulnerability in scanner.vulnerabilities.values():
-            log.debug(f'Vulnerability {vulnerability.identifier}')
 
     def _initialize_filter(self) -> VulnerabilityFilter:
         excluded = set(self.config.exclude_vulnerability)
@@ -95,29 +94,41 @@ class VulnScanSubcommand(Subcommand):
                 informational=self.config.informational
             )
 
+    def _scan_site(self, path: str, scanner: VulnerabilityScanner) -> None:
+        log.info(f'Scanning site at {path}...')
+        self._scan(
+                path,
+                scanner,
+                check_extensions=True
+            )
+
     def invoke(self) -> int:
+        report_manager = VulnScanReportManager(self.config)
+        io_manager = report_manager.get_io_manager()
         vulnerability_index = self._load_vulnerability_index()
         scanner = VulnerabilityScanner(
                 vulnerability_index,
                 self._initialize_filter()
             )
-        for path in self.config.trailing_arguments:
-            log.info(f'Scanning site at {path}...')
-            self._scan(
-                    path,
-                    scanner,
-                    check_extensions=True
-                )
-        for path in self.config.wordpress_path:
-            log.info(f'Scanning core installation at {path}...')
-            self._scan(path, scanner)
-        for path in self.config.plugin_directory:
-            log.info(f'Scanning plugin directory at {path}...')
-            self._scan_plugin_directory(path, scanner)
-        for path in self.config.theme_directory:
-            log.info(f'Scanning theme directory at {path}...')
-            self._scan_theme_directory(path, scanner)
-        self._output_results(scanner)
+        with report_manager.open_output_file() as output_file:
+            report = report_manager.initialize_report(output_file)
+            scanner.register_result_callback(report.add_result)
+            for path in self.config.trailing_arguments:
+                self._scan_site(path, scanner)
+            if io_manager.should_read_stdin():
+                reader = io_manager.get_input_reader()
+                for path in reader.read_all_entries():
+                    self._scan_site(path, scanner)
+            for path in self.config.wordpress_path:
+                log.info(f'Scanning core installation at {path}...')
+                self._scan(path, scanner)
+            for path in self.config.plugin_directory:
+                log.info(f'Scanning plugin directory at {path}...')
+                self._scan_plugin_directory(path, scanner)
+            for path in self.config.theme_directory:
+                log.info(f'Scanning theme directory at {path}...')
+                self._scan_theme_directory(path, scanner)
+            self._output_summary(scanner)
         return 0
 
 

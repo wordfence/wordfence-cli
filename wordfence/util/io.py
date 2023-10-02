@@ -1,6 +1,6 @@
 import fcntl
 import os
-from typing import Optional, IO, TextIO
+from typing import Optional, IO, TextIO, Generator
 from enum import IntEnum
 
 
@@ -37,6 +37,10 @@ class StreamReader:
             return path
         else:
             return None
+
+    def read_all_entries(self) -> Generator[str, None, None]:
+        while (entry := self.read_entry()) is not None:
+            yield entry
 
 
 class LockType(IntEnum):

@@ -4,7 +4,7 @@ from wordfence.util.units import byte_length
 
 from ..subcommands import SubcommandDefinition
 from ..config.typing import ConfigDefinitions
-from .reporting import ReportFormat, ReportColumn
+from .reporting import SCAN_REPORT_CONFIG_OPTIONS
 
 
 config_definitions: ConfigDefinitions = {
@@ -25,47 +25,7 @@ config_definitions: ConfigDefinitions = {
         "default": "AA==",
         "default_type": "base64"
     },
-    "output": {
-        "description": "Write results to stdout. This is the default behavior "
-                       "when --output-path is not specified. Use --no-output "
-                       "to disable.",
-        "context": "ALL",
-        "argument_type": "OPTIONAL_FLAG",
-        "default": None
-    },
-    "output-path": {
-        "description": "Path to which to write results.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": None,
-    },
-    "output-columns": {
-        "description": ("An ordered, comma-delimited list of columns to"
-                        " include in the output. Available columns: "
-                        + ReportColumn.get_valid_options_as_string()),
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": "filename",
-        "meta": {
-            "separator": ","
-        }
-    },
-    "output-format": {
-        "short_name": "m",
-        "description": "Output format used for result data.",
-        "context": "ALL",
-        "argument_type": "OPTION",
-        "default": 'csv',
-        "meta": {
-            "valid_options": ReportFormat.get_valid_options()
-        }
-    },
-    "output-headers": {
-        "description": "Whether or not to include column headers in output",
-        "context": "ALL",
-        "argument_type": "FLAG",
-        "default": None
-    },
+    **SCAN_REPORT_CONFIG_OPTIONS,
     "exclude-signatures": {
         "short_name": "e",
         "description": "Specify rule IDs to exclude from the scan. Can be "
