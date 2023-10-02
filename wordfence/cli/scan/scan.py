@@ -11,7 +11,7 @@ from wordfence.intel.signatures import SignatureSet
 from wordfence.logging import (log, remove_initial_handler,
                                restore_initial_handler)
 from ..subcommands import Subcommand
-from .reporting import ScanReport, ScanReportFormat, ScanReportManager
+from .reporting import ScanReportManager
 from .progress import ProgressDisplay, ProgressException, reset_terminal
 
 

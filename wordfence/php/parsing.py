@@ -120,7 +120,10 @@ class PhpUnaryOperator(PhpEntity):
         return self.callable(value)
 
 
-def _register_unary_operator(operator: str, callable: Callable[[Any], Any]) -> None:
+def _register_unary_operator(
+            operator: str,
+            callable: Callable[[Any], Any]
+        ) -> None:
     instance = PhpUnaryOperator(operator, callable)
     OPERATOR_MAP[operator] = instance
 
@@ -146,7 +149,10 @@ class PhpBinaryOperator(PhpEntity):
         return self.callable(left, right)
 
 
-def _register_binary_operator(operator: str, callable: Callable[[Any, Any], Any]):
+def _register_binary_operator(
+            operator: str,
+            callable: Callable[[Any, Any], Any]
+        ):
     operator_instance = PhpBinaryOperator(operator, callable)
     OPERATOR_MAP[operator] = operator_instance
 
