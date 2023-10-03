@@ -2,7 +2,7 @@ import sys
 import os
 import logging
 
-from ..version import __version__
+from ..version import __version__, __version_name__
 from ..util import pcre, updater
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         CacheException
@@ -62,7 +62,7 @@ class WordfenceCli:
         return RuntimeCache()
 
     def display_version(self) -> None:
-        print(f"Wordfence CLI {__version__}")
+        print(f"Wordfence CLI {__version__} \"{__version_name__}\"")
         jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
         print(
                 f"PCRE Version: {pcre.VERSION} - "
