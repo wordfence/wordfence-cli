@@ -77,6 +77,8 @@ class ScanSubcommand(Subcommand):
     def _initialize_file_filter(self) -> filtering.FileFilter:
         filter = filtering.FileFilter()
         has_include_overrides = False
+        if self.config.include_all_files:
+            filter.add(filtering.filter_any)
         if self.config.include_files is not None:
             has_include_overrides = True
             for name in self.config.include_files:

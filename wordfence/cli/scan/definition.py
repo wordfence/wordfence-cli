@@ -56,6 +56,14 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "FLAG",
         "default": False
     },
+    "include-all-files": {
+        "short_name": "a",
+        "description": "Scan all files. By default, only files matching "
+                       "certain extensions are scanned",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": False
+    },
     "include-files": {
         "short_name": "n",
         "description": "Only scan filenames that are exact matches. Can be "
