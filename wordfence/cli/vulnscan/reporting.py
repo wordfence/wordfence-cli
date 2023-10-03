@@ -128,7 +128,7 @@ VULN_SCAN_REPORT_CONFIG_OPTIONS = get_config_options(
         [
             VulnScanReportColumn.SLUG,
             VulnScanReportColumn.VERSION,
-            VulnScanReportColumn.ID
+            VulnScanReportColumn.LINK
         ]
     )
 
