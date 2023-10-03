@@ -248,6 +248,13 @@ class VulnerabilityFeedVariant(Enum):
             self.validator = self.validator_factory()
         return self.validator
 
+    @classmethod
+    def for_path(cls, path):
+        for variant in cls:
+            if variant.path == path:
+                return variant
+        raise ValueError(f'Unrecognized vulnerability feed variant: {path}')
+
 
 class Client:
 

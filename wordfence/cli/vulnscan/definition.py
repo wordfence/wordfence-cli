@@ -1,5 +1,6 @@
 from ..subcommands import SubcommandDefinition
 from ..config.typing import ConfigDefinitions
+from ...api.intelligence import VulnerabilityFeedVariant
 from .reporting import VULN_SCAN_REPORT_CONFIG_OPTIONS
 
 config_definitions: ConfigDefinitions = {
@@ -82,17 +83,38 @@ config_definitions: ConfigDefinitions = {
         "context": "ALL",
         "argument_type": "FLAG",
         "default": False
+    },
+    "feed": {
+        "short_name": "f",
+        "description": "The feed to use for vulnerability information. "
+                       "The production feed provides additional details "
+                       "that are not included in the scanner feed while "
+                       "the scanner feed includes additional vulnerabilities "
+                       "that do not yet have sufficient information to be "
+                       "included in the production feed.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": VulnerabilityFeedVariant.SCANNER.path,
+        "meta": {
+            "valid_options": [
+                    variant.path for variant in VulnerabilityFeedVariant
+                ]
+        }
     }
 }
 
 cacheable_types = {
     'wordfence.intel.vulnerabilities.VulnerabilityIndex',
     'wordfence.intel.vulnerabilities.ScannerVulnerability',
+    'wordfence.intel.vulnerabilities.ProductionVulnerability',
     'wordfence.intel.vulnerabilities.Software',
+    'wordfence.intel.vulnerabilities.ProductionSoftware',
     'wordfence.intel.vulnerabilities.SoftwareType',
     'wordfence.intel.vulnerabilities.VersionRange',
     'wordfence.intel.vulnerabilities.CopyrightInformation',
-    'wordfence.intel.vulnerabilities.Copyright'
+    'wordfence.intel.vulnerabilities.Copyright',
+    'wordfence.intel.vulnerabilities.Cwe',
+    'wordfence.intel.vulnerabilities.Cvss'
 }
 
 definition = SubcommandDefinition(

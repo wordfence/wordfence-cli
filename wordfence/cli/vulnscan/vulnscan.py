@@ -2,6 +2,7 @@ from typing import Dict, List
 
 from ...intel.vulnerabilities import VulnerabilityIndex, Vulnerability, \
         VulnerabilityScanner, VulnerabilityFilter
+from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.caching import Cacheable, DURATION_ONE_DAY
 from ...wordpress.site import WordpressSite
 from ...wordpress.plugin import PluginLoader, Plugin
@@ -13,13 +14,16 @@ from .reporting import VulnScanReportManager
 
 class VulnScanSubcommand(Subcommand):
 
-    def _load_vulnerability_index(self) -> VulnerabilityIndex:
+    def _load_vulnerability_index(
+                self,
+                variant: VulnerabilityFeedVariant
+            ) -> VulnerabilityIndex:
         def initialize_vulnerability_index() -> VulnerabilityIndex:
             client = self.context.get_wfi_client()
-            vulnerabilities = client.fetch_scanner_vulnerability_feed()
+            vulnerabilities = client.fetch_vulnerability_feed(variant)
             return VulnerabilityIndex(vulnerabilities)
         vulnerability_index = Cacheable(
-                'vulnerability_index',
+                f'vulnerability_index_{variant.path}',
                 initialize_vulnerability_index,
                 DURATION_ONE_DAY
             )
@@ -103,9 +107,10 @@ class VulnScanSubcommand(Subcommand):
             )
 
     def invoke(self) -> int:
-        report_manager = VulnScanReportManager(self.config)
+        feed_variant = VulnerabilityFeedVariant.for_path(self.config.feed)
+        report_manager = VulnScanReportManager(self.config, feed_variant)
         io_manager = report_manager.get_io_manager()
-        vulnerability_index = self._load_vulnerability_index()
+        vulnerability_index = self._load_vulnerability_index(feed_variant)
         scanner = VulnerabilityScanner(
                 vulnerability_index,
                 self._initialize_filter()

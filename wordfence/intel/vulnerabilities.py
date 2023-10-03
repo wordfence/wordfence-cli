@@ -41,6 +41,13 @@ class SoftwareType(str, Enum):
 
 
 @dataclass
+class ScannableSoftware:
+    type: SoftwareType
+    slug: str
+    version: str
+
+
+@dataclass
 class Software:
     type: SoftwareType
     name: str
@@ -82,6 +89,15 @@ class Vulnerability:
             except ValueError:
                 continue
         return None
+
+    def get_matched_software(self, scannable: ScannableSoftware) -> Software:
+        for software in self.software:
+            if software.type != scannable.type \
+                    or software.slug != scannable.slug:
+                continue
+            for affected in software.affected_versions.values():
+                if affected.includes(scannable.version):
+                    return software
 
 
 @dataclass
@@ -200,13 +216,6 @@ class VulnerabilityIndex:
                 slug,
                 version
             )
-
-
-@dataclass
-class ScannableSoftware:
-    type: SoftwareType
-    slug: str
-    version: str
 
 
 class VulnerabilityFilter:

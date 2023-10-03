@@ -29,8 +29,12 @@ class ReportColumn:
 
 class ReportColumnEnum(ReportColumn, Enum):
 
-    def __new__(cls, header: str, extractor: Callable[[Any], str]):
-        return ReportColumn(header, extractor)
+    def __init__(
+                self,
+                header: str,
+                extractor: Callable[[Any], str]
+            ):
+        super().__init__(header, extractor)
 
     @classmethod
     def get_options(cls) -> List[str]:
