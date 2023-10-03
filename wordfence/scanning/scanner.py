@@ -126,6 +126,7 @@ class FileLocator:
         self.queue = queue
         self.file_filter = file_filter
         self.located_count = 0
+        self.skipped_count = 0
 
     def _is_loop(self, path: str, parents: list):
         realpath = os.path.realpath(path)
@@ -152,6 +153,7 @@ class FileLocator:
                         )
                 elif item.is_file():
                     if not self.file_filter.filter(item.path):
+                        self.skipped_count += 1
                         continue
                     self.located_count += 1
                     yield item.path
@@ -191,6 +193,7 @@ class FileLocatorProcess(Process):
         self._use_log_events = use_log_events
         self._event_queue = event_queue
         self._path_count = 0
+        self._skipped_count = Value('i', 0)
         super().__init__(name='file-locator')
 
     def add_path(self, path: str):
@@ -215,6 +218,7 @@ class FileLocatorProcess(Process):
                     FILE_LOCATOR_WORKER_INDEX
                 )
         try:
+            skipped_count = 0
             while (path := self._input_queue.get()) is not None:
                 locator = FileLocator(
                         path=path,
@@ -222,9 +226,14 @@ class FileLocatorProcess(Process):
                         queue=self.output_queue
                     )
                 locator.locate()
+                skipped_count += locator.skipped_count
         except ScanningException as exception:
             self.output_queue.put(ExceptionContainer(exception))
+        self._skipped_count.value = skipped_count
         self.output_queue.put(None)
+
+    def get_skipped_count(self) -> int:
+        return self._skipped_count.value
 
 
 class ScanEvent:
@@ -408,6 +417,7 @@ class ScanMetrics:
         self.bytes = self._initialize_int_metric(worker_count)
         self.matches = self._initialize_int_metric(worker_count)
         self.timeouts = self._initialize_int_metric(worker_count)
+        self.skipped_files = 0
 
     def _initialize_int_metric(self, worker_count: int):
         return [0] * worker_count
@@ -460,6 +470,7 @@ ScanFinishedCallback = Callable[[ScanMetrics, timing.Timer], None]
 class ScanFinishedMessages(NamedTuple):
     results: str
     timeouts: Optional[str]
+    skipped: Optional[str]
 
 
 def get_scan_finished_messages(
@@ -478,7 +489,20 @@ def get_scan_finished_messages(
                        f'processing {total_count} file(s) containing '
                        f'{byte_count} byte(s) over {elapsed_time} second(s)')
 
-    return ScanFinishedMessages(results_message, timeouts_message)
+    if metrics.skipped_files > 0:
+        skipped_message = (
+                f'{metrics.skipped_files} file(s) were skipped as they did '
+                'not match the configured include patterns. Use '
+                '--include-all-files (or -a) to include all files in the scan.'
+            )
+    else:
+        skipped_message = None
+
+    return ScanFinishedMessages(
+            results_message,
+            timeouts_message,
+            skipped_message
+        )
 
 
 def default_scan_finished_handler(
@@ -489,6 +513,8 @@ def default_scan_finished_handler(
     messages = get_scan_finished_messages(metrics, timer)
     if messages.timeouts:
         log.warning(messages.timeouts)
+    if messages.skipped:
+        log.warning(messages.skipped)
     log.info(messages.results)
     return messages
 
@@ -743,6 +769,7 @@ class Scanner:
         timer.stop()
         scan_finished_handler = scan_finished_handler if scan_finished_handler\
             else default_scan_finished_handler
+        metrics.skipped_files = file_locator_process.get_skipped_count()
         scan_finished_handler(metrics, timer)
 
     def terminate(self) -> None:
