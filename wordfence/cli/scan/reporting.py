@@ -1,88 +1,29 @@
-import csv
-from typing import IO, List, Any
-from enum import Enum
+from typing import List, IO
 
 from wordfence.scanning.scanner import ScanResult
 from wordfence.intel.signatures import SignatureSet, Signature
 
-
-class ReportColumn(str, Enum):
-    FILENAME = 'filename'
-    SIGNATURE_ID = 'signature_id'
-    SIGNATURE_NAME = 'signature_name'
-    SIGNATURE_DESCRIPTION = 'signature_description'
-    MATCHED_TEXT = 'matched_text'
-
-    def get_valid_options() -> List[str]:
-        return [column.value for column in ReportColumn]
-
-    def get_valid_options_as_string(delimiter: str = ', '):
-        return delimiter.join(ReportColumn.get_valid_options())
+from ..reporting import Report, ReportFormat, get_config_options, \
+        ReportFormatEnum, ReportColumnEnum, ReportRecord, ReportWriter, \
+        ReportManager, ReportColumn, \
+        REPORT_FORMAT_CSV, REPORT_FORMAT_TSV, REPORT_FORMAT_NULL_DELIMITED, \
+        REPORT_FORMAT_LINE_DELIMITED
+from ..config import Config
+from .progress import ProgressDisplay
 
 
-class ReportFormat(str, Enum):
-    CSV = 'csv',
-    TSV = 'tsv',
-    NULL_DELIMITED = 'null-delimited',
-    LINE_DELIMITED = 'line-delimited',
-    HUMAN = 'human'
-
-    def get_valid_options() -> List[str]:
-        return [format.value for format in ReportFormat]
-
-
-class ReportWriter:
-
-    def __init__(self, target: IO):
-        self._target = target
-        self.initialize()
-
-    def initialize(self) -> None:
-        pass
-
-    def write_row(self, data: List[str]):
-        pass
-
-    def allows_headers(self) -> bool:
-        return True
-
-
-class CsvReportWriter(ReportWriter):
-
-    def initialize(self):
-        self.writer = csv.writer(self._target, delimiter=self.get_delimiter())
-
-    def get_delimiter(self) -> str:
-        return ','
-
-    def write_row(self, data: List[str]) -> None:
-        self.writer.writerow(data)
-
-
-class TsvReportWriter(CsvReportWriter):
-
-    def get_delimiter(self) -> str:
-        return '\t'
-
-
-class SingleColumnWriter(ReportWriter):
-
-    def __init__(self, target: IO, delimiter: str):
-        super().__init__(target)
-        self.delimiter = delimiter
-
-    def write_row(self, data: List[str]) -> None:
-        for index, value in enumerate(data):
-            if index > 0:
-                raise ValueError(
-                    'Only a single column can be written in this format'
-                )
-            self._target.write(value + self.delimiter)
+class ScanReportColumn(ReportColumnEnum):
+    FILENAME = 'filename', lambda record: record.result.path
+    SIGNATURE_ID = 'signature_id', lambda record: record.signature.identifier
+    SIGNATURE_NAME = 'signature_name', lambda record: record.signature.name
+    SIGNATURE_DESCRIPTION = 'signature_description', \
+        lambda record: record.signature.description
+    MATCHED_TEXT = 'matched_text', lambda record: record.match
 
 
 class HumanReadableWriter(ReportWriter):
 
-    def __init__(self, target: IO, columns: str):
+    def __init__(self, target: IO, columns: List[ScanReportColumn]):
         super().__init__(target)
         self._columns = columns
 
@@ -91,7 +32,8 @@ class HumanReadableWriter(ReportWriter):
 
     def _map_data_to_dict(self, data: List[str]) -> dict:
         return {
-            name: data[index] for index, name in enumerate(self._columns)
+            column.header: data[index] for index, column
+            in enumerate(self._columns)
         }
 
     def write_row(self, data: List[str]) -> None:
@@ -122,96 +64,103 @@ class HumanReadableWriter(ReportWriter):
         return False
 
 
-class Report:
+REPORT_FORMAT_HUMAN = ReportFormat(
+        'human',
+        lambda stream, columns: HumanReadableWriter(stream, columns)
+    )
+
+
+class ScanReportFormat(ReportFormatEnum):
+    CSV = REPORT_FORMAT_CSV
+    TSV = REPORT_FORMAT_TSV
+    NULL_DELIMITED = REPORT_FORMAT_NULL_DELIMITED
+    LINE_DELIMITED = REPORT_FORMAT_LINE_DELIMITED
+    HUMAN = REPORT_FORMAT_HUMAN
+
+
+class ScanReportRecord(ReportRecord):
 
     def __init__(
                 self,
-                format: ReportFormat,
-                columns: List[str],
-                signature_set: SignatureSet,
-                write_headers: bool = False
-            ):
-        self.format = format
-        self.columns = columns
-        self.signature_set = signature_set
-        self.write_headers = write_headers
-        self.headers_written = False
-        self.writers = []
-
-    def _initialize_writer(self, stream: IO) -> ReportWriter:
-        if self.format == ReportFormat.CSV:
-            return CsvReportWriter(stream)
-        elif self.format == ReportFormat.TSV:
-            return TsvReportWriter(stream)
-        elif self.format == ReportFormat.NULL_DELIMITED:
-            return SingleColumnWriter(stream, "\0")
-        elif self.format == ReportFormat.LINE_DELIMITED:
-            return SingleColumnWriter(stream, "\n")
-        elif self.format == ReportFormat.HUMAN:
-            return HumanReadableWriter(stream, self.columns)
-        else:
-            raise ValueError('Unsupported report format: ' + str(self.format))
-
-    def add_target(self, stream: IO) -> None:
-        writer = self._initialize_writer(stream)
-        self.writers.append(writer)
-
-    def _get_column_value(
-                self,
-                column: str,
                 result: ScanResult,
                 signature: Signature,
                 match: str
-            ) -> Any:
-        if column == ReportColumn.FILENAME.value:
-            return result.path
-        elif column == ReportColumn.SIGNATURE_ID.value:
-            return signature.identifier
-        elif column == ReportColumn.SIGNATURE_NAME.value:
-            return signature.name
-        elif column == ReportColumn.SIGNATURE_DESCRIPTION.value:
-            return signature.description
-        elif column == ReportColumn.MATCHED_TEXT.value:
-            return match,
-        elif column == 'discovered_at':
-            return int(result.timestamp)
-        else:
-            raise ValueError(f'Unrecognized column: {column}')
+            ):
+        self.result = result
+        self.signature = signature
+        self.match = match
 
-    def _format_result(self, result: ScanResult) -> List[List[str]]:
-        rows = []
-        for signature_id, match in result.matches.items():
-            signature = self.signature_set.get_signature(signature_id)
-            row = []
-            for column in self.columns:
-                value = self._get_column_value(
-                        column,
-                        result,
-                        signature,
-                        match
-                    )
-                row.append(value)
-            rows.append(row)
-        return rows
 
-    def _write_row(self, data: List[str]):
-        for writer in self.writers:
-            writer.write_row(data)
+class ScanReport(Report):
 
-    def _write_headers(self) -> None:
-        if self.headers_written or not self.write_headers:
-            return
-        for writer in self.writers:
-            if writer.allows_headers():
-                writer.write_row(self.columns)
-        self.headers_written = True
+    def __init__(
+                self,
+                format: ScanReportFormat,
+                columns: List[ScanReportColumn],
+                signature_set: SignatureSet,
+                write_headers: bool = False
+            ):
+        super().__init__(
+                format=format,
+                columns=columns,
+                write_headers=write_headers
+            )
+        self.signature_set = signature_set
 
     def add_result(self, result: ScanResult) -> None:
-        self._write_headers()
-        rows = self._format_result(result)
-        for row in rows:
-            for writer in self.writers:
-                writer.write_row(row)
+        records = []
+        for signature_id, match in result.matches.items():
+            signature = self.signature_set.get_signature(signature_id)
+            record = ScanReportRecord(
+                    result=result,
+                    signature=signature,
+                    match=match
+                )
+            records.append(record)
+        self.write_records(records)
 
-    def has_writers(self) -> bool:
-        return len(self.writers) > 0
+
+SCAN_REPORT_CONFIG_OPTIONS = get_config_options(
+        ScanReportFormat,
+        ScanReportColumn,
+        [ScanReportColumn.FILENAME]
+    )
+
+
+class ScanReportManager(ReportManager):
+
+    def __init__(
+                self,
+                config: Config,
+                signature_set: SignatureSet
+            ):
+        super().__init__(
+                formats=ScanReportFormat,
+                columns=ScanReportColumn,
+                config=config,
+                read_stdin=config.read_stdin,
+                input_delimiter=config.file_list_separator
+            )
+        self.signature_set = signature_set
+        self.progress = None
+
+    def set_progress_display(self, progress: ProgressDisplay) -> None:
+        self.progress = progress
+
+    def _instantiate_report(
+                self,
+                format: ReportFormat,
+                columns: List[ReportColumn],
+                write_headers: bool
+            ) -> ScanReport:
+        return ScanReport(
+                format,
+                columns,
+                self.signature_set,
+                write_headers
+            )
+
+    def _get_stdout_target(self) -> IO:
+        if self.progress is not None:
+            return self.progress.get_output_stream()
+        return super()._get_stdout_target()

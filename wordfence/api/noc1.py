@@ -1,4 +1,5 @@
 import json
+from typing import Callable
 
 from .noc_client import NocClient
 from .exceptions import ApiException
@@ -22,13 +23,35 @@ class Client(NocClient):
         query['s'] = self._generate_site_stats()
         return query
 
+    def register_terms_update_hook(self, callable: Callable[[], None]) -> None:
+        if not hasattr(self, 'terms_update_hooks'):
+            self.terms_update_hooks = []
+        self.terms_update_hooks.append(callable)
+
+    def _trigger_terms_update_hooks(self) -> None:
+        if not hasattr(self, 'terms_update_hooks'):
+            return
+        for hook in self.terms_update_hooks:
+            hook()
+
     def validate_response(self, response, validator: Validator) -> None:
-        if isinstance(response, dict) and 'errorMsg' in response:
-            raise ApiException(
-                    'Error message received in response body',
-                    response['errorMsg']
-                )
+        if isinstance(response, dict):
+            if 'errorMsg' in response:
+                raise ApiException(
+                        'Error message received in response body',
+                        response['errorMsg']
+                    )
+            if '_termsUpdated' in response:
+                self._trigger_terms_update_hooks()
         return super().validate_response(response, validator)
+
+    def process_simple_request(self, action: str) -> bool:
+        response = self.request(action)
+        validator = DictionaryValidator({
+                'ok': int
+            })
+        self.validate_response(response, validator)
+        return bool(response['ok'])
 
     def get_patterns(self) -> dict:
         patterns = self.request('get_patterns')
@@ -82,9 +105,21 @@ class Client(NocClient):
         return SignatureSet(common_strings, signatures, self.license)
 
     def ping_api_key(self) -> bool:
-        response = self.request('ping_api_key')
+        return self.process_simple_request('ping_api_key')
+
+    def get_cli_api_key(self, accept_terms: bool = False) -> str:
+        response = self.request(
+                'get_cli_api_key',
+                {'accept_terms': int(accept_terms)}
+            )
         validator = DictionaryValidator({
-                'ok': int
+                'apiKey': str
             })
         self.validate_response(response, validator)
-        return bool(response['ok'])
+        return response['apiKey']
+
+    def record_toupp(self) -> bool:
+        success = self.process_simple_request('record_toupp')
+        if success:
+            self.terms_updated = False
+        return success

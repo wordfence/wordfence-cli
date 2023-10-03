@@ -10,6 +10,9 @@ from .serialization import limited_deserialize
 from ..logging import log
 
 
+DURATION_ONE_DAY = 86400
+
+
 class CacheException(Exception):
     pass
 

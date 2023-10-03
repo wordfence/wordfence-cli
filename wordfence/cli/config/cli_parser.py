@@ -6,7 +6,10 @@ from typing import Set, List, Dict, Any, Tuple
 from wordfence.logging import log
 from .config_items import ConfigItemDefinition, \
     CanonicalValueExtractorInterface, Context, ArgumentType, \
-    not_set_token, valid_subcommands, get_config_map_for_subcommand
+    not_set_token
+from .base_config_definitions \
+        import config_map as base_config_map
+from ..subcommands import SubcommandDefinition
 
 NAME = "Wordfence CLI"
 DESCRIPTION = ("Multifunction commandline tool for Wordfence - "
@@ -14,10 +17,6 @@ DESCRIPTION = ("Multifunction commandline tool for Wordfence - "
                " information about subcommands"
                )
 COMMAND = "wordfence"
-
-parser: ArgumentParser = ArgumentParser(
-    prog=COMMAND,
-    description=DESCRIPTION)
 
 valid_contexts: Set[Context] = {Context.ALL, Context.CLI}
 
@@ -141,15 +140,35 @@ def add_to_parser(target_parser,
         target_parser.add_argument(*names, **named_params)
 
 
-def get_cli_values() -> Tuple[Namespace, List[str]]:
+def add_definitions_to_parser(
+            parser: ArgumentParser,
+            definitions: Dict[str, ConfigItemDefinition]
+        ) -> None:
+    for definition in definitions.values():
+        add_to_parser(parser, definition)
+
+
+def get_cli_values(
+            subcommand_definitions: Dict[str, SubcommandDefinition]
+        ) -> Tuple[Namespace, List[str], ArgumentParser]:
+    parser = ArgumentParser(
+            prog=COMMAND,
+            description=DESCRIPTION
+        )
+
+    add_definitions_to_parser(parser, base_config_map)
+
     subparsers = parser.add_subparsers(title="Wordfence CLI subcommands",
                                        dest="subcommand")
-    for subcommand in valid_subcommands:
-        definitions = get_config_map_for_subcommand(subcommand)
-        subparser = subparsers.add_parser(subcommand,
-                                          prog=subcommand)
-        for definition in definitions.values():
-            add_to_parser(subparser, definition)
+    for subcommand_definition in subcommand_definitions.values():
+        definitions = subcommand_definition.get_config_map()
+        subparser = subparsers.add_parser(
+                subcommand_definition.name,
+                prog=subcommand_definition.name,
+                help=subcommand_definition.description
+            )
+        add_definitions_to_parser(subparser, base_config_map)
+        add_definitions_to_parser(subparser, definitions)
 
     cli_values, trailing_arguments = parser.parse_known_args()
     if '--' in trailing_arguments:
@@ -159,4 +178,4 @@ def get_cli_values() -> Tuple[Namespace, List[str]]:
             raise ValueError(f"Encountered unknown command arguments: "
                              f"{unknowns}")
         trailing_arguments = trailing_arguments[1:]
-    return cli_values, trailing_arguments
+    return cli_values, trailing_arguments, parser
