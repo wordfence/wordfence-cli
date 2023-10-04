@@ -1,5 +1,5 @@
 import os.path
-from typing import IO, List, Optional, Any, Callable
+from typing import IO, List, Optional, Any, Callable, Dict
 from enum import Enum
 from collections import deque
 
@@ -44,17 +44,62 @@ class PhpScope:
         self.variables[name] = value
 
 
+class PhpDefinitions:
+
+    def __init__(self, base_functions: Dict[str, Callable] = None):
+        self.functions = base_functions.copy()
+
+    def define_function(self, name: str, callable: Callable) -> None:
+        self.functions[name] = callable
+
+    def get_function(self, name: str) -> Optional[Callable]:
+        try:
+            return self.functions[name]
+        except KeyError:
+            return None
+
+
 class PhpState:
 
-    def __init__(self):
+    def __init__(self, definitions: PhpDefinitions):
         self.global_scope = PhpScope()
         self.scope = self.global_scope
         self.constants = {}
+        self.definitions = definitions
 
     def define_constant(self, name: str, value: Any) -> None:
         if name in self.constants:
             raise EvaluationException(f'Constant {name} is already defined')
         self.constants[name] = value
+
+    def get_constant(self, name: str) -> Any:
+        if name in self.constants:
+            return self.constants[name]
+        return None
+
+
+def php_define(state: PhpState, constant: str, value: Any) -> None:
+    if constant in state.constants:
+        raise EvaluationException(
+                f'Constant {constant} has already been defined'
+            )
+    state.constants[constant] = value
+
+
+def php_defined(state: PhpState, constant: str) -> bool:
+    return constant in state.constants
+
+
+BASE_FUNCTIONS = {
+        'define': php_define,
+        'defined': php_defined
+    }
+
+
+def initialize_php_definitions() -> PhpDefinitions:
+    return PhpDefinitions(
+            base_functions=BASE_FUNCTIONS
+        )
 
 
 class PhpEntity:
@@ -275,12 +320,17 @@ class PhpInclude(PhpInstruction):
 
 class PhpCallable:
 
-    pass
+    def get_callable(self, state: PhpState) -> Callable:
+        raise EvaluationException('get_callable is not implemented')
 
 
 class PhpFunction(PhpIdentifiedEntity, PhpCallable):
 
-    pass
+    def get_callable(self, state: PhpState) -> Callable:
+        callable = state.definitions.get_function(self.name)
+        if callable is None:
+            raise EvaluationException(f'Function {self.name} is not defined')
+        return callable
 
 
 class PhpCallableInvocation(PhpEntity):
@@ -294,9 +344,14 @@ class PhpCallableInvocation(PhpEntity):
         self.arguments = arguments
 
     def evaluate(self, state: PhpState) -> Any:
-        # arguments = [argument.evaluate(state) for argument in self.arguments]
+        arguments = [argument.evaluate(state) for argument in self.arguments]
+        callable = self.callable.get_callable(state)
         # print(f'Invoking {self.callable} with arguments: {repr(arguments)}')
-        pass
+        callable(state, *arguments)
+        # pass
+
+    def __repr__(self) -> str:
+        return repr(self.callable) + '(' + repr(self.arguments) + ')'
 
 
 class PhpConditional(Evaluable):
@@ -312,7 +367,8 @@ class PhpContext:
 
     def __init__(self):
         self.instructions = []
-        self.state = PhpState()
+        self.definitions = initialize_php_definitions()
+        self.state = PhpState(self.definitions)
 
     def evaluate_variable(self, name: str) -> Any:
         for instruction in self.instructions:
@@ -334,7 +390,7 @@ class PhpContext:
         return includes
 
     def evaluate(self) -> PhpState:
-        state = PhpState()
+        state = PhpState(self.definitions)
         for instruction in self.instructions:
             instruction.evaluate(state)
         return state
@@ -367,9 +423,6 @@ MAGIC_CONSTANT_TOKEN_TYPES = {
         TokenType.FUNC_C,
         TokenType.NS_C
     }
-BINARY_OPERATORS = {
-        '.'
-    }
 
 
 class TokenStream:
@@ -391,7 +444,7 @@ class TokenStream:
             if token.type in COMMENT_TOKEN_TYPES:
                 self.pending_comments.append(token.value)
             else:
-                # print(f"Token({token.type}): {token.value}")
+                # print(f"Token({token.type}): \"{token.value}\"")
                 return token
         return None
 
@@ -477,7 +530,7 @@ class Parser:
         elif token.type == TokenType.STRING:
             return self.parse_constant(token)
         elif token.type == TokenType.CHARACTER \
-                and token.value in BINARY_OPERATORS:
+                and token.value in OPERATOR_MAP:
             return self.parse_operator(token)
         else:
             raise ParsingException(
@@ -557,6 +610,7 @@ class Parser:
     def parse(self) -> PhpContext:
         context = PhpContext()
         while (token := self.token_stream.accept_token()) is not None:
+            # print(f"Root token: {token.type}")
             # print(f'Token - {token.type.name}: `{token.value}`')
             if token.type == TokenType.VARIABLE:
                 assignment = self.parse_assignment(token, self.token_stream)

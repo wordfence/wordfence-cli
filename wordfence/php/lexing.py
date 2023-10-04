@@ -2,7 +2,7 @@ import re
 
 from collections import deque
 from enum import Enum, auto
-from typing import Generator, IO, Optional, Tuple, Union, Set
+from typing import Generator, IO, Optional, Union, Set
 
 
 class LexingException(Exception):
@@ -76,6 +76,8 @@ class EnclosedTokenMatcher(TokenMatcher):
                 return MatchType.FINAL_MATCH
             else:
                 return MatchType.PARTIAL_MATCH
+        if self.start.find(value) == 0:
+            return MatchType.PARTIAL_MATCH
         return MatchType.NONE
 
 
@@ -107,6 +109,8 @@ class VariableTokenMatcher(TokenMatcher):
         if value[0] == VARIABLE_PREFIX:
             if IDENTIFIER_PATTERN.match(value[1:]) is not None:
                 return MatchType.MATCH
+            if len(value) == 1:
+                return MatchType.PARTIAL_MATCH
         return MatchType.NONE
 
 
@@ -173,6 +177,14 @@ class UnmatchingTokenMatcher(TokenMatcher):
         return MatchType.NONE
 
 
+class CharacterTokenMatcher(TokenMatcher):
+
+    def match(self, value: str) -> MatchType:
+        if len(value) == 1:
+            return MatchType.FINAL_MATCH
+        return MatchType.NONE
+
+
 def _literal(value) -> LiteralTokenMatcher:
     return LiteralTokenMatcher(value)
 
@@ -202,14 +214,13 @@ class TokenType(Enum):
     VARIABLE = VariableTokenMatcher(),
     CONSTANT_ENCAPSED_STRING = StringLiteralTokenMatcher(),
     LNUMBER = IntegerLiteralTokenMatcher(),
-    STRING = IdentifierTokenMatcher(),
 
     # Literal token types
-    INCLUDE = _literal('include'),
     INCLUDE_ONCE = _literal('include_once'),
+    INCLUDE = _literal('include'),
     EVAL = _literal('eval'),
-    REQUIRE = _literal('require'),
     REQUIRE_ONCE = _literal('require_once'),
+    REQUIRE = _literal('require'),
     LOGICAL_OR = _literal('or'),
     LOGICAL_XOR = _literal('xor'),
     LOGICAL_AND = _literal('and'),
@@ -331,7 +342,8 @@ class TokenType(Enum):
     OPEN_TAG_WITH_ECHO = _literal('<?='),
     CLOSE_TAG = _literal('?>'),
 
-    CHARACTER = UnmatchingTokenMatcher(),
+    STRING = IdentifierTokenMatcher(),
+    CHARACTER = CharacterTokenMatcher(),
 
     def __init__(self, matcher: TokenMatcher):
         self.matcher = matcher
@@ -381,7 +393,6 @@ class Lexer:
         self.stream = stream
         self.offset = 0
         self.position = 0
-        self.potential_matches = []
 
     def _read_chunk(self) -> bool:
         chunk = self.stream.read(self.chunk_size)
@@ -419,79 +430,41 @@ class Lexer:
     def step_backwards(self) -> None:
         self.position -= 1
 
+    def reset(self) -> None:
+        self.position = self.offset
+
     def consume_token(self, token_type: TokenType) -> Token:
         value = self.get_current()
         self.offset = self.position
         return Token(token_type, value)
 
-    def consume_final_match(self, match: Tuple[TokenType, int]) -> Token:
-        self.position = match[1]
-        return self.consume_token(match[0])
-
-    def get_next_token(self, first_pass: bool = True) -> Optional[Token]:
-        current = None
-        partial_matches = {}
-        potential_matches = []
-        final_match = None
+    def get_next_token(self) -> Optional[Token]:
         while self.step():
-            current = self.get_current()
-            # print(f" === CURRENT({self.position}, {self.offset}) === ")
-            # print(current)
-            # print(" === END === ")
-            for potential_match in potential_matches:
-                if potential_match.match(current) == MatchType.NONE:
-                    self.step_backwards()
-                    # print("Consuming potential match")
-                    token = self.consume_token(potential_match)
-                    # self.step()
-                    potential_matches = []
-                    return token
-            potential_matches = []
+            position = self.position
             for type in TokenType:
-                match_type = type.match(current)
-                if match_type == MatchType.FINAL_MATCH:
-                    final_match = (type, self.position)
-                elif match_type == MatchType.MATCH:
-                    potential_matches.append(type)
-                if match_type == MatchType.PARTIAL_MATCH:
-                    if type not in partial_matches:
-                        partial_matches[type] = self.position
-                elif type in partial_matches:
-                    del partial_matches[type]
-            if final_match is not None:
-                if first_pass:
-                    earliest_partial = None
-                    for position in partial_matches.values():
-                        if earliest_partial is None \
-                                or position < earliest_partial:
-                            earliest_partial = position
-                    if earliest_partial is not None \
-                            and final_match[1] >= earliest_partial:
-                        continue
-                # print("Consuming final match")
-                return self.consume_final_match(final_match)
-            if len(current) == 1 \
-                    and ((
-                            len(partial_matches) == 0
-                            and len(potential_matches) == 0
-                        ) or not first_pass):
-                # print("Consuming single char")
-                return self.consume_token(TokenType.CHARACTER)
-        if final_match is not None:
-            # print("Consuming final match outside of loop")
-            return self.consume_final_match(final_match)
+                current = self.get_current()
+                potential = False
+                while True:
+                    match_type = type.match(current)
+                    if match_type == MatchType.FINAL_MATCH:
+                        return self.consume_token(type)
+                    elif match_type == MatchType.MATCH:
+                        potential = True
+                    elif match_type == MatchType.NONE:
+                        if potential:
+                            self.step_backwards()
+                            return self.consume_token(type)
+                        self.position = position
+                        break
+                    if not self.step():
+                        self.position = position
+                        break
+                    current = self.get_current()
+        current = self.get_current()
         if current is not None and len(current) > 0:
-            for potential_match in self.potential_matches:
-                # print("Consuming potential match outside of loop")
-                return self.consume_token(potential_match)
-            if first_pass:
-                self.position = self.offset
-                self.potential_matches = []
-                return self.get_next_token(False)
-            else:
-                raise LexingException(
-                        f'Input does not match any known token: {current}'
-                    )
+            raise LexingException(
+                    f'Input does not match any known token: "{current}"'
+                )
         return None
 
 
