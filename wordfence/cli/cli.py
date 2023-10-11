@@ -137,7 +137,11 @@ class WordfenceCli:
             return self.process_exception(exception)
 
 
-if __name__ == '__main__':
+def main():
     cli = WordfenceCli()
     exit_code = cli.invoke()
     sys.exit(exit_code)
+
+
+if __name__ == '__main__':
+    main()
