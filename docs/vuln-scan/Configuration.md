@@ -1,6 +1,6 @@
 # Vulnerability Scan Configuration
 
-Configuration can be set through command line arguments, or configured globally through the wordfence-cli.ini file. Once Wordfence CLI is installed, we recommend running `./wordfence vuln-scan --configure` to interactively setup Wordfence CLI's global configuration.
+Configuration can be set through command line arguments, or configured globally through the wordfence-cli.ini file. Once Wordfence CLI is installed, we recommend running `./wordfence --configure` to interactively setup Wordfence CLI's global configuration.
 
 ## wordfence-cli.ini
 
