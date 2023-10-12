@@ -1,8 +1,32 @@
 # Installation
 
+## Installation with `pip` 
+
+This is the simplest method for installing CLI. 
+
+	pip install wordfence
+
+This should build and install an executable of Wordfence CLI at the following directory when run as the `username` user:
+
+	/home/username/.local/bin/wordfence
+
+If run as root, the executable path should be:
+
+	/usr/local/bin/wordfence
+
+Verify the executable works correctly on your system:
+
+	./wordfence --version
+
+You should see output similar to this:
+
+	Wordfence CLI 1.0.0
+
+Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](Examples.md).
+
 ## Binaries
 
-This is the simplest method for installing CLI. Binaries for Wordfence CLI can be downloaded on the Releases page of the GitHub repository (under Assets of each release) along with source code, and the .whl files:
+Binaries for Wordfence CLI can be downloaded on the Releases page of the GitHub repository (under Assets of each release) along with source code, and the .whl files:
 
 [https://github.com/wordfence/wordfence-cli/releases](https://github.com/wordfence/wordfence-cli/releases)
 
@@ -16,7 +40,7 @@ Extract the binary:
 
 Verify the binary works correctly on your system:
 
-	./wordfence scan --version
+	./wordfence --version
 
 You should see output similar to this:
 
@@ -48,7 +72,7 @@ If run as root, the executable path should be:
 
 Verify the executable works correctly on your system:
 
-	./wordfence scan --version
+	./wordfence --version
 
 You should see output similar to this:
 
