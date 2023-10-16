@@ -46,6 +46,9 @@ class ScannableSoftware:
     slug: str
     version: str
 
+    def get_key(self) -> str:
+        return f'{self.type.value}-{self.slug}-{self.version}'
+
 
 @dataclass
 class Software:
@@ -337,7 +340,8 @@ class VulnerabilityScanner:
         return len(self.vulnerabilities)
 
     def get_affected_count(self) -> int:
-        count = 0
-        for affected in self.affected.values():
-            count += len(affected)
-        return count
+        affected = set()
+        for group in self.affected.values():
+            for software in group:
+                affected.add(software.get_key())
+        return len(affected)

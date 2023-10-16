@@ -55,6 +55,39 @@ config_definitions: ConfigDefinitions = {
             "separator": ","
         }
     },
+    "relative-content-path": {
+        "short_name": "C",
+        "description": "Alternate path of the wp-content directory relative "
+                       "to the WordPress root.",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": [],
+        "meta": {
+            "separator": ","
+        }
+    },
+    "relative-plugins-path": {
+        "short_name": "P",
+        "description": "Alternate path of the wp-content/plugins directory "
+                       "relative to the WordPress root.",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": [],
+        "meta": {
+            "separator": ","
+        }
+    },
+    "relative-mu-plugins-path": {
+        "short_name": "M",
+        "description": "Alternate path of the wp-content/plugins directory "
+                       "relative to the WordPress root.",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": [],
+        "meta": {
+            "separator": ","
+        }
+    },
     **VULN_SCAN_REPORT_CONFIG_OPTIONS,
     "exclude-vulnerability": {
         "short_name": "e",

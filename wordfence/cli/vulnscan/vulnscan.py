@@ -4,7 +4,7 @@ from ...intel.vulnerabilities import VulnerabilityIndex, Vulnerability, \
         VulnerabilityScanner, VulnerabilityFilter
 from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.caching import Cacheable, DURATION_ONE_DAY
-from ...wordpress.site import WordpressSite
+from ...wordpress.site import WordpressSite, WordpressStructureOptions
 from ...wordpress.plugin import PluginLoader, Plugin
 from ...wordpress.theme import ThemeLoader, Theme
 from ...logging import log
@@ -69,15 +69,19 @@ class VulnScanSubcommand(Subcommand):
                 self,
                 path: str,
                 scanner: VulnerabilityScanner,
-                check_extensions: bool = False
+                check_extensions: bool = False,
+                structure_options: WordpressStructureOptions = None
             ) -> Dict[str, Vulnerability]:
-        site = WordpressSite(path)
+        site = WordpressSite(
+                path=path,
+                structure_options=structure_options
+            )
         log.debug(f'Located WordPress files at {site.core_path}')
         version = site.get_version()
         log.debug(f'WordPress Core Version: {version}')
         scanner.scan_core(version)
         if check_extensions:
-            self._scan_plugins(site.get_plugins(), scanner)
+            self._scan_plugins(site.get_all_plugins(), scanner)
             self._scan_themes(site.get_themes(), scanner)
 
     def _output_summary(self, scanner: VulnerabilityScanner) -> None:
@@ -98,12 +102,18 @@ class VulnScanSubcommand(Subcommand):
                 informational=self.config.informational
             )
 
-    def _scan_site(self, path: str, scanner: VulnerabilityScanner) -> None:
+    def _scan_site(
+                self,
+                path: str,
+                scanner: VulnerabilityScanner,
+                structure_options: WordpressStructureOptions = None
+            ) -> None:
         log.info(f'Scanning site at {path}...')
         self._scan(
                 path,
                 scanner,
-                check_extensions=True
+                check_extensions=True,
+                structure_options=structure_options
             )
 
     def invoke(self) -> int:
@@ -115,18 +125,35 @@ class VulnScanSubcommand(Subcommand):
                 vulnerability_index,
                 self._initialize_filter()
             )
+        structure_options = WordpressStructureOptions(
+                relative_content_paths=self.config.relative_content_path,
+                relative_plugins_paths=self.config.relative_plugins_path,
+                relative_mu_plugins_paths=self.config.relative_mu_plugins_path
+            )
         with report_manager.open_output_file() as output_file:
             report = report_manager.initialize_report(output_file)
             scanner.register_result_callback(report.add_result)
             for path in self.config.trailing_arguments:
-                self._scan_site(path, scanner)
+                self._scan_site(
+                        path,
+                        scanner,
+                        structure_options=structure_options
+                    )
             if io_manager.should_read_stdin():
                 reader = io_manager.get_input_reader()
                 for path in reader.read_all_entries():
-                    self._scan_site(path, scanner)
+                    self._scan_site(
+                            path,
+                            scanner,
+                            structure_options=structure_options
+                        )
             for path in self.config.wordpress_path:
                 log.info(f'Scanning core installation at {path}...')
-                self._scan(path, scanner)
+                self._scan(
+                        path,
+                        scanner,
+                        structure_options=structure_options
+                    )
             for path in self.config.plugin_directory:
                 log.info(f'Scanning plugin directory at {path}...')
                 self._scan_plugin_directory(path, scanner)
