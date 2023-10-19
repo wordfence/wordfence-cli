@@ -261,6 +261,11 @@ class WordpressSite:
             except ExtensionException:
                 # If extensions can't be loaded, the directory is not valid
                 continue
+        if mu:
+            log.warning(
+                    f'No mu-plugins directory found for site at {self.path}'
+                )
+            return []
         raise WordpressException(
                 f'Unable to locate {log_plugins} directory for site at '
                 f'{self.path}'
