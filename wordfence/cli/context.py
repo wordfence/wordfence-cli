@@ -16,6 +16,7 @@ class CliContext:
         self._noc1_client = None
         self._terms_update_hooks = []
         self._wfi_client = None
+        self.configurer = None
 
     def register_terms_update_hook(self, callable: [[], None]) -> None:
         self._terms_update_hooks.append(callable)

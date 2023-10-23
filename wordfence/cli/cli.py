@@ -12,18 +12,19 @@ from .banner.banner import show_welcome_banner_if_enabled
 from .config import load_config
 from .subcommands import load_subcommand_definitions
 from .context import CliContext
-from .configure import Configurer
+from .configurer import Configurer
 from .terms import TermsManager
 
 
 class WordfenceCli:
 
     def __init__(self):
+        self.initialize_early_logging()
         self.subcommand_definitions = load_subcommand_definitions()
         self.config, self.subcommand_definition = load_config(
                 self.subcommand_definitions
             )
-        self.initialize_logging()
+        self.initialize_logging(self.config.verbose)
         self.cache = self.initialize_cache()
         self.subcommand = None
 
@@ -33,7 +34,10 @@ class WordfenceCli:
         else:
             print(message)
 
-    def initialize_logging(self) -> None:
+    def initialize_early_logging(self) -> None:
+        log.setLevel(logging.INFO)
+
+    def initialize_logging(self, verbose: bool = False) -> None:
         if self.config.quiet:
             log.setLevel(logging.CRITICAL)
         elif self.config.debug:
@@ -116,13 +120,18 @@ class WordfenceCli:
         configurer = Configurer(
                 self.config,
                 terms_manager,
+                self.subcommand_definitions,
                 self.subcommand_definition
             )
-        configurer.check_config()
+        context.configurer = configurer
 
         if self.subcommand_definition is None:
-            if not configurer.written:
-                self.config.display_help()
+            self.config.display_help()
+            configurer.check_config()
+            return 0
+
+        if self.subcommand_definition.requires_config \
+                and not configurer.check_config():
             return 0
 
         self.subcommand = None
@@ -138,9 +147,12 @@ class WordfenceCli:
 
 
 def main():
-    cli = WordfenceCli()
-    exit_code = cli.invoke()
-    sys.exit(exit_code)
+    try:
+        cli = WordfenceCli()
+        exit_code = cli.invoke()
+        sys.exit(exit_code)
+    except KeyboardInterrupt:
+        sys.exit(130)
 
 
 if __name__ == '__main__':

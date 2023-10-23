@@ -1,6 +1,7 @@
+from collections import namedtuple
 from configparser import ConfigParser, DuplicateSectionError
 from multiprocessing import cpu_count
-from typing import Optional
+from typing import Optional, List, Dict
 
 from wordfence.util.input import prompt, prompt_yes_no, prompt_int, \
         InvalidInputException
@@ -10,11 +11,76 @@ from wordfence.api import noc1
 from wordfence.api.licensing import License, LICENSE_URL
 from wordfence.api.exceptions import ApiException
 from wordfence.logging import log
+from .config import load_config
 from .subcommands import SubcommandDefinition
 from .terms import TERMS_URL, TermsManager
 
 
 CONFIG_SECTION_DEFAULT = 'DEFAULT'
+
+
+ConfigUpdate = namedtuple('ConfigUpdate', ['section', 'key', 'value'])
+
+
+class ConfigWriter:
+
+    def __init__(
+                self,
+                config
+            ):
+        self.config = config
+        self.parser = None
+
+    def initialize_parser(self) -> None:
+        self.parser = ConfigParser()
+
+    def require_parser(self) -> None:
+        if self.parser is None:
+            self.initialize_parser()
+
+    def require_section(self, section: str) -> None:
+        self.require_parser()
+        if section == CONFIG_SECTION_DEFAULT:
+            return
+        if self.parser.has_section(section):
+            return
+        try:
+            self.parser.add_section(section)
+        except DuplicateSectionError:
+            pass
+
+    def apply_update(self, update: ConfigUpdate) -> None:
+        self.require_parser()
+        self.require_section(update.section)
+        self.parser.set(update.section, update.key, update.value)
+
+    def write(self, updates: List[ConfigUpdate]) -> None:
+        # TODO: What if the INI file changes after the config is loaded?
+        self.initialize_parser()
+        ini_path = self.config.ini_path if self.config.has_ini_file() \
+            else self.config.configuration
+        ini_path = resolve_path(ini_path)
+        ensure_file_is_writable(ini_path)
+        open_mode = 'r' if self.config.has_ini_file() else 'w'
+        with open(ini_path, open_mode + '+') as file:
+            if self.config.has_ini_file():
+                try:
+                    self.parser.read_file(file)
+                except BaseException:
+                    log.warning(
+                            'Failed to read existing config file at '
+                            f'{ini_path}. existing data will be truncated.'
+                        )
+
+            for update in updates:
+                self.apply_update(update)
+
+            file.truncate(0)
+            file.seek(0)
+            log.debug(f'Writing config to {ini_path}...')
+            self.parser.write(file)
+            self.written = True
+            log.info(f'Config saved to {ini_path}')
 
 
 class Configurer:
@@ -23,12 +89,25 @@ class Configurer:
                 self,
                 config,
                 terms_manager: TermsManager,
+                subcommand_definitions: Dict[str, SubcommandDefinition],
                 subcommand_definition: Optional[SubcommandDefinition] = None
             ):
         self.config = config
+        self.all_config = {}
+        self.all_config[config.subcommand] = config
+        self.config_updates = []
         self.terms_manager = terms_manager
         self.subcommand_definition = subcommand_definition
+        self.subcommand_definitions = subcommand_definitions
         self.written = False
+
+    def get_config(self, subcommand: str):
+        if subcommand not in self.all_config:
+            self.all_config[subcommand], _subcommand_definition = load_config(
+                        self.subcommand_definitions,
+                        subcommand
+                    )
+        return self.all_config[subcommand]
 
     def supports_option(self, name: str) -> bool:
         if self.subcommand_definition is None:
@@ -72,6 +151,13 @@ class Configurer:
     def _prompt_for_license(self) -> str:
         if self.config.license is not None:
             print(f'Current license: {self.config.license}')
+            change_license = prompt_yes_no(
+                    'An existing license was found, '
+                    'would you like to change it?',
+                    default=False
+                )
+            if not change_license:
+                return self.config.license
         request_free = prompt_yes_no(
                 'Would you like to automatically request a free Wordfence CLI'
                 ' license?',
@@ -145,67 +231,74 @@ class Configurer:
 
     def _prompt_for_worker_count(self) -> int:
         cpus = cpu_count()
+        config = self.get_config('scan')
         processes = prompt_int(
                     f'Number of worker processes ({cpus} CPUs available)',
-                    self.config.workers
+                    config.workers
                 )
         return processes
 
-    def get_config_section(self) -> str:
-        if self.subcommand_definition is None:
-            return 'DEFAULT'
-        return self.subcommand_definition.config_section
-
     def write_config(self) -> None:
-        # TODO: What if the INI file changes after the config is loaded?
-        config_parser = ConfigParser()
-        ini_path = self.config.ini_path if self.config.has_ini_file() \
-            else self.config.configuration
-        ini_path = resolve_path(ini_path)
-        ensure_file_is_writable(ini_path)
-        open_mode = 'r' if self.config.has_ini_file() else 'w'
-        with open(ini_path, open_mode + '+') as file:
-            if self.config.has_ini_file():
-                try:
-                    config_parser.read_file(file)
-                except BaseException:
-                    log.warning(
-                            'Failed to read existing config file at '
-                            f'{ini_path}. existing data will be truncated.'
-                        )
+        writer = ConfigWriter(self.config)
+        writer.write(self.config_updates)
 
-            section = self.get_config_section()
+    def update_config(
+                self,
+                key: str,
+                value: str,
+                section: str = 'DEFAULT'
+            ) -> None:
+        self.config_updates.append(
+                ConfigUpdate(section, key, str(value))
+            )
+        if self.supports_option(key):
+            setattr(self.config, key, value)
 
-            def set_config(key: str, value: str) -> None:
-                config_parser.set(section, key, value)
-
-            try:
-                if section != CONFIG_SECTION_DEFAULT:
-                    config_parser.add_section(section)
-            except DuplicateSectionError:
-                pass
-            set_config('license', self.config.license)
-            set_config('cache_directory', self.config.cache_directory)
-            if self.supports_option('workers'):
-                set_config('workers', str(self.config.workers))
-            file.truncate(0)
-            file.seek(0)
-            log.info(f'Writing config to {ini_path}...')
-            config_parser.write(file)
-            self.written = True
-            log.info('Config updated')
-
-    def prompt_for_config(self) -> None:
+    def prompt_for_config(self) -> bool:
         if not self._prompt_overwrite():
-            return
-        self.config.license = self._prompt_for_license()
-        self.config.cache_directory = self._prompt_for_cache_directory()
-        if self.supports_option('workers'):
-            self.config.workers = self._prompt_for_worker_count()
+            return False
+        has_existing_config = self.config.has_ini_file()
+        self.update_config(
+                'license',
+                self._prompt_for_license()
+            )
+        self.update_config(
+                'cache_directory',
+                self._prompt_for_cache_directory()
+            )
+        self.update_config(
+                'workers',
+                self._prompt_for_worker_count(),
+                'SCAN'
+            )
         self.write_config()
+        if has_existing_config:
+            log.info(
+                    "The configuration for Wordfence CLI has been "
+                    "successfully updated."
+                )
+        else:
+            log.info(
+                    "Wordfence CLI has been successfully configured and is "
+                    "now ready for use."
+                )
+        return True
 
-    def check_config(self) -> None:
-        if self.config.configure is False:
-            return
-        if self.config.configure or not self.has_base_config():
+    def prompt_for_missing_config(self) -> bool:
+        should_configure = prompt_yes_no(
+                'Wordfence CLI cannot be used until it has been configured. '
+                'Would you like to configure it now?',
+                default=False
+            )
+        if should_configure:
             self.prompt_for_config()
+            return True
+        else:
+            return False
+
+    def check_config(self) -> bool:
+        if self.has_base_config():
+            return True
+        else:
+            self.prompt_for_missing_config()
+            return False

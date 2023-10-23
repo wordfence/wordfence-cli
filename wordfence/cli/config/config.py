@@ -41,3 +41,4 @@ class Config(SimpleNamespace):
 
     def display_help(self) -> None:
         self._parser.print_help()
+        print()

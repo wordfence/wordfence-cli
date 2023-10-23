@@ -8,8 +8,10 @@ from .config.config_items import config_definitions_to_config_map, \
 from .context import CliContext
 
 VALID_SUBCOMMANDS = {
+        'configure',
         'scan',
-        'vuln-scan'
+        'vuln-scan',
+        'help'
     }
 
 
@@ -60,7 +62,8 @@ class SubcommandDefinition:
                 description: str,
                 config_definitions: ConfigDefinitions,
                 config_section: str,
-                cacheable_types: Set[str]
+                cacheable_types: Set[str],
+                requires_config: bool = True
             ):
         self.name = name
         self.description = description
@@ -68,6 +71,7 @@ class SubcommandDefinition:
         self.config_section = config_section
         self.config_map = None
         self.cacheable_types = cacheable_types
+        self.requires_config = requires_config
 
     def get_config_map(self) -> Dict[str, ConfigItemDefinition]:
         if self.config_map is None:

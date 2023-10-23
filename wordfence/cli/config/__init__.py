@@ -59,15 +59,19 @@ def create_config_object(
 
 
 def load_config(
-            subcommand_definitions: Dict[str, SubcommandDefinition]
+            subcommand_definitions: Dict[str, SubcommandDefinition],
+            subcommand: str = None
         ) -> Tuple[Config, SubcommandDefinition]:
     cli_values, trailing_arguments, parser = get_cli_values(
             subcommand_definitions
         )
 
-    if cli_values.subcommand:
-        assert cli_values.subcommand in subcommand_definitions
-        subcommand_definition = subcommand_definitions[cli_values.subcommand]
+    if subcommand is None:
+        subcommand = cli_values.subcommand
+
+    if subcommand:
+        assert subcommand in subcommand_definitions
+        subcommand_definition = subcommand_definitions[subcommand]
         config_map = {
                 **base_config_map,
                 **subcommand_definition.get_config_map()
@@ -84,7 +88,7 @@ def load_config(
     value_extractors.append(CliCanonicalValueExtractor())
 
     instance = create_config_object(
-            cli_values.subcommand,
+            subcommand,
             config_map,
             trailing_arguments,
             parser,

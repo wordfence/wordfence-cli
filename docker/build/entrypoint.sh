@@ -32,6 +32,8 @@ pyinstaller \
   --onefile \
   --hidden-import wordfence.cli.scan \
   --hidden-import wordfence.cli.scan.config \
+  --hidden-import wordfence.cli.configure \
+  --hidden-import wordfence.cli.configure.definition \
   main.py
 
 pushd /root/wordfence-cli/dist
