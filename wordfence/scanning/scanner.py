@@ -6,7 +6,7 @@ from ctypes import c_bool, c_uint
 from enum import IntEnum
 from multiprocessing import Queue, Process, Value
 from dataclasses import dataclass
-from typing import Set, Optional, Callable, Dict, NamedTuple, Tuple
+from typing import Set, Optional, Callable, Dict, NamedTuple, Tuple, List
 from logging import Handler
 
 from .exceptions import ScanningException, ScanningIoException
@@ -128,7 +128,7 @@ class FileLocator:
         self.located_count = 0
         self.skipped_count = 0
 
-    def _is_loop(self, path: str, parents: list):
+    def _is_loop(self, path: str, parents: list) -> bool:
         realpath = os.path.realpath(path)
         for parent in parents:
             if realpath == parent:
@@ -138,10 +138,17 @@ class FileLocator:
                 return True
         return False
 
+    def _get_all_parents(self, path: str) -> List[str]:
+        parents = [path]
+        while len(path) > 1:
+            path = os.path.dirname(path)
+            parents.append(path)
+        return parents
+
     def search_directory(self, path: str, parents: Optional[list] = None):
         try:
             if parents is None:
-                parents = [path]
+                parents = self._get_all_parents(path)
             contents = os.scandir(path)
             for item in contents:
                 if item.is_symlink() and self._is_loop(item.path, parents):
@@ -149,7 +156,7 @@ class FileLocator:
                 if item.is_dir():
                     yield from self.search_directory(
                             item.path,
-                            parents + [item.path]
+                            parents + self._get_all_parents(item.path)
                         )
                 elif item.is_file():
                     if not self.file_filter.filter(item.path):
