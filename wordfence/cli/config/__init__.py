@@ -13,6 +13,13 @@ from .config import Config
 value_extractors: List = []
 
 
+class RenamedSubcommandException(Exception):
+
+    def __init__(self, old: str, new: str):
+        self.old = old
+        self.new = new
+
+
 def create_config_object(
             subcommand: str,
             definitions: Dict[str, ConfigItemDefinition],
@@ -58,6 +65,18 @@ def create_config_object(
     return target
 
 
+def _get_renamed_subcommand(
+            subcommand: str,
+            definitions: Dict[str, SubcommandDefinition]
+        ) -> str:
+    for definition in definitions.values():
+        if subcommand in definition.previous_names:
+            return definition.name
+    raise KeyError(
+            f'Subcommand {subcommand} does not appear to have been renamed'
+        )
+
+
 def load_config(
             subcommand_definitions: Dict[str, SubcommandDefinition],
             subcommand: str = None
@@ -70,8 +89,16 @@ def load_config(
         subcommand = cli_values.subcommand
 
     if subcommand:
-        assert subcommand in subcommand_definitions
-        subcommand_definition = subcommand_definitions[subcommand]
+        try:
+            subcommand_definition = subcommand_definitions[subcommand]
+        except KeyError:
+            raise RenamedSubcommandException(
+                    subcommand,
+                    _get_renamed_subcommand(
+                        subcommand,
+                        subcommand_definitions
+                    )
+                )
         config_map = {
                 **base_config_map,
                 **subcommand_definition.get_config_map()

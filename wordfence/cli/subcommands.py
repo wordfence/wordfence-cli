@@ -9,7 +9,7 @@ from .context import CliContext
 
 VALID_SUBCOMMANDS = {
         'configure',
-        'scan',
+        'malware-scan',
         'vuln-scan',
         'help'
     }
@@ -63,7 +63,8 @@ class SubcommandDefinition:
                 config_definitions: ConfigDefinitions,
                 config_section: str,
                 cacheable_types: Set[str],
-                requires_config: bool = True
+                requires_config: bool = True,
+                previous_names: Set[str] = None
             ):
         self.name = name
         self.description = description
@@ -72,6 +73,8 @@ class SubcommandDefinition:
         self.config_map = None
         self.cacheable_types = cacheable_types
         self.requires_config = requires_config
+        self.previous_names = previous_names if previous_names is not None \
+            else set()
 
     def get_config_map(self) -> Dict[str, ConfigItemDefinition]:
         if self.config_map is None:

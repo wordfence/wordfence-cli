@@ -9,7 +9,7 @@ from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
 from ..logging import log
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
-from .config import load_config
+from .config import load_config, RenamedSubcommandException
 from .subcommands import load_subcommand_definitions
 from .context import CliContext
 from .configurer import Configurer
@@ -21,9 +21,16 @@ class WordfenceCli:
     def __init__(self):
         self.initialize_early_logging()
         self.subcommand_definitions = load_subcommand_definitions()
-        self.config, self.subcommand_definition = load_config(
-                self.subcommand_definitions
-            )
+        try:
+            self.config, self.subcommand_definition = load_config(
+                    self.subcommand_definitions,
+                )
+        except RenamedSubcommandException as rename:
+            print(
+                    f'The "{rename.old}" subcommand has been renamed to '
+                    f'"{rename.new}"'
+                )
+            sys.exit(1)
         self.initialize_logging(self.config.verbose)
         self.cache = self.initialize_cache()
         self.subcommand = None

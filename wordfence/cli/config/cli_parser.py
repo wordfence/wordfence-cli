@@ -159,7 +159,8 @@ def get_cli_values(
     add_definitions_to_parser(parser, base_config_map)
 
     subparsers = parser.add_subparsers(title="Wordfence CLI subcommands",
-                                       dest="subcommand")
+                                       dest="subcommand",
+                                       metavar='')
     for subcommand_definition in subcommand_definitions.values():
         definitions = subcommand_definition.get_config_map()
         subparser = subparsers.add_parser(
@@ -169,6 +170,12 @@ def get_cli_values(
             )
         add_definitions_to_parser(subparser, base_config_map)
         add_definitions_to_parser(subparser, definitions)
+
+        for previous_name in subcommand_definition.previous_names:
+            subparsers.add_parser(
+                    previous_name,
+                    prog=previous_name
+                )
 
     cli_values, trailing_arguments = parser.parse_known_args()
     if '--' in trailing_arguments:
