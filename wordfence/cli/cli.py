@@ -2,28 +2,35 @@ import sys
 import os
 import logging
 
-from ..version import __version__, __version_name__
-from ..util import pcre, updater
+from ..util import updater
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         CacheException
 from ..logging import log
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
-from .config import load_config
+from .config import load_config, RenamedSubcommandException
 from .subcommands import load_subcommand_definitions
 from .context import CliContext
-from .configure import Configurer
+from .configurer import Configurer
 from .terms import TermsManager
 
 
 class WordfenceCli:
 
     def __init__(self):
+        self.initialize_early_logging()
         self.subcommand_definitions = load_subcommand_definitions()
-        self.config, self.subcommand_definition = load_config(
-                self.subcommand_definitions
-            )
-        self.initialize_logging()
+        try:
+            self.config, self.subcommand_definition = load_config(
+                    self.subcommand_definitions,
+                )
+        except RenamedSubcommandException as rename:
+            print(
+                    f'The "{rename.old}" subcommand has been renamed to '
+                    f'"{rename.new}"'
+                )
+            sys.exit(1)
+        self.initialize_logging(self.config.verbose)
         self.cache = self.initialize_cache()
         self.subcommand = None
 
@@ -33,7 +40,10 @@ class WordfenceCli:
         else:
             print(message)
 
-    def initialize_logging(self) -> None:
+    def initialize_early_logging(self) -> None:
+        log.setLevel(logging.INFO)
+
+    def initialize_logging(self, verbose: bool = False) -> None:
         if self.config.quiet:
             log.setLevel(logging.CRITICAL)
         elif self.config.debug:
@@ -60,14 +70,6 @@ class WordfenceCli:
                         + str(exception)
                     )
         return RuntimeCache()
-
-    def display_version(self) -> None:
-        print(f"Wordfence CLI {__version__} \"{__version_name__}\"")
-        jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
-        print(
-                f"PCRE Version: {pcre.VERSION} - "
-                f"JIT Supported: {jit_support_text}"
-            )
 
     def process_exception(self, exception: BaseException) -> int:
         if isinstance(exception, ExceptionContainer):
@@ -98,17 +100,17 @@ class WordfenceCli:
 
         show_welcome_banner_if_enabled(self.config)
 
-        if self.config.version:
-            self.display_version()
-            return 0
-
-        if self.config.check_for_update:
-            updater.Version.check(self.cache)
-
         context = CliContext(
                 self.config,
                 self.cache
             )
+
+        if self.config.version:
+            context.display_version()
+            return 0
+
+        if self.config.check_for_update:
+            updater.Version.check(self.cache)
 
         terms_manager = TermsManager(context)
         context.register_terms_update_hook(terms_manager.trigger_update)
@@ -116,13 +118,18 @@ class WordfenceCli:
         configurer = Configurer(
                 self.config,
                 terms_manager,
+                self.subcommand_definitions,
                 self.subcommand_definition
             )
-        configurer.check_config()
+        context.configurer = configurer
 
         if self.subcommand_definition is None:
-            if not configurer.written:
-                self.config.display_help()
+            self.config.display_help()
+            configurer.check_config()
+            return 0
+
+        if self.subcommand_definition.requires_config \
+                and not configurer.check_config():
             return 0
 
         self.subcommand = None
@@ -138,9 +145,12 @@ class WordfenceCli:
 
 
 def main():
-    cli = WordfenceCli()
-    exit_code = cli.invoke()
-    sys.exit(exit_code)
+    try:
+        cli = WordfenceCli()
+        exit_code = cli.invoke()
+        sys.exit(exit_code)
+    except KeyboardInterrupt:
+        sys.exit(130)
 
 
 if __name__ == '__main__':

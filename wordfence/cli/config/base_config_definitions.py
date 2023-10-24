@@ -65,12 +65,6 @@ config_definitions = {
         "argument_type": "FLAG",
         "default": False
     },
-    "configure": {
-        "description": "Interactively configure Wordfence CLI.",
-        "context": "CLI",
-        "argument_type": "OPTIONAL_FLAG",
-        "default": None
-    },
     "version": {
         "description": "Display the version of Wordfence CLI.",
         "context": "CLI",

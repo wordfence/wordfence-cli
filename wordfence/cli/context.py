@@ -1,5 +1,7 @@
 from typing import Optional, Any
 
+from ..version import __version__, __version_name__
+from ..util import pcre
 from ..api import noc1, intelligence
 from ..util.caching import Cache, InvalidCachedValueException
 from ..api.licensing import License, LicenseRequiredException, LicenseSpecific
@@ -16,6 +18,7 @@ class CliContext:
         self._noc1_client = None
         self._terms_update_hooks = []
         self._wfi_client = None
+        self.configurer = None
 
     def register_terms_update_hook(self, callable: [[], None]) -> None:
         self._terms_update_hooks.append(callable)
@@ -55,3 +58,11 @@ class CliContext:
                     self.config.wfi_url
                 )
         return self._wfi_client
+
+    def display_version(self) -> None:
+        print(f"Wordfence CLI {__version__} \"{__version_name__}\"")
+        jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
+        print(
+                f"PCRE Version: {pcre.VERSION} - "
+                f"JIT Supported: {jit_support_text}"
+            )
