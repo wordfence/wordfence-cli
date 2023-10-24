@@ -30,10 +30,16 @@ pip install -r requirements.txt
 pyinstaller \
   --name wordfence \
   --onefile \
-  --hidden-import wordfence.cli.scan \
-  --hidden-import wordfence.cli.scan.config \
-  --hidden-import wordfence.cli.configure \
+  --hidden-import wordfence.cli.configure.configure \
   --hidden-import wordfence.cli.configure.definition \
+  --hidden-import wordfence.cli.malwarescan.malwarescan \
+  --hidden-import wordfence.cli.malwarescan.definition \
+  --hidden-import wordfence.cli.vulnscan.vulnscan \
+  --hidden-import wordfence.cli.vulnscan.definition \
+  --hidden-import wordfence.cli.help.help \
+  --hidden-import wordfence.cli.help.definition \
+  --hidden-import wordfence.cli.version.version \
+  --hidden-import wordfence.cli.version.definition \
   main.py
 
 pushd /root/wordfence-cli/dist
