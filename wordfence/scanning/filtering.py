@@ -98,6 +98,15 @@ class Filter:
         return matches_regex(self.pattern, path)
 
 
+class InvalidPatternException(Exception):
+
+    def __init__(self, pattern: str):
+        self.pattern = pattern
+
+
 def filter_pattern(regex: str) -> Callable[[str], bool]:
-    pattern = re.compile(regex)
-    return Filter(pattern)
+    try:
+        pattern = re.compile(regex)
+        return Filter(pattern)
+    except re.error:
+        raise InvalidPatternException(regex)
