@@ -2,8 +2,7 @@ import sys
 import os
 import logging
 
-from ..version import __version__, __version_name__
-from ..util import pcre, updater
+from ..util import updater
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         CacheException
 from ..logging import log
@@ -72,14 +71,6 @@ class WordfenceCli:
                     )
         return RuntimeCache()
 
-    def display_version(self) -> None:
-        print(f"Wordfence CLI {__version__} \"{__version_name__}\"")
-        jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
-        print(
-                f"PCRE Version: {pcre.VERSION} - "
-                f"JIT Supported: {jit_support_text}"
-            )
-
     def process_exception(self, exception: BaseException) -> int:
         if isinstance(exception, ExceptionContainer):
             if self.config.debug:
@@ -109,17 +100,17 @@ class WordfenceCli:
 
         show_welcome_banner_if_enabled(self.config)
 
-        if self.config.version:
-            self.display_version()
-            return 0
-
-        if self.config.check_for_update:
-            updater.Version.check(self.cache)
-
         context = CliContext(
                 self.config,
                 self.cache
             )
+
+        if self.config.version:
+            context.display_version()
+            return 0
+
+        if self.config.check_for_update:
+            updater.Version.check(self.cache)
 
         terms_manager = TermsManager(context)
         context.register_terms_update_hook(terms_manager.trigger_update)

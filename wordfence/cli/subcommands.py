@@ -11,7 +11,8 @@ VALID_SUBCOMMANDS = {
         'configure',
         'malware-scan',
         'vuln-scan',
-        'help'
+        'help',
+        'version'
     }
 
 
