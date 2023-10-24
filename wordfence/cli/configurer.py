@@ -231,7 +231,7 @@ class Configurer:
 
     def _prompt_for_worker_count(self) -> int:
         cpus = cpu_count()
-        config = self.get_config('scan')
+        config = self.get_config('malware-scan')
         processes = prompt_int(
                     f'Number of worker processes ({cpus} CPUs available)',
                     config.workers
@@ -269,7 +269,7 @@ class Configurer:
         self.update_config(
                 'workers',
                 self._prompt_for_worker_count(),
-                'SCAN'
+                'MALWARE_SCAN'
             )
         self.write_config()
         if has_existing_config:
