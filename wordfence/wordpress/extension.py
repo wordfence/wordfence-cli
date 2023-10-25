@@ -39,7 +39,7 @@ class ExtensionLoader:
 
     def _read_header(self, path: str) -> str:
         try:
-            with open(path, 'r') as stream:
+            with open(path, 'r', errors='replace') as stream:
                 data = stream.read(HEADER_READ_SIZE)
                 return data
         except OSError as error:
