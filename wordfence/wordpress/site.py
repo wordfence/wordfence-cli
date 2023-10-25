@@ -168,7 +168,7 @@ class WordpressSite:
                     )
         except PhpException as exception:
             # Ignore config files that cannot be parsed
-            log.warning(
+            log.debug(
                     f'Unable to parse WordPress config file at {config_path}: '
                     f'{exception}'
                 )
