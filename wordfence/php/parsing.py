@@ -438,12 +438,12 @@ def php_define(state: PhpState, constant: PhpValue, value: PhpValue) -> None:
     state.define_constant(constant.value, value)
 
 
-def php_defined(state: PhpState, constant: str) -> PhpValue:
-    return PhpValue.for_python_value(constant in state.constants)
+def php_defined(state: PhpState, constant: PhpValue) -> PhpValue:
+    return PhpValue.for_python_value(constant.value in state.constants)
 
 
-def php_dirname(state: PhpState, path: str) -> PhpValue:
-    return PhpValue.for_python_value(os.path.dirname(path))
+def php_dirname(state: PhpState, path: PhpValue) -> PhpValue:
+    return PhpValue.for_python_value(os.path.dirname(path.value))
 
 
 BASE_FUNCTIONS = {
@@ -659,6 +659,10 @@ class PhpMagicConstant(PhpEntity, Evaluable):
         if self.token_type == TokenType.DIR:
             return PhpValue.for_python_value(
                     os.path.dirname(self.source_metadata.path)
+                )
+        elif self.token_type == TokenType.FILE:
+            return PhpValue.for_python_value(
+                    self.source_metadata.path
                 )
         else:
             raise EvaluationException('Unsupported magic constant')
