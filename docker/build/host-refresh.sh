@@ -16,9 +16,10 @@ function build_image() {
     ARCHITECTURE="$1"
     docker rmi -f "wfcli-build-$ARCHITECTURE" 2>/dev/null
     docker build \
+        --no-cache \
         -t "wfcli-build-${ARCHITECTURE}" \
         --platform "linux/${ARCHITECTURE}" \
-        -f "${PROJECT_DIR}/docker/build/Dockerfile" \
+        -f "${PROJECT_DIR}/docker/build/build.Dockerfile" \
         "$PROJECT_DIR"
 }
 

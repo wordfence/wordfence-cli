@@ -25,7 +25,6 @@ function build_and_package() {
         --name "wfcli-build-container-${ARCHITECTURE}" \
         --platform "linux/${ARCHITECTURE}" \
         -v "${PROJECT_DIR}/docker/build/volumes/output/:/root/output:rw" \
-        -v "${PROJECT_DIR}/docker/build/volumes/debian/:/root/debian:rw" \
         -v "${GPG_HOME_DIR}:${CONTAINER_GPG_HOME_DIR}:rw" \
         -v "${GPG_SOCKET}:${CONTAINER_GPG_HOME_DIR}/S.gpg-agent:rw" \
         -e "CONTAINER_GPG_HOME_DIR=${CONTAINER_GPG_HOME_DIR}" \

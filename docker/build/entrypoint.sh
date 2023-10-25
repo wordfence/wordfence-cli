@@ -3,25 +3,30 @@ set -e
 
 cd /root/wordfence-cli
 
+# build deb package
+
 ARCHITECTURE=$(dpkg --print-architecture)
 VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
-CHANGELOG_VERSION=$(head -n 1 /root/debian/changelog | sed -n -E 's/wordfence \(([^)]+)\).*/\1/p')
+# CHANGELOG_VERSION=$(head -n 1 /root/wordfence-cli/debian/changelog | sed -n -E 's/wordfence \(([^)]+)\).*/\1/p')
 
-if [ "$CHANGELOG_VERSION" != "$VERSION" ]; then
-  DEBFULLNAME=Wordfence
-  DEBEMAIL=opensource@wordfence.com
-  export DEBFULLNAME
-  export DEBEMAIL
-  echo "Changelog verison $CHANGELOG_VERSION does not equal pyproject.toml version $VERSION -- updating changelog"
-  cd /root/debian
-  dch \
-    --distribution unstable \
-    --check-dirname-level 0 \
-    --package wordfence \
-    --newversion "$VERSION" \
-    "$VERSION release. See https://github.com/wordfence/wordfence-cli for release notes."
-  cd /root/wordfence-cli
-fi
+export DEBFULLNAME=Wordfence
+export DEBEMAIL=opensource@wordfence.com
+echo "Generating changelog"
+dch \
+  --distribution unstable \
+  --check-dirname-level 0 \
+  --package wordfence \
+  --newversion "$VERSION" \
+  --create \
+  "$VERSION release. See https://github.com/wordfence/wordfence-cli for release notes."
+
+# install newer version of setuptools
+python3 -m pip install setuptools --force-reinstall
+
+# build the package
+dpkg-buildpackage -us -uc -b
+
+# build standalone executable
 
 # install requirements
 pip install --upgrade pip
