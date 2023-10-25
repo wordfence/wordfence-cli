@@ -2,9 +2,9 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Optional, Union, Set, Callable
-from urllib.parse import urlparse
 
 from ..util.versioning import PhpVersion, compare_php_versions
+from ..util.url import Url
 from ..wordpress.site import WordpressSite
 from ..wordpress.extension import Extension
 from ..wordpress.plugin import Plugin
@@ -87,9 +87,10 @@ class Vulnerability:
     def get_wordfence_link(self) -> Optional[str]:
         for url in self.references:
             try:
-                components = urlparse(url)
-                if components.hostname == 'www.wordfence.com':
-                    return url
+                url_object = Url(url)
+                if url_object.get_hostname() == 'www.wordfence.com':
+                    url_object.set_query_parameter('source', 'cli-scan')
+                    return str(url_object)
             except ValueError:
                 continue
         return None
