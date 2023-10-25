@@ -1,6 +1,6 @@
 import fcntl
 import os
-from typing import Optional, IO, TextIO
+from typing import Optional, IO, TextIO, Generator
 from enum import IntEnum
 
 
@@ -38,6 +38,10 @@ class StreamReader:
         else:
             return None
 
+    def read_all_entries(self) -> Generator[str, None, None]:
+        while (entry := self.read_entry()) is not None:
+            yield entry
+
 
 class LockType(IntEnum):
     EXCLUSIVE = fcntl.LOCK_EX
@@ -66,7 +70,13 @@ def resolve_path(path: str) -> str:
     return os.path.abspath(os.path.expanduser(path))
 
 
-def ensure_directory_is_writable(path: str, create_mode: int = 0o700) -> str:
+DEFAULT_CREATE_MODE = 0o700
+
+
+def ensure_directory_is_writable(
+            path: str,
+            create_mode: int = DEFAULT_CREATE_MODE
+        ) -> str:
     """ Ensure that the specified directory is writable, """
     """ creating it and parent directories as needed. Note """
     """ that the checks here are not atomic; this assumes """
@@ -87,3 +97,18 @@ def ensure_directory_is_writable(path: str, create_mode: int = 0o700) -> str:
     except OSError:
         raise IoException('Failed to create directory at {$path}')
     return path
+
+
+def ensure_file_is_writable(
+            path: str,
+            create_mode: int = 0o700
+        ) -> str:
+    path = resolve_path(path)
+    if os.path.exists(path):
+        if not os.path.isfile(path):
+            raise IoException(f'Path {path} already exists, but is not a file')
+        if not os.access(path, os.W_OK):
+            raise IoException(f'File at {path} is not writable')
+        return path
+    else:
+        return ensure_directory_is_writable(os.path.dirname(path))

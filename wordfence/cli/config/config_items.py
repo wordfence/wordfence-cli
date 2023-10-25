@@ -1,14 +1,11 @@
 import abc
 import base64
-import importlib
 import json
 from dataclasses import dataclass, fields
 from enum import Enum
 from functools import lru_cache
-from types import ModuleType
 from typing import Optional, Any, Dict, Set, Tuple, Type, Callable, Union
-
-valid_subcommands: Set[str] = {'scan'}
+from .typing import ConfigDefinitions
 
 # see wordfence/config/__init__.py for special handling of reserved names
 invalid_config_item_names: Set[str] = {
@@ -186,30 +183,14 @@ class CanonicalValueExtractorInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
-class AlwaysInvalidExtractor(CanonicalValueExtractorInterface):
-    """Always throws an exception when a value is extracted"""
-
-    def is_valid_source(self, source: Any) -> bool:
-        return False
-
-    def get_canonical_value(self, definition: ConfigItemDefinition,
-                            source: Any) -> Any:
-        self.assert_is_valid_source(source)
-
-
 @lru_cache(maxsize=1)
 def get_data_item_fields() -> Set[str]:
     return set([x.name for x in fields(ConfigItemDefinition)])
 
 
-def assert_is_valid_subcommand(command_name: str) -> None:
-    if command_name not in valid_subcommands:
-        raise ValueError(f"Unsupported subcommand {command_name}")
-
-
 def config_definitions_to_config_map(
-        config_definitions: Dict[str, Dict[str, Any]]) -> Dict[
-        str, ConfigItemDefinition]:
+            config_definitions: ConfigDefinitions
+        ) -> Dict[str, ConfigItemDefinition]:
     result: Dict[str, ConfigItemDefinition] = {}
     used_short_names: Set[str] = set()
     implied_names: Set[str] = set()
@@ -246,17 +227,8 @@ def config_definitions_to_config_map(
     return result
 
 
-subcommand_module_map: Dict[str, ModuleType] = dict()
-
-for subcommand in valid_subcommands:
-    module = importlib.import_module(f"wordfence.cli.{subcommand}.config")
-    subcommand_module_map[subcommand] = module
-
-
-@lru_cache(maxsize=len(valid_subcommands))
-def get_config_map_for_subcommand(command_name: str) -> Dict[
-        str, ConfigItemDefinition]:
-    assert_is_valid_subcommand(command_name)
-
-    return config_definitions_to_config_map(
-        subcommand_module_map[command_name].get_config_definitions())
+def merge_config_maps(
+            a: Dict[str, ConfigItemDefinition],
+            b: Dict[str, ConfigItemDefinition]
+        ) -> Dict[str, ConfigItemDefinition]:
+    return {**a, **b}

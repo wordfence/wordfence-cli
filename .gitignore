@@ -6,3 +6,4 @@ __pycache__
 deb_dist
 .vscode
 wordfence.egg-info/
+wordfence.spec
