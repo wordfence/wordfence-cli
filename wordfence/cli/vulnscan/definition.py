@@ -91,7 +91,8 @@ config_definitions: ConfigDefinitions = {
     **VULN_SCAN_REPORT_CONFIG_OPTIONS,
     "exclude-vulnerability": {
         "short_name": "e",
-        "description": "Vulnerability IDs to exclude from scan results.",
+        "description": "Vulnerability UUIDs or CVE IDs to exclude from scan "
+                       "results.",
         "context": "ALL",
         "argument_type": "OPTION_REPEATABLE",
         "default": [],
@@ -101,7 +102,8 @@ config_definitions: ConfigDefinitions = {
     },
     "include-vulnerability": {
         "short_name": "i",
-        "description": "Vulnerabilitiy IDs to include in scan results.",
+        "description": "Vulnerabilitiy UUIDs or CVE IDs to include in scan "
+                       "results.",
         "context": "ALL",
         "argument_type": "OPTION_REPEATABLE",
         "default": [],

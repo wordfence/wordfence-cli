@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Optional, Union, Set, Callable
@@ -229,15 +230,31 @@ class VulnerabilityFilter:
                 included: Set[str],
                 informational: bool = False
             ):
-        self.excluded = excluded
-        self.included = included
+        self.excluded = self._make_case_insensitive(excluded)
+        self.included = self._make_case_insensitive(included)
         self.informational = informational
 
+    def _make_case_insensitive(self, vulnerability_set: Set[str]) -> Set[str]:
+        return {identifier.casefold() for identifier in vulnerability_set}
+
+    def _contains_vulnerability(
+                self,
+                vulnerability_set: Set[str],
+                vulnerability: Vulnerability
+            ) -> bool:
+        if vulnerability.identifier.casefold() in vulnerability_set:
+            return True
+        if hasattr(vulnerability, 'cve') \
+                and vulnerability.cve is not None \
+                and vulnerability.cve.casefold() in vulnerability_set:
+            return True
+        return False
+
     def allows(self, vulnerability: Vulnerability) -> bool:
-        if vulnerability.identifier in self.excluded:
+        if self._contains_vulnerability(self.excluded, vulnerability):
             return False
         if len(self.included) and \
-                vulnerability.identifier not in self.included:
+                not self._contains_vulnerability(self.included, vulnerability):
             return False
         if vulnerability.informational and not self.informational:
             return False
@@ -345,3 +362,10 @@ class VulnerabilityScanner:
             for software in group:
                 affected.add(software.get_key())
         return len(affected)
+
+
+CVE_PATTERN = re.compile(r'^CVE-(199\d|20\d{2})-\d{4,}$', re.IGNORECASE)
+
+
+def is_cve_id(value: str) -> bool:
+    return CVE_PATTERN.match(value) is not None

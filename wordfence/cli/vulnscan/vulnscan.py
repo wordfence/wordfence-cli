@@ -1,7 +1,8 @@
-from typing import Dict, List
+from typing import Dict, List, Set
+from uuid import UUID
 
 from ...intel.vulnerabilities import VulnerabilityIndex, Vulnerability, \
-        VulnerabilityScanner, VulnerabilityFilter
+        VulnerabilityScanner, VulnerabilityFilter, is_cve_id
 from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.caching import Cacheable, DURATION_ONE_DAY
 from ...wordpress.site import WordpressSite, WordpressStructureOptions
@@ -93,9 +94,41 @@ class VulnScanSubcommand(Subcommand):
                 f'affecting {affected_count} installation(s)'
             )
 
-    def _initialize_filter(self) -> VulnerabilityFilter:
-        excluded = set(self.config.exclude_vulnerability)
-        included = set(self.config.include_vulnerability)
+    def _validate_vulnerability_ids(
+                self,
+                identifiers: List[str],
+                feed_variant: VulnerabilityFeedVariant) -> Set[str]:
+        valid = set()
+        for identifier in identifiers:
+            if is_cve_id(identifier):
+                if feed_variant is not VulnerabilityFeedVariant.PRODUCTION:
+                    raise Exception(
+                            'CVE IDs can only be used to filter '
+                            'vulnerabilities with the production feed'
+                        )
+                valid.add(identifier)
+            else:
+                try:
+                    uuid = UUID(identifier)
+                    valid.add(str(uuid))
+                except ValueError:
+                    raise Exception(
+                            f'Malformed vulnerability ID: {identifier}'
+                        )
+        return valid
+
+    def _initialize_filter(
+                self,
+                feed_variant: VulnerabilityFeedVariant
+            ) -> VulnerabilityFilter:
+        excluded = self._validate_vulnerability_ids(
+                self.config.exclude_vulnerability,
+                feed_variant
+            )
+        included = self._validate_vulnerability_ids(
+                self.config.include_vulnerability,
+                feed_variant
+            )
         return VulnerabilityFilter(
                 excluded=excluded,
                 included=included,
@@ -123,7 +156,7 @@ class VulnScanSubcommand(Subcommand):
         vulnerability_index = self._load_vulnerability_index(feed_variant)
         scanner = VulnerabilityScanner(
                 vulnerability_index,
-                self._initialize_filter()
+                self._initialize_filter(feed_variant)
             )
         structure_options = WordpressStructureOptions(
                 relative_content_paths=self.config.relative_content_path,
