@@ -139,10 +139,6 @@ def load_ini(
         elif e.errno != errno.ENOENT:
             raise
         # config file does not exist: proceed with default values + CLI values
-        log.info(
-            f"Config file not found or not readable: "
-            f"{json.dumps(get_ini_path(cli_values))}. Merging default config "
-            f"values.")
         return (config, None)
     section_map = {
             DEFAULT_SECTION_NAME: base_config_map,

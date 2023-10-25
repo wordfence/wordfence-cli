@@ -3,16 +3,12 @@ import os
 from typing import Optional, Dict, List
 from pathlib import Path
 
-from .exceptions import WordpressException
+from .exceptions import ExtensionException
 
 
 HEADER_READ_SIZE = 8 * 1024
 HEADER_CLEANUP_PATTERN = re.compile(r'\s*(?:\*\/|\?>).*')
 CARRIAGE_RETURN_PATTERN = re.compile('\r')
-
-
-class ExtensionException(WordpressException):
-    pass
 
 
 class Extension:

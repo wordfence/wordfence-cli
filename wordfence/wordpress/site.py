@@ -1,9 +1,12 @@
 import os
 import os.path
-from typing import Optional, List
+from dataclasses import dataclass, field
+from typing import Optional, List, Generator
 
-from ..php.parsing import parse_php_file, PhpException, PhpState
-from .exceptions import WordpressException
+from ..php.parsing import parse_php_file, PhpException, PhpState, \
+    PhpEvaluationOptions
+from ..logging import log
+from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
 
@@ -14,23 +17,38 @@ EXPECTED_CORE_FILES = {
         WP_BLOG_HEADER_NAME,
         'wp-load.php'
     }
-
 EXPECTED_CORE_DIRECTORIES = {
         'wp-admin',
         'wp-includes'
     }
 
+EVALUATION_OPTIONS = PhpEvaluationOptions(
+        allow_includes=False
+    )
+
+ALTERNATE_RELATIVE_CONTENT_PATHS = [
+        '../app'
+    ]
+
+
+@dataclass
+class WordpressStructureOptions:
+    relative_content_paths: List[str] = field(default_factory=list)
+    relative_plugins_paths: List[str] = field(default_factory=list)
+    relative_mu_plugins_paths: List[str] = field(default_factory=list)
+
 
 class WordpressSite:
 
-    def __init__(self, path: str):
+    def __init__(
+                self,
+                path: str,
+                structure_options: Optional[WordpressStructureOptions] = None,
+            ):
         self.path = path
         self.core_path = self._locate_core()
-        # self.config_state = self._parse_config_file()
-        # print(vars(self.config_state))
-        # print(repr(self.config_state.global_scope.variables))
-        # print(repr(self.config_state.constants))
-        # raise Exception('Test')
+        self.structure_options = structure_options \
+            if structure_options is not None else WordpressStructureOptions()
 
     def _is_core_directory(self, path: str) -> bool:
         missing_files = EXPECTED_CORE_FILES.copy()
@@ -117,7 +135,10 @@ class WordpressSite:
         version_path = self.resolve_core_path('wp-includes/version.php')
         context = parse_php_file(version_path)
         try:
-            version = context.evaluate_variable('wp_version')
+            state = context.evaluate(
+                    options=EVALUATION_OPTIONS
+                )
+            version = state.get_variable_value('wp_version')
             if isinstance(version, str):
                 return version
         except PhpException as exception:
@@ -136,54 +157,124 @@ class WordpressSite:
                 return path
         return None
 
-    def _parse_config_file(self) -> PhpState:
+    def _parse_config_file(self) -> Optional[PhpState]:
         config_path = self._locate_config_file()
         try:
             if config_path is not None:
-                print(f"Parsing config at {config_path}...")
                 context = parse_php_file(config_path)
-                return context.evaluate()
-        except PhpException:
-            raise  # TODO: Remove this
+                # raise Exception('Exit early')
+                return context.evaluate(
+                        options=EVALUATION_OPTIONS
+                    )
+        except PhpException as exception:
             # Ignore config files that cannot be parsed
-            pass
-        return PhpState()
+            log.warning(
+                    f'Unable to parse WordPress config file at {config_path}: '
+                    f'{exception}'
+                )
+        return None
 
-    def _extract_string_from_config(self, constant: str, default: str) -> str:
+    def _get_parsed_config_state(self) -> PhpState:
+        if not hasattr(self, 'config_state'):
+            self.config_state = self._parse_config_file()
+        return self.config_state
+
+    def _extract_string_from_config(
+                self,
+                constant: str,
+                default: Optional[str] = None
+            ) -> str:
         try:
-            path = self.config_context.evaluate_constant(constant)
-            # print(repr(path))
-            # raise Exception('Exit')
-            if isinstance(path, str):
-                return path
-        except PhpException:
-            raise  # TODO: Remove this
+            state = self._get_parsed_config_state()
+            if state is not None:
+                path = state.get_constant_value(
+                        name=constant,
+                        default_to_name=False
+                    )
+                if isinstance(path, str):
+                    return path
+        except PhpException as exception:
             # Just use the default if parsing errors occur
-            pass
+            log.warning(
+                    f'Unable to extract constant {constant} from WordPress '
+                    f'config: {exception}'
+                )
         return default
 
+    def _generate_possible_content_paths(self) -> Generator[str, None, None]:
+        configured = self._extract_string_from_config(
+                'WP_CONTENT_DIR'
+            )
+        if configured is not None:
+            yield configured
+        for path in self.structure_options.relative_content_paths:
+            yield self.resolve_core_path(path)
+        for path in ALTERNATE_RELATIVE_CONTENT_PATHS:
+            yield self.resolve_core_path(path)
+        yield self.resolve_core_path('wp-content')
+
     def _locate_content_directory(self) -> str:
-        return self.resolve_core_path('wp-content')
-        # return self._extract_string_from_config(
-        #         'WP_CONTENT_DIR',
-        #         self.resolve_core_path('wp-content')
-        #     )
+        for path in self._generate_possible_content_paths():
+            log.debug(f'Checking potential content path: {path}')
+            possible_themes_path = self._resolve_path('themes', path)
+            if os.path.isdir(path) and os.path.isdir(possible_themes_path):
+                log.debug(f'Located content directory at {path}')
+                return path
+        raise WordpressException(
+                f'Unable to locate content directory for site at {self.path}'
+            )
 
     def get_content_directory(self) -> str:
         if not hasattr(self, 'content_path'):
             self.content_path = self._locate_content_directory()
         return self.content_path
 
-    def get_plugin_directory(self) -> str:
-        return self.resolve_content_path('plugins')
-        # return self._extract_string_from_config(
-        #         'WP_PLUGIN_DIR',
-        #         self.resolve_content_path('plugins')
-        #     )
+    def get_configured_plugins_directory(self, mu: bool = False) -> str:
+        return self._extract_string_from_config(
+                'WPMU_PLUGIN_DIR' if mu else 'WP_PLUGIN_DIR',
+            )
 
-    def get_plugins(self) -> List[Plugin]:
-        loader = PluginLoader(self.get_plugin_directory())
-        return loader.load_all()
+    def _generate_possible_plugins_paths(
+                self,
+                mu: bool = False
+            ) -> Generator[str, None, None]:
+        configured = self.get_configured_plugins_directory(mu)
+        if configured is not None:
+            yield configured
+        relative_paths = self.structure_options.relative_plugins_paths \
+            if mu else self.structure_options.relative_mu_plugins_paths
+        for path in relative_paths:
+            yield self.resolve_core_path(path)
+        yield self.resolve_content_path(
+                'mu-plugins' if mu else 'plugins'
+            )
+
+    def get_plugins(self, mu: bool = False) -> List[Plugin]:
+        log_plugins = 'must-use plugins' if mu else 'plugins'
+        for path in self._generate_possible_plugins_paths(mu):
+            log.debug(f'Checking potential {log_plugins} path: {path}')
+            loader = PluginLoader(path)
+            try:
+                plugins = loader.load_all()
+                log.debug(f'Located {log_plugins} directory at {path}')
+                return plugins
+            except ExtensionException:
+                # If extensions can't be loaded, the directory is not valid
+                continue
+        if mu:
+            log.warning(
+                    f'No mu-plugins directory found for site at {self.path}'
+                )
+            return []
+        raise WordpressException(
+                f'Unable to locate {log_plugins} directory for site at '
+                f'{self.path}'
+            )
+
+    def get_all_plugins(self) -> List[Plugin]:
+        plugins = self.get_plugins(mu=True)
+        plugins += self.get_plugins(mu=False)
+        return plugins
 
     def get_theme_directory(self) -> str:
         return self.resolve_content_path('themes')
