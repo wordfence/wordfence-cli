@@ -9,10 +9,13 @@ from ..logging import log
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
 from .config import load_config, RenamedSubcommandException
+from .config.base_config_definitions import config_map \
+        as base_config_map
 from .subcommands import load_subcommand_definitions
 from .context import CliContext
 from .configurer import Configurer
 from .terms import TermsManager
+from .helper import Helper
 
 
 class WordfenceCli:
@@ -20,9 +23,23 @@ class WordfenceCli:
     def __init__(self):
         self.initialize_early_logging()
         self.subcommand_definitions = load_subcommand_definitions()
+        self.helper = self._initialize_helper()
+        self._load_config()
+        self.initialize_logging(self.config.verbose)
+        self.cache = self.initialize_cache()
+        self.subcommand = None
+
+    def _initialize_helper(self) -> Helper:
+        return Helper(
+                self.subcommand_definitions,
+                base_config_map
+            )
+
+    def _load_config(self) -> None:
         try:
             self.config, self.subcommand_definition = load_config(
                     self.subcommand_definitions,
+                    self.helper
                 )
         except RenamedSubcommandException as rename:
             print(
@@ -30,9 +47,6 @@ class WordfenceCli:
                     f'"{rename.new}"'
                 )
             sys.exit(1)
-        self.initialize_logging(self.config.verbose)
-        self.cache = self.initialize_cache()
-        self.subcommand = None
 
     def print_error(self, message: str) -> None:
         if sys.stderr is not None:
@@ -94,15 +108,23 @@ class WordfenceCli:
                 self.print_error(message)
         return 1
 
+    def display_help(self) -> None:
+        self.helper.display_help(self.config.subcommand)
+
     def invoke(self) -> int:
         if self.config.purge_cache:
             self.cache.purge()
 
         show_welcome_banner_if_enabled(self.config)
 
+        if self.config.help:
+            self.display_help()
+            return 0
+
         context = CliContext(
                 self.config,
-                self.cache
+                self.cache,
+                self.helper
             )
 
         if self.config.version:
@@ -124,7 +146,7 @@ class WordfenceCli:
         context.configurer = configurer
 
         if self.subcommand_definition is None:
-            self.config.display_help()
+            self.display_help()
             configurer.check_config()
             return 0
 

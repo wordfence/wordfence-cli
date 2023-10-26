@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from typing import Set, List, Dict, Any, Tuple
 
 from wordfence.logging import log
+from ..helper import Helper
 from .config_items import ConfigItemDefinition, \
     CanonicalValueExtractorInterface, Context, ArgumentType, \
     not_set_token
@@ -73,12 +74,6 @@ def add_to_parser(target_parser,
             f"Config value {json.dumps(config_definition.name)} is not a valid"
             f" CLI argument. Should it be specified in the INI file instead?")
         return
-    if config_definition.name == 'help' or config_definition.short_name == 'h':
-        # change this behavior by setting
-        # ArgumentParser kwarg add_help to False
-        raise ValueError(
-            "A help command cannot be defined, as one is added automatically"
-            " by the parser")
 
     names: List[str] = [f"--{config_definition.name}"]
     if config_definition.short_name:
@@ -122,8 +117,7 @@ def add_to_parser(target_parser,
             not named_params['action'].startswith('store_'):
         named_params['type'] = config_definition.get_value_type()
 
-    if config_definition.hidden:
-        named_params['help'] = argparse.SUPPRESS
+    named_params['help'] = argparse.SUPPRESS
 
     target_parser.add_argument(*names, **named_params)
 
@@ -131,10 +125,7 @@ def add_to_parser(target_parser,
     if config_definition.is_flag():
         named_params['action'] = 'store_false'
         names = [f"--no-{config_definition.name}"]
-        if config_definition.hidden or not config_definition.default:
-            named_params['help'] = argparse.SUPPRESS
-        else:
-            del named_params['help']
+        named_params['help'] = argparse.SUPPRESS
         # set the value to override the un-prefixed command
         named_params['dest'] = config_definition.property_name
         target_parser.add_argument(*names, **named_params)
@@ -149,16 +140,19 @@ def add_definitions_to_parser(
 
 
 def get_cli_values(
-            subcommand_definitions: Dict[str, SubcommandDefinition]
+            subcommand_definitions: Dict[str, SubcommandDefinition],
+            helper: Helper
         ) -> Tuple[Namespace, List[str], ArgumentParser]:
     parser = ArgumentParser(
             prog=COMMAND,
-            description=DESCRIPTION
+            description=DESCRIPTION,
+            add_help=False,
+            usage=helper.generate_usage()
         )
 
     add_definitions_to_parser(parser, base_config_map)
 
-    subparsers = parser.add_subparsers(title="Wordfence CLI subcommands",
+    subparsers = parser.add_subparsers(title="Available Subcommands",
                                        dest="subcommand",
                                        metavar='')
     for subcommand_definition in subcommand_definitions.values():
@@ -166,7 +160,8 @@ def get_cli_values(
         subparser = subparsers.add_parser(
                 subcommand_definition.name,
                 prog=subcommand_definition.name,
-                help=subcommand_definition.description
+                add_help=False,
+                usage=helper.generate_usage(),
             )
         add_definitions_to_parser(subparser, base_config_map)
         add_definitions_to_parser(subparser, definitions)

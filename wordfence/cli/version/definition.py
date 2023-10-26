@@ -7,6 +7,7 @@ cacheable_types = set()
 
 definition = SubcommandDefinition(
     name='version',
+    usage='',
     description='Display the version of Wordfence CLI',
     config_definitions=config_definitions,
     config_section='DEFAULT',

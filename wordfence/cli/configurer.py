@@ -103,11 +103,14 @@ class ConfigFileManager:
         values = []
         self.initialize_parser()
         ini_path = self.resolve_ini_path()
-        with open(ini_path, 'r') as file:
-            self.read_existing_config(file, ini_path)
-        for section_name, section_proxy in self.parser.items():
-            for key, value in section_proxy.items():
-                values.append(ConfigValue(section_name, key, value))
+        try:
+            with open(ini_path, 'r') as file:
+                self.read_existing_config(file, ini_path)
+            for section_name, section_proxy in self.parser.items():
+                for key, value in section_proxy.items():
+                    values.append(ConfigValue(section_name, key, value))
+        except FileNotFoundError:
+            log.debug(f'No existing config file found at {ini_path}')
         return values
 
     def delete_section(self, section: str) -> None:
