@@ -1,4 +1,4 @@
-from ..subcommands import SubcommandDefinition
+from ..subcommands import SubcommandDefinition, UsageExample
 from ..config.typing import ConfigDefinitions
 from ...api.intelligence import VulnerabilityFeedVariant
 from .reporting import VULN_SCAN_REPORT_CONFIG_OPTIONS
@@ -152,10 +152,25 @@ cacheable_types = {
     'wordfence.intel.vulnerabilities.Cvss'
 }
 
+examples = [
+    UsageExample(
+        'Scan the WordPress installation at /var/www/html for vulnerabilities',
+        'wordfence vuln-scan /var/www/html'
+    ),
+    UsageExample(
+        'Generate a CSV file containing vulnerabilities found after scanning '
+        '/var/www/html',
+        'wordfence vuln-scan --output-format csv --output-path '
+        '/tmp/wfcli-results.csv --output-columns link'
+    )
+]
+
 definition = SubcommandDefinition(
     name='vuln-scan',
+    usage='[OPTIONS] [WORDPRESS_PATH]...',
     description='Scan WordPress installations for vulnerable software',
     config_definitions=config_definitions,
     config_section='VULN_SCAN',
-    cacheable_types=cacheable_types
+    cacheable_types=cacheable_types,
+    examples=examples
 )

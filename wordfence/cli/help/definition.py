@@ -7,6 +7,7 @@ cacheable_types = set()
 
 definition = SubcommandDefinition(
     name='help',
+    usage='[SUBCOMMAND]',
     description='Display help',
     config_definitions=config_definitions,
     config_section='DEFAULT',

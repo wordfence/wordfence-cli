@@ -15,7 +15,8 @@ config_definitions = {
                        "running in a TTY/terminal.",
         "context": "ALL",
         "argument_type": "FLAG",
-        "default": True
+        "default": True,
+        "category": "Output Control"
     },
     "license": {
         "short_name": "l",
@@ -31,42 +32,55 @@ config_definitions = {
                        "TTY. Use --no-verbose to disable.",
         "context": "ALL",
         "argument_type": "OPTIONAL_FLAG",
-        "default": None
+        "default": None,
+        "category": "Logging"
     },
     "debug": {
         "short_name": "d",
         "description": "Enable debug logging.",
         "context": "ALL",
         "argument_type": "FLAG",
-        "default": False
+        "default": False,
+        "category": "Logging"
     },
     "quiet": {
         "short_name": "q",
         "description": "Suppress all output other than scan results.",
         "context": "ALL",
         "argument_type": "FLAG",
-        "default": False
+        "default": False,
+        "category": "Logging"
     },
     "cache-directory": {
         "description": "A path to use for cache files.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": "~/.cache/wordfence"
+        "default": "~/.cache/wordfence",
+        "category": "Caching"
     },
     "cache": {
         "description": "Whether or not to enable the cache.",
         "context": "ALL",
         "argument_type": "FLAG",
-        "default": True
+        "default": True,
+        "category": "Caching"
     },
     "purge-cache": {
         "description": "Purge any existing values from the cache.",
         "context": "CLI",
         "argument_type": "FLAG",
-        "default": False
+        "default": False,
+        "category": "Caching"
     },
     "version": {
         "description": "Display the version of Wordfence CLI.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False
+    },
+    "help": {
+        "short_name": "h",
+        "description": "Display help information",
         "context": "CLI",
         "argument_type": "FLAG",
         "default": False

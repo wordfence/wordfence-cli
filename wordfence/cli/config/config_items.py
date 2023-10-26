@@ -67,6 +67,7 @@ class ConfigItemDefinition:
     hidden: bool = False
     short_name: Optional[str] = None
     meta: Optional[ConfigItemMeta] = None
+    category: str = 'General Options'
 
     @staticmethod
     def clean_argument_dict(source: Dict[str, Any]) -> Dict[str, Any]:

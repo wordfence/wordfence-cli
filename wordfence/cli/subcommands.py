@@ -1,6 +1,7 @@
 import importlib
+from collections import namedtuple
 from types import ModuleType
-from typing import Optional, Dict, Set
+from typing import Optional, Dict, Set, List
 
 from .config.typing import ConfigDefinitions
 from .config.config_items import config_definitions_to_config_map, \
@@ -41,6 +42,7 @@ class Subcommand:
         # Aliases for shorter access to context properties
         self.config = context.config
         self.cache = context.cache
+        self.helper = context.helper
 
     def invoke(self) -> int:
         return 0
@@ -55,19 +57,25 @@ class Subcommand:
         return None
 
 
+UsageExample = namedtuple('UsageExample', ['description', 'command'])
+
+
 class SubcommandDefinition:
 
     def __init__(
                 self,
                 name: str,
+                usage: str,
                 description: str,
                 config_definitions: ConfigDefinitions,
                 config_section: str,
                 cacheable_types: Set[str],
                 requires_config: bool = True,
-                previous_names: Set[str] = None
+                previous_names: Set[str] = None,
+                examples: List[UsageExample] = None
             ):
         self.name = name
+        self.usage = usage
         self.description = description
         self.config_definitions = config_definitions
         self.config_section = config_section
@@ -76,6 +84,7 @@ class SubcommandDefinition:
         self.requires_config = requires_config
         self.previous_names = previous_names if previous_names is not None \
             else set()
+        self.examples = examples
 
     def get_config_map(self) -> Dict[str, ConfigItemDefinition]:
         if self.config_map is None:

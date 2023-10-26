@@ -144,7 +144,7 @@ class ReportFormatEnum(Enum):
 
     @classmethod
     def get_options(cls) -> List[str]:
-        return [format.value.option for format in ReportFormatEnum]
+        return [format.value.option for format in cls]
 
     @classmethod
     def for_option(cls, option: str):
@@ -222,13 +222,15 @@ def get_config_options(
                            "Use --no-output to disable.",
             "context": "ALL",
             "argument_type": "OPTIONAL_FLAG",
-            "default": None
+            "default": None,
+            "category": "Output Control"
         },
         "output-path": {
             "description": "Path to which to write results.",
             "context": "ALL",
             "argument_type": "OPTION",
             "default": None,
+            "category": "Output Control"
         },
         "output-columns": {
             "description": ("An ordered, comma-delimited list of columns to"
@@ -239,7 +241,8 @@ def get_config_options(
             "default": ','.join([column.header for column in default_columns]),
             "meta": {
                 "separator": ","
-            }
+            },
+            "category": "Output Control"
         },
         "output-format": {
             "short_name": "m",
@@ -249,14 +252,16 @@ def get_config_options(
             "default": 'csv',
             "meta": {
                 "valid_options": formats.get_options()
-            }
+            },
+            "category": "Output Control"
         },
         "output-headers": {
             "description": "Whether or not to include column headers in "
                            "output",
             "context": "ALL",
             "argument_type": "FLAG",
-            "default": None
+            "default": None,
+            "category": "Output Control"
         },
     }
 
