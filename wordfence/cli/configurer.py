@@ -225,9 +225,11 @@ class Configurer:
 
         if request_free:
             terms_accepted = prompt_yes_no(
-                    'You must accept the Wordfence CLI License Terms and '
-                    f'Conditions as defined at {TERMS_URL} in order to '
-                    'request a free license. Do you accept these terms?',
+                    'Your access to and use of Wordfence CLI Free edition is '
+                    'subject to the Wordfence CLI License Terms and '
+                    f'Conditions set forth at {TERMS_URL}. By entering "y" '
+                    'and selecting Enter, you agree that you have read and '
+                    'accept the Wordfence CLI License Terms and Conditions.',
                     default=False
                 )
             if terms_accepted:
