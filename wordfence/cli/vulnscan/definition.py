@@ -122,14 +122,14 @@ config_definitions: ConfigDefinitions = {
     "feed": {
         "short_name": "f",
         "description": "The feed to use for vulnerability information. "
-                       "The production feed provides additional details "
-                       "that are not included in the scanner feed while "
-                       "the scanner feed includes additional vulnerabilities "
-                       "that do not yet have sufficient information to be "
-                       "included in the production feed.",
+                       "The production feed provides all available "
+                       "information fields. The scanner feed contains "
+                       "only the minimum fields necessary to conduct a scan"
+                       "and may be a better choice when detailed "
+                       "vulnerability information is not needed.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": VulnerabilityFeedVariant.SCANNER.path,
+        "default": VulnerabilityFeedVariant.PRODUCTION.path,
         "meta": {
             "valid_options": [
                     variant.path for variant in VulnerabilityFeedVariant
