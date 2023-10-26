@@ -60,3 +60,17 @@ We recommend two workers per CPU core for the fastest possible scan. For busy pr
 
 The default scan will scan .php, .phtml, .html, .js, and .svg files by default. Using the `--images` option will expand the file list to .jpg, .jpeg, .mp3, .avi, .m4v, .mov, .mp4, .gif, .png, .tiff, .svg, .sql, .js, .tbz2, .bz2, .xz, .zip, .tgz, .gz, .tar, .log, .err. If there are specific file types you want to match, you can use the `--include-files` or `--include-files-pattern` to define a custom set of files/file types to scan. See the [configuration](Configuration.md#command-line-arguments) for more details.
 
+#### I got the error "Unable to locate content directory for site at /path/to/wordpress". What do I do?
+
+This is likely from a WordPress installation using a [custom `wp-content` directory](https://developer.wordpress.org/plugins/plugin-basics/determining-plugin-and-content-directories/#constants "Determining Plugin and Content Directories"). There are a number of things CLI will check to determine where plugin and theme files are stored:
+
+- We check if the relative path `wp-content/plugins` and `wp-content/themes` exists.
+- We look in the wp-config.php file for the `WP_CONTENT_DIR` and/or `WP_PLUGIN_DIR` constants.
+
+If we are unable to find a path from either of those checks, CLI will return this error. You can use one of the following command line parameters to tell CLI where to find plugins and themes:
+
+- `-p`, `--plugin-directory`: Path to a directory containing WordPress plugins to scan for vulnerabilities.
+- `-t`, `--theme-directory`: Path to a directory containing WordPress themes to scan for vulnerabilities.
+- `-C`, `--relative-content-path`: Alternate path of the wp-content directory relative to the WordPress root.
+- `-P`, `--relative-plugins-path`: Alternate path of the wp-content/plugins directory relative to the WordPress root.
+- `-M`, `--relative-mu-plugins-path`: Alternate path of the wp-content/plugins directory relative to the WordPress root.

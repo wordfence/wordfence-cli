@@ -31,7 +31,7 @@ Visit [https://www.wordfence.com/products/wordfence-cli/](https://www.wordfence.
 
 ## Usage
 
-You can run `wordfence --help` for a full list of options that can be passed to Wordfence CLI. Read more about the [configuration options](docs/Configuration.md) that can be passed to Wordfence CLI.
+You can run `wordfence help` for a full list of options that can be passed to Wordfence CLI. Read more about the [configuration options](docs/Configuration.md) that can be passed to Wordfence CLI.
 
 #### Example
 
