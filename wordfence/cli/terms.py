@@ -32,9 +32,11 @@ class TermsManager:
         if not (sys.stdout.isatty() and sys.stdin.isatty()):
             return
         terms_accepted = prompt_yes_no(
-                'Updated Wordfence CLI Terms and Conditions are available '
-                f'at {TERMS_URL}. You must agree to the updated terms to '
-                'continue using Wordfence CLI. Do you agree to these terms?',
+                'Your access to and use of Wordfence CLI Free edition is '
+                'subject to the updated Wordfence CLI License Terms and '
+                f'Conditions set forth at {TERMS_URL}. By entering "y" and '
+                'selecting Enter, you agree that you have read and accept the '
+                'updated Wordfence CLI License Terms and Conditions.',
                 default=False
             )
         if terms_accepted:
