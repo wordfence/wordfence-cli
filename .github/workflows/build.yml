@@ -28,10 +28,10 @@ jobs:
         with:
           name: wordfence_cli_deb
           path: |
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.asc
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256.asc
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb.sha256
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb.asc
+            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb.sha256.asc
   linux_standalone_build:
     name: Linux standalone build
     runs-on: ubuntu-20.04
