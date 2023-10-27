@@ -128,14 +128,28 @@ class FileLocator:
         self.located_count = 0
         self.skipped_count = 0
 
-    def _is_loop(self, path: str, parents: list) -> bool:
+    def _is_loop(self, path: str, parents: Optional[List[str]] = None) -> bool:
         realpath = os.path.realpath(path)
-        for parent in parents:
-            if realpath == parent:
+        try:
+            if os.path.samefile(path, realpath):
                 log.warning(
-                    f'Recursive symlink detected at {path}'
+                        f'Symlink pointing to itself detected at {path}'
                     )
                 return True
+        except OSError as error:
+            if error.errno == 40:
+                log.warning(
+                        f'Symlink loop detected at {path}'
+                    )
+                return True
+            raise
+        if parents is not None:
+            for parent in parents:
+                if realpath == parent:
+                    log.warning(
+                            f'Recursive symlink detected at {path}'
+                        )
+                    return True
         return False
 
     def _get_all_parents(self, path: str) -> List[str]:
@@ -177,7 +191,8 @@ class FileLocator:
                 log.debug(f'File added to scan queue: {path}')
                 self.queue.put(path)
         else:
-            self.queue.put(real_path)
+            if not self._is_loop(self.path):
+                self.queue.put(real_path)
 
 
 class FileLocatorProcess(Process):
