@@ -4,11 +4,11 @@ set -e
 cd /root/wordfence-cli
 
 ARCHITECTURE=$(dpkg --print-architecture)
-VERSION=$(python3 -c 'from wordfence import version; print(version.__version__)')
+VERSION=$(python3.8 -c 'from wordfence import version; print(version.__version__)')
 
 # install build requirements
-pip install --upgrade pip
-pip install -r requirements.txt --force-reinstall
+python3.8 -m pip install --upgrade pip
+python3.8 -m pip install -r requirements.txt --force-reinstall
 
 if [ "$PACKAGE_TYPE" = 'deb' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
 
@@ -39,6 +39,9 @@ fi
 if [ "$PACKAGE_TYPE" = 'standalone' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
 
   # build standalone executable
+
+  # Ubuntu 18.04 requires this additional package (as well as the OS package libffi-dev)
+  python3.8 -m pip install cffi
 
   pyinstaller \
     --name wordfence \
