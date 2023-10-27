@@ -10,11 +10,18 @@ from .config.config import Config
 
 class CliContext:
 
-    def __init__(self, config: Config, cache: Cache, helper):
+    def __init__(
+                self,
+                config: Config,
+                cache: Cache,
+                helper,
+                allows_color: bool
+            ):
         self.config = config
         cache.add_filter(self.filter_cache_entry)
         self.cache = cache
         self.helper = helper
+        self.allows_color = allows_color
         self._license = None
         self._noc1_client = None
         self._terms_update_hooks = []

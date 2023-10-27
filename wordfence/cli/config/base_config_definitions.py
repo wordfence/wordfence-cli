@@ -51,6 +51,13 @@ config_definitions = {
         "default": False,
         "category": "Logging"
     },
+    "color": {
+        "description": "Enable ANSI escape sequences in output",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None,
+        "category": "Output Control"
+    },
     "cache-directory": {
         "description": "A path to use for cache files.",
         "context": "ALL",

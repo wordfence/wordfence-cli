@@ -5,7 +5,8 @@ import logging
 from ..util import updater
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         CacheException
-from ..logging import log
+from ..util.terminal import supports_colors
+from ..logging import log, enable_log_colors
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
 from .config import load_config, RenamedSubcommandException
@@ -25,6 +26,8 @@ class WordfenceCli:
         self.subcommand_definitions = load_subcommand_definitions()
         self.helper = self._initialize_helper()
         self._load_config()
+        self.allows_color = self.config.color is not False \
+            and supports_colors()
         self.initialize_logging(self.config.verbose)
         self.cache = self.initialize_cache()
         self.subcommand = None
@@ -67,6 +70,8 @@ class WordfenceCli:
                     and sys.stdout is not None and sys.stdout.isatty()
                 ):
             log.setLevel(logging.INFO)
+        if self.allows_color:
+            enable_log_colors()
 
     def initialize_cache(self) -> Cache:
         cacheable_types = set()
@@ -124,7 +129,8 @@ class WordfenceCli:
         context = CliContext(
                 self.config,
                 self.cache,
-                self.helper
+                self.helper,
+                self.allows_color
             )
 
         if self.config.version:
