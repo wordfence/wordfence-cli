@@ -1,6 +1,6 @@
 import logging
 
-from ..util.terminal import Color, escape
+from ..util.terminal import Color, escape, RESET
 
 
 class ColoredFormatter(logging.Formatter):
@@ -17,4 +17,4 @@ class ColoredFormatter(logging.Formatter):
     def format(self, record) -> str:
         style = self.get_style(record.levelno)
         message = super().format(record)
-        return f'{style}{message}'
+        return f'{style}{message}{RESET}'

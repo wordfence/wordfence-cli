@@ -157,6 +157,12 @@ class VulnScanSubcommand(Subcommand):
             )
 
     def invoke(self) -> int:
+        if self.config.output_format == 'human' \
+                and not self.context.allows_color:
+            log.warning(
+                    'The human output format requires a terminal with color '
+                    'support to function properly.'
+                )
         feed_variant = VulnerabilityFeedVariant.for_path(self.config.feed)
         report_manager = VulnScanReportManager(self.config, feed_variant)
         io_manager = report_manager.get_io_manager()

@@ -16,10 +16,21 @@ class Color(IntEnum):
     MAGENTA = 35
     CYAN = 36
     WHITE = 37
+    RESET = 0
 
 
 ESC = '\x1b'
 
 
-def escape(color: Color) -> str:
-    return f'{ESC}[{color.value}m'
+def escape(color: Color, bold: bool = False) -> str:
+    fields = []
+    if bold:
+        fields.append('1')
+    else:
+        fields.append('22')
+    fields.append(str(color.value))
+    sequence = ';'.join(fields)
+    return f'{ESC}[{sequence}m'
+
+
+RESET = escape(color=Color.RESET)

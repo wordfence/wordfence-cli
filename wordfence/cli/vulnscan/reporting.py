@@ -1,10 +1,12 @@
 from typing import List, Dict, Callable, Any, Optional
 
-from ...intel.vulnerabilities import ScannableSoftware, Vulnerability, Software
+from ...intel.vulnerabilities import ScannableSoftware, Vulnerability, \
+        Software, ProductionVulnerability
 from ...api.intelligence import VulnerabilityFeedVariant
+from ...util.terminal import Color, escape, RESET
 from ..reporting import Report, ReportColumnEnum, ReportFormatEnum, \
         ReportRecord, ReportManager, ReportFormat, ReportColumn, \
-        get_config_options, \
+        RowlessWriter, get_config_options, \
         REPORT_FORMAT_CSV, REPORT_FORMAT_TSV, REPORT_FORMAT_NULL_DELIMITED, \
         REPORT_FORMAT_LINE_DELIMITED
 from ..config import Config
@@ -68,11 +70,55 @@ class VulnScanReportColumn(ReportColumnEnum):
                 variant == self.feed_variant
 
 
+class HumanReadableWriter(RowlessWriter):
+
+    def get_severity_color(self, severity: str) -> str:
+        if severity == 'none' or severity == 'low':
+            return escape(color=Color.WHITE, bold=True)
+        if severity == 'high' or severity == 'critical':
+            return escape(color=Color.RED, bold=True)
+        return escape(color=Color.YELLOW, bold=True)
+
+    def format_record(self, record) -> str:
+        vuln = record.vulnerability
+        sw = record.software
+        yellow = escape(color=Color.YELLOW)
+        link = vuln.get_wordfence_link()
+        blue = escape(color=Color.BLUE)
+        white = escape(color=Color.WHITE)
+        severity = None
+        if isinstance(record.vulnerability, ProductionVulnerability):
+            if record.vulnerability.cvss is not None:
+                severity = record.vulnerability.cvss.rating
+        if severity is None:
+            severity_message = ''
+        else:
+            severity = severity.lower()
+            severity_color = self.get_severity_color(severity)
+            severity_message = f'{severity_color}{severity}{yellow} severity '
+        return (
+            f'{yellow}Found {severity_message}vulnerability {vuln.title} in '
+            f'{sw.slug}({sw.version})\n'
+            f'{white}Details: {blue}{link}{RESET}'
+            )
+
+    def write_record(self, record) -> None:
+        self._target.write(self.format_record(record))
+        self._target.write('\n')
+
+
+REPORT_FORMAT_HUMAN = ReportFormat(
+        'human',
+        lambda stream, columns: HumanReadableWriter(stream)
+    )
+
+
 class VulnScanReportFormat(ReportFormatEnum):
     CSV = REPORT_FORMAT_CSV
     TSV = REPORT_FORMAT_TSV
     NULL_DELIMITED = REPORT_FORMAT_NULL_DELIMITED
     LINE_DELIMITED = REPORT_FORMAT_LINE_DELIMITED
+    HUMAN = REPORT_FORMAT_HUMAN
 
 
 class VulnScanReportRecord(ReportRecord):
@@ -129,7 +175,8 @@ VULN_SCAN_REPORT_CONFIG_OPTIONS = get_config_options(
             VulnScanReportColumn.SLUG,
             VulnScanReportColumn.VERSION,
             VulnScanReportColumn.LINK
-        ]
+        ],
+        'human'
     )
 
 

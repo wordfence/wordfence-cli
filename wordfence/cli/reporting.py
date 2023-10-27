@@ -101,6 +101,18 @@ class SingleColumnWriter(ReportWriter):
             self._target.write(value + self.delimiter)
 
 
+class RowlessWriter(ReportWriter):
+
+    def allows_headers(self) -> bool:
+        return False
+
+    def write_row(self, data: List[str]) -> None:
+        pass
+
+    def write_record(self, record) -> None:
+        raise NotImplementedError()
+
+
 class ReportFormat:
 
     def __init__(
@@ -176,9 +188,12 @@ class Report:
         writer = self.format.initialize_writer(stream, self.columns)
         self.writers.append(writer)
 
-    def _write_row(self, data: List[str]):
+    def _write_row(self, data: List[str], record: ReportRecord):
         for writer in self.writers:
-            writer.write_row(data)
+            if isinstance(writer, RowlessWriter):
+                writer.write_record(record)
+            else:
+                writer.write_row(data)
 
     def _write_headers(self) -> None:
         if self.headers_written or not self.write_headers:
@@ -195,7 +210,7 @@ class Report:
         return row
 
     def _write_record(self, record: ReportRecord) -> None:
-        self._write_row(self._format_record(record))
+        self._write_row(self._format_record(record), record)
 
     def write_records(self, records: Iterable[ReportRecord]) -> None:
         self._write_headers()
@@ -213,7 +228,8 @@ class Report:
 def get_config_options(
             formats: Type[ReportFormatEnum],
             columns: Type[ReportColumnEnum],
-            default_columns: List[ReportColumnEnum]
+            default_columns: List[ReportColumnEnum],
+            default_format: str = 'csv'
         ) -> Dict[str, Dict[str, Any]]:
     return {
         "output": {
@@ -249,7 +265,7 @@ def get_config_options(
             "description": "Output format used for result data.",
             "context": "ALL",
             "argument_type": "OPTION",
-            "default": 'csv',
+            "default": default_format,
             "meta": {
                 "valid_options": formats.get_options()
             },
