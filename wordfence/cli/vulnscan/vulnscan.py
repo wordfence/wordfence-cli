@@ -161,7 +161,8 @@ class VulnScanSubcommand(Subcommand):
                 and not self.context.allows_color:
             log.warning(
                     'The human output format requires a terminal with color '
-                    'support to function properly.'
+                    'support to function properly. See --output-format for '
+                    'other options.'
                 )
         feed_variant = VulnerabilityFeedVariant.for_path(self.config.feed)
         report_manager = VulnScanReportManager(self.config, feed_variant)
