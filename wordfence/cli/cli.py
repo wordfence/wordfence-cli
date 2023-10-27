@@ -145,6 +145,7 @@ class WordfenceCli:
 
         configurer = Configurer(
                 self.config,
+                self.helper,
                 terms_manager,
                 self.subcommand_definitions,
                 self.subcommand_definition

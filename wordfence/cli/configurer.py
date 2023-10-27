@@ -14,6 +14,7 @@ from wordfence.logging import log
 from .config import load_config
 from .subcommands import SubcommandDefinition
 from .terms import TERMS_URL, TermsManager
+from .helper import Helper
 
 
 CONFIG_SECTION_DEFAULT = 'DEFAULT'
@@ -123,11 +124,13 @@ class Configurer:
     def __init__(
                 self,
                 config,
+                helper: Helper,
                 terms_manager: TermsManager,
                 subcommand_definitions: Dict[str, SubcommandDefinition],
                 subcommand_definition: Optional[SubcommandDefinition] = None
             ):
         self.config = config
+        self.helper = helper
         self.all_config = {}
         self.all_config[config.subcommand] = config
         self.config_values = []
@@ -146,6 +149,7 @@ class Configurer:
         if subcommand not in self.all_config:
             self.all_config[subcommand], _subcommand_definition = load_config(
                         self.subcommand_definitions,
+                        self.helper,
                         subcommand
                     )
         return self.all_config[subcommand]
