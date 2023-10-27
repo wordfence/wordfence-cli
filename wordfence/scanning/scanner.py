@@ -15,6 +15,7 @@ from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader
 from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
+from ..util.units import scale_byte_unit
 from ..intel.signatures import SignatureSet
 from ..logging import log, remove_initial_handler
 
@@ -501,15 +502,15 @@ def get_scan_finished_messages(
         ) -> ScanFinishedMessages:
     match_count = metrics.get_total_matches()
     total_count = metrics.get_total_count()
-    byte_count = metrics.get_total_bytes()
+    byte_value = scale_byte_unit(metrics.get_total_bytes())
     elapsed_time = round(timer.get_elapsed())
     timeout_count = metrics.get_total_timeouts()
     timeouts_message = None
     if timeout_count > 0:
         timeouts_message = f'{timeout_count} timeout(s) occurred during scan'
-    results_message = (f'Found {match_count} matching file(s) after '
+    results_message = (f'Found {match_count} suspicious file(s) after '
                        f'processing {total_count} file(s) containing '
-                       f'{byte_count} byte(s) over {elapsed_time} second(s)')
+                       f'{byte_value} over {elapsed_time} second(s)')
 
     if metrics.skipped_files > 0:
         skipped_message = (
