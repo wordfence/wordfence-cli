@@ -11,6 +11,7 @@ from ...wordpress.theme import ThemeLoader, Theme
 from ...logging import log
 from ..subcommands import Subcommand
 from .reporting import VulnScanReportManager
+from ...vulnscanning.exceptions import VulnScanningConfigurationException
 
 
 class VulnScanSubcommand(Subcommand):
@@ -157,6 +158,14 @@ class VulnScanSubcommand(Subcommand):
             )
 
     def invoke(self) -> int:
+        if (len(self.config.trailing_arguments) + \
+            len(self.config.wordpress_path) + \
+            len(self.config.plugin_directory) + \
+            len(self.config.theme_directory)) \
+            < 1:
+            raise VulnScanningConfigurationException(
+                    'At least one WordPress path must be specified'
+                )
         if self.config.output_format == 'human' \
                 and not self.context.allows_color:
             log.warning(
