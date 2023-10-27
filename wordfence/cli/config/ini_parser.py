@@ -17,6 +17,7 @@ from ..subcommands import SubcommandDefinition
 valid_contexts: Set[Context] = {Context.ALL, Context.CONFIG}
 
 
+GLOBAL_INI_PATH = '/etc/wordfence/wordfence-cli.ini'
 DEFAULT_SECTION_NAME = 'DEFAULT'
 
 
@@ -127,6 +128,13 @@ def load_ini(
             subcommand_definition: Optional[SubcommandDefinition]
         ) -> (ConfigParser, Optional[str]):
     config = ConfigParser()
+    try:
+        with open(GLOBAL_INI_PATH, 'r') as file:
+            config.read_file(file)
+    except FileNotFoundError:
+        pass  # Ignore nonexistant global config files
+    except OSError:
+        log.warning(f'Failed to read global config file at {GLOBAL_INI_PATH}')
     ini_path = get_ini_path(cli_values)
     try:
         with open(ini_path) as file:
