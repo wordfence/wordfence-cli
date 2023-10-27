@@ -161,7 +161,7 @@ examples = [
         'Generate a CSV file containing vulnerabilities found after scanning '
         '/var/www/html',
         'wordfence vuln-scan --output-format csv --output-path '
-        '/tmp/wfcli-results.csv --output-columns link'
+        '/tmp/wfcli-results.csv --output-columns link /var/www/html'
     )
 ]
 
