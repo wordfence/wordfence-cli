@@ -1,8 +1,7 @@
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y debsigs \
-    dpkg-sig \
+RUN apt-get update && apt-get install -y \
     devscripts \
     debhelper \
     dh-python \

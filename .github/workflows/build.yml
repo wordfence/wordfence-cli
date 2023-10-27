@@ -8,30 +8,6 @@ on:
     inputs:
 
 jobs:
-  deb_build:
-    name: deb build
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Docker build
-        run: ./docker/build/host-refresh.sh "$GITHUB_WORKSPACE" amd64
-      - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v5.3.0
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-      - name: Docker run
-        run: ./docker/build/host-build.sh "$GITHUB_WORKSPACE" amd64 deb
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: wordfence_cli_deb
-          path: |
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb.sha256
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb.asc
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb.sha256.asc
   linux_standalone_build:
     name: Linux standalone build
     runs-on: ubuntu-20.04
@@ -47,14 +23,9 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Docker build
-        run: ./docker/build/host-refresh.sh "$GITHUB_WORKSPACE" "$ARCHITECTURE"
+        run: ./docker/build/host-refresh.sh "$GITHUB_WORKSPACE" "$ARCHITECTURE" standalone
         env:
           ARCHITECTURE: ${{ matrix.arch }}
-      - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v5.3.0
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
       - name: Docker run
         run: ./docker/build/host-build.sh "$GITHUB_WORKSPACE" "$ARCHITECTURE" standalone
         env:
@@ -63,11 +34,22 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wordfence_cli_${{ matrix.arch }}
-          path: |
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.asc
-            ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz.sha256.asc
+          path: ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
+  deb_build:
+    name: deb build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Docker build
+        run: ./docker/build/host-refresh.sh "$GITHUB_WORKSPACE" amd64 deb
+      - name: Docker run
+        run: ./docker/build/host-build.sh "$GITHUB_WORKSPACE" amd64 deb
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_deb
+          path: ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb
   python_build:
     name: Python build
     runs-on: ubuntu-20.04
@@ -78,25 +60,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.8'
-      - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v5.3.0
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
       - name: Python build
         run: |
           pip install build~=0.10
           python3 -m build
-      - name: Create checksums and signatures
-        run: |
-          VERSION=$(python3 -c "from wordfence import version; print(version.__version__)")
-          cd dist
-          sha256sum "wordfence-${VERSION}.tar.gz" > "wordfence-${VERSION}.tar.gz.sha256"
-          sha256sum "wordfence-${VERSION}-py3-none-any.whl" > "wordfence-${VERSION}-py3-none-any.whl.sha256"
-          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}.tar.gz"
-          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}-py3-none-any.whl"
-          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}.tar.gz.sha256"
-          gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' "wordfence-${VERSION}-py3-none-any.whl.sha256"
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -106,3 +73,39 @@ jobs:
             ${{ github.workspace }}/dist/*.whl
             ${{ github.workspace }}/dist/*.sha256
             ${{ github.workspace }}/dist/*.asc
+  generate_checksums:
+    name: Generate checksums
+    runs-on: ubuntu-22.04
+    needs:
+      - linux_standalone_build
+      - deb_build
+      - python_build
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+      - name: Create checksums
+        run: |
+          touch checksums.txt
+          for artifact in \
+            wordfence_cli_amd64 \
+            wordfence_cli_arm64 \
+            wordfence_cli_deb \
+            wordfence_cli_python
+          do
+            pushd "$artifact"
+            sha256sum * >> ../checksums.txt
+            popd
+          done
+          cat checksums.txt
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v5.3.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      - name: Sign checksums file
+        run: gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' checksums.txt
+      - name: Upload checksums and signature
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_checksums
+          path: ${{ github.workspace }}/checksums.txt
