@@ -154,6 +154,14 @@ class VulnScanSubcommand(Subcommand):
         report_manager = VulnScanReportManager(self.config, feed_variant)
         io_manager = report_manager.get_io_manager()
         vulnerability_index = self._load_vulnerability_index(feed_variant)
+        vulnerability_filter = self._initialize_filter(feed_variant)
+        for invalid_id in vulnerability_filter.get_invalid_ids(
+                    vulnerability_index
+                ):
+            log.warning(
+                    f'Unrecognized vulnerability identifier: {invalid_id}, '
+                    'expected a valid UUID or CVE ID'
+                )
         scanner = VulnerabilityScanner(
                 vulnerability_index,
                 self._initialize_filter(feed_variant)

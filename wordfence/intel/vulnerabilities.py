@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict, Optional, Union, Set, Callable
+from typing import List, Dict, Optional, Union, Set, Callable, Generator
 
 from ..util.versioning import PhpVersion, compare_php_versions
 from ..util.url import Url
@@ -148,12 +148,19 @@ class VulnerabilityIndex:
 
     def __init__(self, vulnerabilities: Dict[str, Vulnerability]):
         self.vulnerabilities = vulnerabilities
+        self.id_map = {}
+        self.cve_map = {}
         self._initialize_index(vulnerabilities)
 
     def _add_vulnerability_to_index(
                 self,
                 vulnerability: Vulnerability
             ) -> None:
+        self.id_map[vulnerability.identifier.casefold()] = \
+            vulnerability.identifier
+        if hasattr(vulnerability, 'cve') and vulnerability.cve is not None:
+            self.cve_map[vulnerability.cve.casefold()] = \
+                vulnerability.identifier
         for software in vulnerability.software:
             type_index = self.index[software.type]
             if software.slug not in type_index:
@@ -222,6 +229,16 @@ class VulnerabilityIndex:
                 version
             )
 
+    def includes_vulnerability(self, identifier: str) -> bool:
+        return identifier in self.vulnerabilities or identifier in self.cve_map
+
+
+CVE_PATTERN = re.compile(r'^CVE-(199\d|20\d{2})-\d{4,}$', re.IGNORECASE)
+
+
+def is_cve_id(value: str) -> bool:
+    return CVE_PATTERN.match(value) is not None
+
 
 class VulnerabilityFilter:
 
@@ -231,6 +248,7 @@ class VulnerabilityFilter:
                 included: Set[str],
                 informational: bool = False
             ):
+        self.filtered_ids = set(included) | set(excluded)
         self.excluded = self._make_case_insensitive(excluded)
         self.included = self._make_case_insensitive(included)
         self.informational = informational
@@ -269,6 +287,14 @@ class VulnerabilityFilter:
                 identifier: vulnerability for identifier, vulnerability
                 in vulnerabilities.items() if self.allows(vulnerability)
             }
+
+    def get_invalid_ids(
+                self,
+                index: VulnerabilityIndex
+            ) -> Generator[None, None, str]:
+        for identifier in self.filtered_ids:
+            if not index.includes_vulnerability(identifier):
+                yield identifier
 
 
 DEFAULT_FILTER = VulnerabilityFilter(
@@ -363,10 +389,3 @@ class VulnerabilityScanner:
             for software in group:
                 affected.add(software.get_key())
         return len(affected)
-
-
-CVE_PATTERN = re.compile(r'^CVE-(199\d|20\d{2})-\d{4,}$', re.IGNORECASE)
-
-
-def is_cve_id(value: str) -> bool:
-    return CVE_PATTERN.match(value) is not None
