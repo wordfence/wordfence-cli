@@ -91,26 +91,24 @@ You may need to install the `libpcre` library.
 
 ## Verifying the Authenticity of a Release Asset
 
-Each of our downloadable release assets are signed using GPG as a part of the build process. We recommend verifying the authenticity of these downloads prior to extracting and executing any code. This example below uses the Wordfence CLI source code archive file, but the process is the same for any of the release assets. You can find our public key used to verify the signatures here:
+The checksum file for all release assets is sgned using GPG as part of the build process. We recommend verifying the authenticity of the checksum file and then verifying the checksum of the downloaded release asset prior to extracting, installing, or executing any code.
 
-	https://www.wordfence.com/wp-content/uploads/public.asc
-	
-To verify a signed binary, download both the gzipped binary and the .asc armor file.
+To verify the signature of the checksums file, first download and import our public GPG key:
 
 	wget https://www.wordfence.com/wp-content/uploads/public.asc
 	gpg --import public.asc
 
-You can optionally sign the public key with your own private key:
+You can optionally sign our public key with your own private key:
 
 	gpg --lsign-key 00B225C7030F26FF4A3D3481F82623ECE1DB0FBB
 
-Each release asset has a .asc armor file that should be downloaded in addition to the asset. To verify the download run the following code (replace the file names with the ones you've downloaded):
+Download the `checksums.txt` and `checksums.txt.asc` files from GitHub releases. You can then verify the authenticity of the `checksums.txt` file (replace the filenames with paths to the copies you've downloaded):
 
-	gpg --assert-signer 00B225C7030F26FF4A3D3481F82623ECE1DB0FBB --verify wordfence.tar.gz.asc wordfence.tar.gz
+	gpg --assert-signer 00B225C7030F26FF4A3D3481F82623ECE1DB0FBB --verify checksums.txt.asc checksums.txt
 
 If your version of GPG doesn't include `--assert-signer` you can just run (you may see a warning using this method):
 
-	gpg --verify wordfence_1.0.0_amd64_linux_exec.tar.gz.asc wordfence_1.0.0_amd64_linux_exec.tar.gz
+	gpg --verify checksums.txt.asc checksums.txt
 
 You should see output similar to this:
 
@@ -119,3 +117,7 @@ You should see output similar to this:
 	gpg:                issuer "opensource@wordfence.com"
 	gpg: Good signature from "Wordfence <opensource@wordfence.com>" [ultimate]
 	gpg: signer '00B225C7030F26FF4A3D3481F82623ECE1DB0FBB' matched
+
+Now that you've verified the checksums file, you can confirm that the checksum of your download matches. For example, if you downloaded the `wordfence_2.0.1_amd64_linux_exec.tar.gz` (the standalone Linux executable for the `x86_64` architecture) to the same directory as `checksums.txt`, you can verify the checksum matches with:
+
+	sha256sum --ignore-missing -c checksums.txt

@@ -108,4 +108,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wordfence_cli_checksums
-          path: ${{ github.workspace }}/checksums.txt
+          path: |
+            ${{ github.workspace }}/checksums.txt
+            ${{ github.workspace }}/checksums.txt.asc
