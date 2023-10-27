@@ -389,3 +389,9 @@ class VulnerabilityScanner:
             for software in group:
                 affected.add(software.get_key())
         return len(affected)
+
+    def get_total_count(self) -> int:
+        count = 0
+        for group in self.affected.values():
+            count += len(group)
+        return count

@@ -85,13 +85,20 @@ class VulnScanSubcommand(Subcommand):
             self._scan_plugins(site.get_all_plugins(), scanner)
             self._scan_themes(site.get_themes(), scanner)
 
+    def _get_vulnerability_label(self, count: int) -> str:
+        if count == 1:
+            return 'vulnerability'
+        else:
+            return 'vulnerabilities'
+
     def _output_summary(self, scanner: VulnerabilityScanner) -> None:
-        vulnerability_count = scanner.get_vulnerability_count()
-        affected_count = scanner.get_affected_count()
-        suffix = 'y' if vulnerability_count == 1 else 'ies'
+        unique_count = scanner.get_vulnerability_count()
+        total_count = scanner.get_total_count()
+        unique_label = self._get_vulnerability_label(unique_count)
+        total_label = self._get_vulnerability_label(total_count)
         log.info(
-                f'Found {vulnerability_count} vulnerabilit{suffix} '
-                f'affecting {affected_count} installation(s)'
+                f'Found {unique_count} unique {unique_label} / {total_count} '
+                f'total {total_label}'
             )
 
     def _validate_vulnerability_ids(
