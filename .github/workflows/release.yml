@@ -104,6 +104,9 @@ jobs:
             wordfence_cli_arm64/*.tar.gz
             wordfence_cli_arm64/*.sha256
             wordfence_cli_arm64/*.asc
+            wordfence_cli_deb/*.deb
+            wordfence_cli_deb/*.sha256
+            wordfence_cli_deb/*.asc
           target_commitish: ${{ steps.get-commit-hash.outputs.BUILD_COMMIT_HASH }}
           tag_name: ${{ inputs.release_tag }}
           draft: true

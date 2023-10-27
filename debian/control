@@ -1,0 +1,24 @@
+Source: wordfence
+Maintainer: Wordfence <opensource@wordfence.com>
+Section: utils
+Priority: optional
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all,
+               python3-setuptools,
+               pybuild-plugin-pyproject
+Standards-Version: 4.6.2
+Homepage: https://www.wordfence.com/products/wordfence-cli/
+Vcs-Browser: https://github.com/wordfence/wordfence-cli
+Vcs-Git: https://github.com/wordfence/wordfence-cli.git
+X-Python3-Version: >= 3.8
+
+Package: wordfence
+Architecture: all
+Depends: ${python3:Depends}, libpcre3
+Description: Command-line malware scanner powered by Wordfence
+ Wordfence CLI is a multi-process malware scanner written in Python. It's
+ designed to have low memory overhead while being able to utilize multiple
+ cores for scanning large filesystems for malware. Wordfence CLI uses libpcre
+ over Python's existing regex libraries for speed and compatibility with our
+ signature set.
