@@ -45,14 +45,24 @@ class PluginLoader(ExtensionLoader):
                 header=header
             )
 
+    def _has_php_extension(self, path: Path) -> bool:
+        return path.suffix == '.php'
+
     def _process_entry(self, entry: os.DirEntry) -> Optional[Plugin]:
+        if entry.name.find('.') == 0:
+            return None
         path = Path(entry.path)
         if entry.is_file():
             slug = path.stem
-            return self.load(slug, path)
+            if self._has_php_extension(path):
+                return self.load(slug, path)
         elif entry.is_dir():
             slug = entry.name
-            path = path / f'{slug}.php'
-            if path.is_file():
-                return self.load(slug, path)
+            for child in os.scandir(entry.path):
+                if child.is_file():
+                    child_path = path / child.name
+                    if self._has_php_extension(child_path):
+                        plugin = self.load(slug, child_path)
+                        if plugin is not None:
+                            return plugin
         return None
