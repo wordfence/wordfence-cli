@@ -158,11 +158,10 @@ class VulnScanSubcommand(Subcommand):
             )
 
     def invoke(self) -> int:
-        if (len(self.config.trailing_arguments) + \
-            len(self.config.wordpress_path) + \
-            len(self.config.plugin_directory) + \
-            len(self.config.theme_directory)) \
-            < 1:
+        if (len(self.config.trailing_arguments) + 
+                len(self.config.wordpress_path) + 
+                len(self.config.plugin_directory) + 
+                len(self.config.theme_directory)) < 1:
             raise VulnScanningConfigurationException(
                     'At least one WordPress path must be specified'
                 )
