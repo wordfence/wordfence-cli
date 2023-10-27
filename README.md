@@ -4,20 +4,18 @@ Wordfence CLI is a multi-process malware scanner written in Python. It's designe
 
 ## Installation
 
-We have a number of installation methods to install Wordfence CLI in our [installation documentation](docs/Installation.md) which we'd recommend reviewing to get you scanning for malware in as few steps as possible. If you'd like to install Wordfence CLI manually, you can clone the GitHub repo to your local environment:
+We have a number of installation methods to install Wordfence CLI in our [installation documentation](docs/Installation.md) which we'd recommend reviewing to get you scanning for malware in as few steps as possible. 
+
+We recommend installing using `pip`:
+
+	pip install wordfence
+
+If you'd like to install Wordfence CLI manually or use CLI for development, you can clone the GitHub repo to your local environment:
 
 	git clone git@github.com:wordfence/wordfence-cli.git
 	cd ./wordfence-cli
 	pip install .
-	python main.py scan --version
-
-You can additionally build the wheel archive and generate an executable:
-	
-	pip install build~=0.10
-	python -m build --wheel
-	pip install dist/wordfence-*.whl
-
-The executable should be installed to `~/.local/bin/wordfence`.
+	python main.py --version
 
 ### Requirements
 
@@ -33,7 +31,7 @@ Visit [https://www.wordfence.com/products/wordfence-cli/](https://www.wordfence.
 
 ## Usage
 
-You can run `wordfence scan --help` for a full list of options that can be passed to Wordfence CLI. Read more about the [configuration options](docs/Configuration.md) that can be passed to Wordfence CLI.
+You can run `wordfence help` for a full list of options that can be passed to Wordfence CLI. Read more about the [configuration options](docs/Configuration.md) that can be passed to Wordfence CLI.
 
 #### Example
 

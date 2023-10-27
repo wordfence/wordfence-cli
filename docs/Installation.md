@@ -1,8 +1,32 @@
 # Installation
 
+## Installation with `pip` 
+
+This is the simplest method for installing CLI. 
+
+	pip install wordfence
+
+This should build and install an executable of Wordfence CLI at the following directory when run as the `username` user:
+
+	/home/username/.local/bin/wordfence
+
+If run as root, the executable path should be:
+
+	/usr/local/bin/wordfence
+
+Verify the executable works correctly on your system:
+
+	./wordfence --version
+
+You should see output similar to this:
+
+	Wordfence CLI 1.0.0
+
+Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](Examples.md).
+
 ## Binaries
 
-This is the simplest method for installing CLI. Binaries for Wordfence CLI can be downloaded on the Releases page of the GitHub repository (under Assets of each release) along with source code, and the .whl files:
+Binaries for Wordfence CLI can be downloaded on the Releases page of the GitHub repository (under Assets of each release) along with source code, and the .whl files:
 
 [https://github.com/wordfence/wordfence-cli/releases](https://github.com/wordfence/wordfence-cli/releases)
 
@@ -16,39 +40,7 @@ Extract the binary:
 
 Verify the binary works correctly on your system:
 
-	./wordfence scan --version
-
-You should see output similar to this:
-
-	Wordfence CLI 1.0.0
-
-Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](Examples.md).
-
-## `pip` Installation of the Wheel Archive File
-
-The wheel archive file (`.whl`) for Wordfence CLI can be downloaded on the Releases page of the GitHub repository (under Assets of each release). For more information on installation of wheel archive files for Python, see the [pip documentation page](https://pip.pypa.io/en/latest/user_guide/#installing-from-wheels "User Guide - pip documentation"). 
-
-The .whl archive is in the format `wordfence-x.x.x-py3-none-any.whl` where `x.x.x` is the Wordfence CLI version. The following example uses `1.0.0` as the version. Select the .whl file from the Releases page:
-
-[https://github.com/wordfence/wordfence-cli/releases](https://github.com/wordfence/wordfence-cli/releases)
-
-We recommend verifying the authenticity of the download prior to extracting the archive. You can do this by following [the steps outlined below](#verifying-the-authenticity-of-a-release-asset) prior to following the rest of these installation steps. 
-
-Install the archive using `pip`:
-
-	pip install wordfence-1.0.0-py3-none-any.whl 
-
-This should install an executable of Wordfence CLI at the following directory when installed as the `username` user:
-
-	/home/username/.local/bin/wordfence
-
-If run as root, the executable path should be:
-
-	/usr/local/bin/wordfence
-
-Verify the executable works correctly on your system:
-
-	./wordfence scan --version
+	./wordfence --version
 
 You should see output similar to this:
 
