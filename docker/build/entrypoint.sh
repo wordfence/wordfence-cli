@@ -32,7 +32,7 @@ if [ "$PACKAGE_TYPE" = 'deb' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
   # copy to output volume
   pushd ..
   DEB_FILENAME="wordfence_${VERSION}_all"
-  cp "${DEB_FILENAME}.deb" /root/output
+  cp "${DEB_FILENAME}.deb" /root/output/wordfence.deb
   popd
 
 fi
@@ -68,7 +68,7 @@ if [ "$PACKAGE_TYPE" = 'standalone' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
   pushd /root/wordfence-cli/dist
   STANDALONE_FILENAME="wordfence_${VERSION}_${ARCHITECTURE}_linux_exec"
   tar -czvf "${STANDALONE_FILENAME}.tar.gz" wordfence
-  cp "${STANDALONE_FILENAME}.tar.gz" /root/output
+  cp "${STANDALONE_FILENAME}.tar.gz" "/root/output/wordfence_${ARCHITECTURE}.tar.gz"
   popd
 
 fi
