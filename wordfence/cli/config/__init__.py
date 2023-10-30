@@ -55,6 +55,12 @@ def create_config_object(
             # later values always replace previous values
             if new_value is not not_set_token:
                 setattr(target, item_definition.property_name, new_value)
+                try:
+                    target.defaulted_options.remove(
+                            item_definition.property_name
+                        )
+                except KeyError:
+                    pass  # Ignore options that weren't previously defaulted
             elif not hasattr(target, item_definition.property_name):
                 default = item_definition.default
                 if item_definition.has_separator() and \
@@ -62,7 +68,9 @@ def create_config_object(
                     default = default.split(item_definition.meta.separator)
                 setattr(target, item_definition.property_name,
                         default)
+                target.defaulted_options.add(item_definition.property_name)
     target.trailing_arguments = trailing_arguments
+    print(target.defaulted_options)
     return target
 
 

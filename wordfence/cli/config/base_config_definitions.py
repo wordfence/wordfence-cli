@@ -4,8 +4,7 @@ from .config_items import config_definitions_to_config_map
 config_definitions = {
     "configuration": {
         "short_name": "c",
-        "description": "Path to a configuration INI file to use (defaults to"
-                       f" \"{INI_DEFAULT_PATH}\").",
+        "description": "Path to a configuration INI file to use.",
         "context": "CLI",
         "argument_type": "OPTION",
         "default": INI_DEFAULT_PATH

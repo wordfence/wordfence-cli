@@ -17,6 +17,7 @@ class OptionHelp:
                 short_name: Optional[str],
                 description: str,
                 category: str,
+                default: str,
                 valid_values: Optional[List[str]],
                 is_flag: bool = False
             ):
@@ -24,6 +25,7 @@ class OptionHelp:
         self.short_name = short_name
         self.description = description
         self.category = category
+        self.default = default
         self.valid_values = valid_values
         self.is_flag = is_flag
         self.label = self.generate_label()
@@ -45,12 +47,12 @@ class LineFormatter:
                 self,
                 line: str,
                 max_length: int,
-                offset: int = 0
+                offset: int = 0,
+                first: bool = True
             ) -> List[str]:
         if offset > max_length:
             offset = 0
         lines = []
-        first = True
         while len(line) > 0:
             end = max_length - 1
             if len(line) > max_length:
@@ -59,7 +61,7 @@ class LineFormatter:
                 except ValueError:
                     next_break = end
             else:
-                next_break = len(line) - 1
+                next_break = len(line)
             next = line[:next_break]
             line = line[next_break + 1:]
             if not first:
@@ -79,13 +81,20 @@ class LineFormatter:
         final_lines = []
         max_length = self.terminal_size.columns
         for input_line in lines:
+            initial = True
             for real_line in input_line.splitlines():
-                if len(real_line) > max_length:
+                if len(real_line) > max_length or not initial:
                     final_lines.extend(
-                            self.split_line(real_line, max_length, offset)
+                            self.split_line(
+                                    real_line,
+                                    max_length,
+                                    offset,
+                                    first=initial
+                                )
                         )
                 else:
                     final_lines.append(real_line)
+                initial = False
         return delimiter.join(final_lines)
 
     def join_chunks(
@@ -136,6 +145,7 @@ class OptionFormatter:
                     item.short_name,
                     item.description,
                     item.category,
+                    item.default,
                     valid_values,
                     item.is_flag()
                 )
@@ -169,6 +179,11 @@ class OptionFormatter:
             if option.is_flag:
                 lines.append(self._offset(
                         f'(use --no-{option.long_name} to disable)',
+                        offset
+                    ))
+            elif isinstance(option.default, str) and len(option.default):
+                lines.append(self._offset(
+                        f'(default: {option.default})',
                         offset
                     ))
         return self.line_formatter.join_lines(lines, offset=offset)
