@@ -198,9 +198,10 @@ class Report:
     def _write_headers(self) -> None:
         if self.headers_written or not self.write_headers:
             return
+        headers = [column.header for column in self.columns]
         for writer in self.writers:
             if writer.allows_headers():
-                writer.write_row(self.columns)
+                writer.write_row(headers)
         self.headers_written = True
 
     def _format_record(self, record: ReportRecord) -> List[str]:
