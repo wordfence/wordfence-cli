@@ -287,6 +287,8 @@ class SubcommandHelpGenerator(HelpGenerator):
 
     def generate_examples(self) -> List[str]:
         lines = []
+        if self.definition.examples is None:
+            return lines
         index = 1
         for example in self.definition.examples:
             lines.append(f'{SPACER}{index}. {example.description}')
