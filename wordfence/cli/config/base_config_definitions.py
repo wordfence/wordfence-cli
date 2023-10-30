@@ -29,7 +29,7 @@ config_definitions = {
         "short_name": "v",
         "description": "Enable verbose logging. If not specified, verbose "
                        "logging will be enabled automatically if stdout is a "
-                       "TTY. Use --no-verbose to disable.",
+                       "TTY.",
         "context": "ALL",
         "argument_type": "OPTIONAL_FLAG",
         "default": None,

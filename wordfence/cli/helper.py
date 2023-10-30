@@ -17,13 +17,15 @@ class OptionHelp:
                 short_name: Optional[str],
                 description: str,
                 category: str,
-                valid_values: Optional[List[str]]
+                valid_values: Optional[List[str]],
+                is_flag: bool = False
             ):
         self.long_name = long_name
         self.short_name = short_name
         self.description = description
         self.category = category
         self.valid_values = valid_values
+        self.is_flag = is_flag
         self.label = self.generate_label()
 
     def generate_label(self) -> str:
@@ -134,13 +136,17 @@ class OptionFormatter:
                     item.short_name,
                     item.description,
                     item.category,
-                    valid_values
+                    valid_values,
+                    item.is_flag()
                 )
             self._add_option_help(option)
             self.max_label_length = max(
                     self.max_label_length,
                     len(option.label)
                 )
+
+    def _offset(self, string: str, offset: int) -> str:
+        return string.rjust(offset + len(string))
 
     def format_category(
                 self,
@@ -159,10 +165,12 @@ class OptionFormatter:
             if option.valid_values is not None:
                 valid_options = 'Options: '
                 valid_options += ', '.join(option.valid_values)
-                valid_options = valid_options.rjust(
-                        offset + len(valid_options)
-                    )
-                lines.append(valid_options)
+                lines.append(self._offset(valid_options, offset))
+            if option.is_flag:
+                lines.append(self._offset(
+                        f'(use --no-{option.long_name} to disable)',
+                        offset
+                    ))
         return self.line_formatter.join_lines(lines, offset=offset)
 
     def format_options(self) -> str:
