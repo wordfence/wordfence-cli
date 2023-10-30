@@ -189,7 +189,7 @@ class FileLocator:
         real_path = os.path.realpath(self.path)
         if os.path.isdir(real_path):
             for path in self.search_directory(real_path):
-                log.debug(f'File added to scan queue: {path}')
+                log.info(f'File added to scan queue: {path}')
                 self.queue.put(path)
         else:
             if not self._is_loop(self.path):
@@ -382,7 +382,7 @@ class ScanWorker(Process):
             return min(self._scanned_content_limit - length, self._chunk_size)
 
     def _process_file(self, path: str, jit_stack: PcreJitStack):
-        log.debug(f'Processing file: {path}')
+        log.info(f'Processing file: {path}')
         with open(path, mode='rb') as file, \
                 self._matcher.create_context() as context:
             length = 0

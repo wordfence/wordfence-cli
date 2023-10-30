@@ -1,3 +1,4 @@
+import sys
 from typing import Optional, Any
 
 from ..version import __version__, __version_name__
@@ -74,3 +75,11 @@ class CliContext:
                 f"PCRE Version: {pcre.VERSION} - "
                 f"JIT Supported: {jit_support_text}"
             )
+
+    def has_terminal_output(self) -> bool:
+        return sys.stdout is not None \
+                and sys.stdout.isatty()
+
+    def has_terminal_input(self) -> bool:
+        return sys.stdin is not None \
+                and sys.stdin.isatty()

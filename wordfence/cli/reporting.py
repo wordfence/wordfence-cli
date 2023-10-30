@@ -5,6 +5,7 @@ from typing import IO, List, Any, Callable, Iterable, Type, Dict, Optional, \
 from enum import Enum
 from contextlib import nullcontext
 
+from wordfence.logging import log
 from .config import Config
 from .io import IoManager
 
@@ -67,6 +68,9 @@ class ReportWriter:
     def allows_headers(self) -> bool:
         return True
 
+    def allows_column_customization(self) -> bool:
+        return True
+
 
 class CsvReportWriter(ReportWriter):
 
@@ -106,6 +110,9 @@ class RowlessWriter(ReportWriter):
     def allows_headers(self) -> bool:
         return False
 
+    def allows_column_customization(self) -> bool:
+        return False
+
     def write_row(self, data: List[str]) -> None:
         pass
 
@@ -118,10 +125,14 @@ class ReportFormat:
     def __init__(
                 self,
                 option: str,
-                initializer: Callable[[IO, List[ReportColumn]], ReportWriter]
+                initializer: Callable[[IO, List[ReportColumn]], ReportWriter],
+                allows_headers: bool = True,
+                allows_column_customization: bool = True
             ):
         self.option = option
         self.initializer = initializer
+        self.allows_headers = allows_headers
+        self.allows_column_customization = allows_column_customization
 
     def initialize_writer(
                 self,
@@ -129,9 +140,6 @@ class ReportFormat:
                 columns: List[ReportColumn]
             ) -> ReportWriter:
         return self.initializer(stream, columns)
-
-    def get_valid_options() -> List[str]:
-        return [format.value for format in ReportFormat]
 
 
 REPORT_FORMAT_CSV = ReportFormat(
@@ -183,9 +191,21 @@ class Report:
         self.write_headers = write_headers
         self.headers_written = False
         self.writers = []
+        self.has_custom_columns = False
 
     def add_target(self, stream: IO) -> None:
         writer = self.format.initialize_writer(stream, self.columns)
+        if self.write_headers and not writer.allows_headers():
+            log.warning(
+                    'Headers are not supported when using the '
+                    f'{self.format.option} output format'
+                )
+        if self.has_custom_columns \
+                and not writer.allows_column_customization():
+            log.warning(
+                    'Columns cannot be specified when using the '
+                    f'{self.format.option} output format'
+                )
         self.writers.append(writer)
 
     def _write_row(self, data: List[str], record: ReportRecord):
@@ -198,9 +218,10 @@ class Report:
     def _write_headers(self) -> None:
         if self.headers_written or not self.write_headers:
             return
+        headers = [column.header for column in self.columns]
         for writer in self.writers:
             if writer.allows_headers():
-                writer.write_row(self.columns)
+                writer.write_row(headers)
         self.headers_written = True
 
     def _format_record(self, record: ReportRecord) -> List[str]:
@@ -231,6 +252,15 @@ def get_config_options(
             default_columns: List[ReportColumnEnum],
             default_format: str = 'csv'
         ) -> Dict[str, Dict[str, Any]]:
+    header_formats = []
+    column_formats = []
+    for format in formats:
+        if format.value.allows_headers:
+            header_formats.append(format.value.option)
+        if format.value.allows_column_customization:
+            column_formats.append(format.value.option)
+    header_format_string = ', '.join(header_formats)
+    column_format_string = ', '.join(column_formats)
     return {
         "output": {
             "description": "Write results to stdout. This is the default "
@@ -251,7 +281,9 @@ def get_config_options(
         "output-columns": {
             "description": ("An ordered, comma-delimited list of columns to"
                             " include in the output. Available columns: "
-                            + columns.get_options_as_string()),
+                            + columns.get_options_as_string()
+                            + f"\nCompatible formats: {column_format_string}"
+                            ),
             "context": "ALL",
             "argument_type": "OPTION",
             "default": ','.join([column.header for column in default_columns]),
@@ -273,7 +305,8 @@ def get_config_options(
         },
         "output-headers": {
             "description": "Whether or not to include column headers in "
-                           "output",
+                           "output.\n"
+                           f"Compatible formats: {header_format_string}",
             "context": "ALL",
             "argument_type": "FLAG",
             "default": None,
@@ -356,6 +389,7 @@ class ReportManager:
                 columns,
                 self.config.output_headers
             )
+        report.has_custom_columns = self.config.is_specified('output_columns')
         self._add_targets(report, output_file)
         if not report.has_writers():
             raise ReportingException(

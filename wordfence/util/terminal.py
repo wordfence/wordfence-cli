@@ -4,7 +4,7 @@ from enum import IntEnum
 
 def supports_colors() -> bool:
     # TODO: Implement more detailed checks for color support
-    return sys.stdout.isatty()
+    return sys.stdout is not None and sys.stdout.isatty()
 
 
 class Color(IntEnum):

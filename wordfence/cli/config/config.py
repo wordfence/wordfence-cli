@@ -20,6 +20,7 @@ class Config(SimpleNamespace):
         self.subcommand = subcommand
         self.ini_path = ini_path
         self.trailing_arguments = None
+        self.defaulted_options = set()
 
     def values(self) -> Dict[str, Any]:
         result: Dict[str, Any] = dict()
@@ -42,3 +43,6 @@ class Config(SimpleNamespace):
     def display_help(self) -> None:
         self._parser.print_help()
         print()
+
+    def is_specified(self, option: str) -> bool:
+        return option not in self.defaulted_options

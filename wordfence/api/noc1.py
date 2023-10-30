@@ -23,16 +23,19 @@ class Client(NocClient):
         query['s'] = self._generate_site_stats()
         return query
 
-    def register_terms_update_hook(self, callable: Callable[[], None]) -> None:
+    def register_terms_update_hook(
+                self,
+                callable: Callable[[bool], None]
+            ) -> None:
         if not hasattr(self, 'terms_update_hooks'):
             self.terms_update_hooks = []
         self.terms_update_hooks.append(callable)
 
-    def _trigger_terms_update_hooks(self) -> None:
+    def _trigger_terms_update_hooks(self, paid: bool = False) -> None:
         if not hasattr(self, 'terms_update_hooks'):
             return
         for hook in self.terms_update_hooks:
-            hook()
+            hook(paid)
 
     def validate_response(self, response, validator: Validator) -> None:
         if isinstance(response, dict):
@@ -42,7 +45,8 @@ class Client(NocClient):
                         response['errorMsg']
                     )
             if '_termsUpdated' in response:
-                self._trigger_terms_update_hooks()
+                paid = '_isPaidKey' in response and response['_isPaidKey']
+                self._trigger_terms_update_hooks(paid)
         return super().validate_response(response, validator)
 
     def process_simple_request(self, action: str) -> bool:

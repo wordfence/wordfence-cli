@@ -109,7 +109,9 @@ class HumanReadableWriter(RowlessWriter):
 
 REPORT_FORMAT_HUMAN = ReportFormat(
         'human',
-        lambda stream, columns: HumanReadableWriter(stream)
+        lambda stream, columns: HumanReadableWriter(stream),
+        allows_headers=False,
+        allows_column_customization=False
     )
 
 

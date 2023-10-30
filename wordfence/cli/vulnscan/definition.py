@@ -135,6 +135,14 @@ config_definitions: ConfigDefinitions = {
                     variant.path for variant in VulnerabilityFeedVariant
                 ]
         }
+    },
+    "require-path": {
+        "description": "When enabled, an error will be issued if at least one "
+                       "path to scan is not specified. This is the default "
+                       "behavior when running in a terminal.",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
     }
 }
 
