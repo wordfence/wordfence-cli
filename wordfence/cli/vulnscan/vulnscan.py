@@ -11,7 +11,7 @@ from ...wordpress.theme import ThemeLoader, Theme
 from ...logging import log
 from ..subcommands import Subcommand
 from .reporting import VulnScanReportManager
-from ...vulnscanning.exceptions import VulnScanningConfigurationException
+from .exceptions import VulnScanningConfigurationException
 
 
 class VulnScanSubcommand(Subcommand):
@@ -157,14 +157,33 @@ class VulnScanSubcommand(Subcommand):
                 structure_options=structure_options
             )
 
-    def invoke(self) -> int:
-        if (len(self.config.trailing_arguments) +
+    def _requires_paths(self) -> bool:
+        required = self.config.require_path
+        return (
+                required is True or
+                (required is None and self.context.has_terminal_input)
+            )
+
+    def _check_required_paths(self) -> bool:
+        if not self._requires_paths():
+            return True
+        return (len(self.config.trailing_arguments) +
                 len(self.config.wordpress_path) +
                 len(self.config.plugin_directory) +
-                len(self.config.theme_directory)) < 1:
-            raise VulnScanningConfigurationException(
-                    'At least one WordPress path must be specified'
-                )
+                len(self.config.theme_directory)) > 0
+
+    def _raise_path_error(self) -> None:
+        raise VulnScanningConfigurationException(
+                'At least one WordPress path must be specified'
+            )
+
+    def invoke(self) -> int:
+        feed_variant = VulnerabilityFeedVariant.for_path(self.config.feed)
+        report_manager = VulnScanReportManager(self.config, feed_variant)
+        io_manager = report_manager.get_io_manager()
+        if not io_manager.should_read_stdin() and \
+                not self._check_required_paths():
+            self._raise_path_error()
         if self.config.output_format == 'human' \
                 and not self.context.allows_color:
             log.warning(
@@ -172,9 +191,6 @@ class VulnScanSubcommand(Subcommand):
                     'support to function properly. See --output-format for '
                     'other options.'
                 )
-        feed_variant = VulnerabilityFeedVariant.for_path(self.config.feed)
-        report_manager = VulnScanReportManager(self.config, feed_variant)
-        io_manager = report_manager.get_io_manager()
         vulnerability_index = self._load_vulnerability_index(feed_variant)
         vulnerability_filter = self._initialize_filter(feed_variant)
         for invalid_id in vulnerability_filter.get_invalid_ids(
@@ -204,12 +220,16 @@ class VulnScanSubcommand(Subcommand):
                     )
             if io_manager.should_read_stdin():
                 reader = io_manager.get_input_reader()
+                path_count = 0
                 for path in reader.read_all_entries():
                     self._scan_site(
                             path,
                             scanner,
                             structure_options=structure_options
                         )
+                    path_count += 1
+                if self._requires_paths() and path_count == 0:
+                    self._raise_path_error()
             for path in self.config.wordpress_path:
                 log.info(f'Scanning core installation at {path}...')
                 self._scan(
