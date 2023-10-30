@@ -49,7 +49,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wordfence_cli_deb
-          path: ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.deb
+          path: ${{ github.workspace }}/docker/build/volumes/output/wordfence.deb
   python_build:
     name: Python build
     runs-on: ubuntu-20.04
