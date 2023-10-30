@@ -18,9 +18,9 @@ class TermsManager:
         if not accepted:
             self.prompt_acceptance()
 
-    def trigger_update(self):
+    def trigger_update(self, paid: bool = False):
         self.context.cache.put(TERMS_CACHE_KEY, False)
-        self.prompt_acceptance()
+        self.prompt_acceptance(paid)
 
     def record_acceptance(self, remote: bool = True):
         if remote:
@@ -28,11 +28,15 @@ class TermsManager:
             client.record_toupp()
         self.context.cache.put(TERMS_CACHE_KEY, True)
 
-    def prompt_acceptance(self):
+    def prompt_acceptance(self, paid: bool = False):
         if not (sys.stdout.isatty() and sys.stdin.isatty()):
             return
+        if paid:
+            edition = ''
+        else:
+            edition = ' Free edition'
         terms_accepted = prompt_yes_no(
-                'Your access to and use of Wordfence CLI Free edition is '
+                f'Your access to and use of Wordfence CLI{edition} is '
                 'subject to the updated Wordfence CLI License Terms and '
                 f'Conditions set forth at {TERMS_URL}. By entering "y" and '
                 'selecting Enter, you agree that you have read and accept the '

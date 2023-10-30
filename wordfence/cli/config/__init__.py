@@ -70,7 +70,6 @@ def create_config_object(
                         default)
                 target.defaulted_options.add(item_definition.property_name)
     target.trailing_arguments = trailing_arguments
-    print(target.defaulted_options)
     return target
 
 
