@@ -22,7 +22,7 @@ If you'd like to install Wordfence CLI manually or use CLI for development, you 
 - Python >= 3.8
 - The C library `libpcre` >= 8.38
 - Python packages:
-	- `packaging` >= 23.1
+	- `packaging` >= 21.0 
 	- `requests` >= 2.3
 
 ### Obtaining a license

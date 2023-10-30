@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Security"
 ]
 dependencies = [
-    "packaging>=23.1",
+    "packaging>=21.0",
     "requests>=2.3"
 ]
 dynamic = [ "version" ]

@@ -15,8 +15,8 @@ elif [ "$2" != "amd64" ] && [ "$2" != "arm64" ]; then
 elif [ -z ${3:+x} ]; then
     echo "You must provide the package type as the third argument"
     exit 1
-elif [ "$3" != "deb" ] && [ "$3" != "standalone" ] && [ "$3" != "all" ]; then
-    echo "Invalid package type (must be deb, standalone, or all)"
+elif [ "$3" != "deb" ] && [ "$3" != "standalone" ]; then
+    echo "Invalid package type (must be deb or standalone)"
     exit 1
 fi
 
@@ -24,15 +24,9 @@ PROJECT_DIR=$(realpath "$1")
 echo "output path: $PROJECT_DIR/docker/build/volumes/output"
 ARCHITECTURE="$2"
 PACKAGE_TYPE="$3"
-GPG_HOME_DIR=$(gpgconf --list-dirs homedir)
-GPG_SOCKET=$(gpgconf --list-dirs agent-socket)
-CONTAINER_GPG_HOME_DIR="/var/run/host_gpg_home_dir"
 docker run \
     --name "wfcli-build-container-${ARCHITECTURE}" \
     --platform "linux/${ARCHITECTURE}" \
     -v "${PROJECT_DIR}/docker/build/volumes/output/:/root/output:rw" \
-    -v "${GPG_HOME_DIR}:${CONTAINER_GPG_HOME_DIR}:rw" \
-    -v "${GPG_SOCKET}:${CONTAINER_GPG_HOME_DIR}/S.gpg-agent:rw" \
-    -e "CONTAINER_GPG_HOME_DIR=${CONTAINER_GPG_HOME_DIR}" \
     -e "PACKAGE_TYPE=${PACKAGE_TYPE}" \
     "wfcli-build-$ARCHITECTURE"

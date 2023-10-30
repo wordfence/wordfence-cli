@@ -94,19 +94,13 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            wordfence_cli_python/*.tar.gz
-            wordfence_cli_python/*.whl
-            wordfence_cli_python/*.sha256
-            wordfence_cli_python/*.asc
             wordfence_cli_amd64/*.tar.gz
-            wordfence_cli_amd64/*.sha256
-            wordfence_cli_amd64/*.asc
             wordfence_cli_arm64/*.tar.gz
-            wordfence_cli_arm64/*.sha256
-            wordfence_cli_arm64/*.asc
             wordfence_cli_deb/*.deb
-            wordfence_cli_deb/*.sha256
-            wordfence_cli_deb/*.asc
+            wordfence_cli_python/*.whl
+            wordfence_cli_python/*.tar.gz
+            wordfence_cli_checksums/checksums.txt
+            wordfence_cli_checksums/checksums.txt.asc
           target_commitish: ${{ steps.get-commit-hash.outputs.BUILD_COMMIT_HASH }}
           tag_name: ${{ inputs.release_tag }}
           draft: true

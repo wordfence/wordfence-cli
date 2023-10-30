@@ -4,16 +4,16 @@ set -e
 cd /root/wordfence-cli
 
 ARCHITECTURE=$(dpkg --print-architecture)
-VERSION=$(python3 -c 'from wordfence import version; print(version.__version__)')
-GPG_USER='=Wordfence <opensource@wordfence.com>'
-
-# install build requirements
-pip install --upgrade pip
-pip install -r requirements.txt --force-reinstall
 
 if [ "$PACKAGE_TYPE" = 'deb' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
 
   # build deb package
+
+  VERSION=$(python3 -c 'from wordfence import version; print(version.__version__)')
+
+  # install build requirements
+  python3 -m pip install --upgrade pip
+  python3 -m pip install -r requirements.txt --force-reinstall
 
   export DEBFULLNAME='Wordfence'
   export DEBEMAIL='opensource@wordfence.com'
@@ -29,30 +29,10 @@ if [ "$PACKAGE_TYPE" = 'deb' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
   # build the package
   dpkg-buildpackage -us -uc -b
 
+  # copy to output volume
   pushd ..
-
-  # sign and generate checksum
   DEB_FILENAME="wordfence_${VERSION}_all"
-  sha256sum "${DEB_FILENAME}.deb" > "${DEB_FILENAME}.deb.sha256"
-  gpg \
-    --homedir "$CONTAINER_GPG_HOME_DIR" \
-    --detach-sign \
-    --armor \
-    --local-user "$GPG_USER" \
-    "${DEB_FILENAME}.deb"
-  gpg \
-    --homedir "$CONTAINER_GPG_HOME_DIR" \
-    --detach-sign \
-    --armor \
-    --local-user "$GPG_USER" \
-    "${DEB_FILENAME}.deb.sha256"
-  cp \
-    "${DEB_FILENAME}.deb" \
-    "${DEB_FILENAME}.deb.asc" \
-    "${DEB_FILENAME}.deb.sha256" \
-    "${DEB_FILENAME}.deb.sha256.asc" \
-    /root/output
-
+  cp "${DEB_FILENAME}.deb" /root/output/wordfence.deb
   popd
 
 fi
@@ -60,6 +40,14 @@ fi
 if [ "$PACKAGE_TYPE" = 'standalone' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
 
   # build standalone executable
+  
+  VERSION=$(python3.8 -c 'from wordfence import version; print(version.__version__)')
+
+  # install build requirements
+  python3.8 -m pip install --upgrade pip
+  python3.8 -m pip install -r requirements.txt --force-reinstall
+  # Ubuntu 18.04 requires this additional package (as well as the OS package libffi-dev)
+  python3.8 -m pip install cffi
 
   pyinstaller \
     --name wordfence \
@@ -76,31 +64,11 @@ if [ "$PACKAGE_TYPE" = 'standalone' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
     --hidden-import wordfence.cli.version.definition \
     main.py
 
+  # compress and copy to output volume
   pushd /root/wordfence-cli/dist
-
-  # compress the standalone executable, checksum and sign it, and copy both to the output directory
   STANDALONE_FILENAME="wordfence_${VERSION}_${ARCHITECTURE}_linux_exec"
   tar -czvf "${STANDALONE_FILENAME}.tar.gz" wordfence
-  sha256sum "${STANDALONE_FILENAME}.tar.gz" > "${STANDALONE_FILENAME}.tar.gz.sha256"
-  gpg \
-    --homedir "$CONTAINER_GPG_HOME_DIR" \
-    --detach-sign \
-    --armor \
-    --local-user "$GPG_USER" \
-    "${STANDALONE_FILENAME}.tar.gz"
-  gpg \
-    --homedir "$CONTAINER_GPG_HOME_DIR" \
-    --detach-sign \
-    --armor \
-    --local-user "$GPG_USER" \
-    "${STANDALONE_FILENAME}.tar.gz.sha256"
-  cp \
-    "${STANDALONE_FILENAME}.tar.gz" \
-    "${STANDALONE_FILENAME}.tar.gz.asc" \
-    "${STANDALONE_FILENAME}.tar.gz.sha256" \
-    "${STANDALONE_FILENAME}.tar.gz.sha256.asc" \
-    /root/output
-
+  cp "${STANDALONE_FILENAME}.tar.gz" "/root/output/wordfence_${ARCHITECTURE}.tar.gz"
   popd
 
 fi
