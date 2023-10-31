@@ -33,13 +33,21 @@ Visit [https://www.wordfence.com/products/wordfence-cli/](https://www.wordfence.
 
 You can run `wordfence help` for a full list of options that can be passed to Wordfence CLI. Read more about the [configuration options](docs/Configuration.md) that can be passed to Wordfence CLI.
 
-#### Example
+#### Scanning a directory for malware
 
 Recursively scanning the `/var/www` directory for malware and writing the results to `/home/username/wordfence-cli.csv`:
 
 	wordfence malware-scan --output-path /home/username/wordfence-cli.csv /var/www
 
-A [full list of examples](docs/malware-scan/Examples.md) is included in our documentation.
+A [full list of examples for the malware scan](docs/malware-scan/Examples.md) is included in our documentation.
+
+#### Scanning a WordPress installation for vulnerabilities
+
+Scanning the `/var/www/wordpress` directory for vulnerabilities and writing the results to `/home/username/wordfence-cli-vuln-scan.csv`. 
+
+	wordfence vuln-scan --output-path /home/username/wordfence-cli-vuln-scan.csv /var/www/wordpress
+
+A [full list of examples for the vulnerability scan](docs/vuln-scan/Examples.md) is included in our documentation.
 
 ## Documentation
 
