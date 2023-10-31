@@ -35,17 +35,17 @@ You can run `wordfence help` for a full list of options that can be passed to Wo
 
 #### Scanning a directory for malware
 
-Recursively scanning the `/var/www` directory for malware and writing the results to `/home/username/wordfence-cli.csv`:
+Recursively scanning the `/var/www` directory for malware:
 
-	wordfence malware-scan --output-path /home/username/wordfence-cli.csv /var/www
+	wordfence malware-scan /var/www
 
 A [full list of examples for the malware scan](docs/malware-scan/Examples.md) is included in our documentation.
 
 #### Scanning a WordPress installation for vulnerabilities
 
-Scanning the `/var/www/wordpress` directory for vulnerabilities and writing the results to `/home/username/wordfence-cli-vuln-scan.csv`. 
+Scanning the `/var/www/wordpress` directory for vulnerabilities. 
 
-	wordfence vuln-scan --output-path /home/username/wordfence-cli-vuln-scan.csv /var/www/wordpress
+	wordfence vuln-scan /var/www/wordpress
 
 A [full list of examples for the vulnerability scan](docs/vuln-scan/Examples.md) is included in our documentation.
 
