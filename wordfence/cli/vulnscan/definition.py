@@ -124,7 +124,7 @@ config_definitions: ConfigDefinitions = {
         "description": "The feed to use for vulnerability information. "
                        "The production feed provides all available "
                        "information fields. The scanner feed contains "
-                       "only the minimum fields necessary to conduct a scan"
+                       "only the minimum fields necessary to conduct a scan "
                        "and may be a better choice when detailed "
                        "vulnerability information is not needed.",
         "context": "ALL",
