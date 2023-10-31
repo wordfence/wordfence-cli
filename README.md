@@ -35,11 +35,11 @@ You can run `wordfence help` for a full list of options that can be passed to Wo
 
 #### Example
 
-Recursively scanning the `/var/www` directory and writing the results to `/home/username/wordfence-cli.csv`:
+Recursively scanning the `/var/www` directory for malware and writing the results to `/home/username/wordfence-cli.csv`:
 
-	wordfence scan --output-path /home/username/wordfence-cli.csv /var/www
+	wordfence malware-scan --output-path /home/username/wordfence-cli.csv /var/www
 
-A [full list of examples](docs/Examples.md) is included in our documentation.
+A [full list of examples](docs/malware-scan/Examples.md) is included in our documentation.
 
 ## Documentation
 

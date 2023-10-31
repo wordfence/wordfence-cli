@@ -20,9 +20,30 @@ Verify the executable works correctly on your system:
 
 You should see output similar to this:
 
-	Wordfence CLI 1.0.0
+	Wordfence CLI 2.0.1
 
-Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](Examples.md).
+Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
+
+## Install the Debian package
+
+This method will work for Debian and Debian-based Linux distros (Ubuntu, Linux Mint, Kali, etc) where you have root access to the system. 
+
+	sudo apt install ./wordfence.deb
+
+For older distros, you can also use the following commands to install CLI.
+
+	sudo dpkg -i wordfence.deb
+	sudo apt -f install
+
+Verify the executable works correctly on your system:
+
+	wordfence --version
+
+You should see output similar to this:
+
+	Wordfence CLI 2.0.1
+
+Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
 
 ## Binaries
 
@@ -30,13 +51,13 @@ Binaries for Wordfence CLI can be downloaded on the Releases page of the GitHub 
 
 [https://github.com/wordfence/wordfence-cli/releases](https://github.com/wordfence/wordfence-cli/releases)
 
-The binary files are in the format `wordfence_x.x.x_yyyy_linux_exec.tar.gz` where `x.x.x` is the Wordfence CLI version, and `yyyy` is the CPU architecture. The following example uses `1.0.0` as the version, and `AMD64` as the architecture. 
+The binary files are in the format `wordfence_yyyy.tar.gz` where `yyyy` is the CPU architecture. The following example uses `AMD64` as the architecture. 
 
 We recommend verifying the authenticity of the download prior to extracting the archive. You can do this by following [the steps outlined below](#verifying-the-authenticity-of-a-release-asset) prior to following the rest of these installation steps. 
 
 Extract the binary:
 
-	tar xvzf wordfence_1.0.0_amd64_linux_exec.tar.gz
+	tar xvzf wordfence_amd64.tar.gz
 
 Verify the binary works correctly on your system:
 
@@ -44,9 +65,9 @@ Verify the binary works correctly on your system:
 
 You should see output similar to this:
 
-	Wordfence CLI 1.0.0
+	Wordfence CLI 2.0.1
 
-Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](Examples.md).
+Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
 
 ## Docker
 
@@ -62,9 +83,9 @@ Once the Docker image is built, you can start the docker container with the volu
 
 You should see output similar to this:
 
-	Wordfence CLI 1.0.0
+	Wordfence CLI 2.0.1
 
-Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](Examples.md).
+Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
 
 ## Manual Installation
 
@@ -118,6 +139,6 @@ You should see output similar to this:
 	gpg: Good signature from "Wordfence <opensource@wordfence.com>" [ultimate]
 	gpg: signer '00B225C7030F26FF4A3D3481F82623ECE1DB0FBB' matched
 
-Now that you've verified the checksums file, you can confirm that the checksum of your download matches. For example, if you downloaded the `wordfence_2.0.1_amd64_linux_exec.tar.gz` (the standalone Linux executable for the `x86_64` architecture) to the same directory as `checksums.txt`, you can verify the checksum matches with:
+Now that you've verified the checksums file, you can confirm that the checksum of your download matches. For example, if you downloaded the `wordfence_amd64.tar.gz` (the standalone Linux executable for the `x86_64` architecture) to the same directory as `checksums.txt`, you can verify the checksum matches with:
 
 	sha256sum --ignore-missing -c checksums.txt

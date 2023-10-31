@@ -12,13 +12,13 @@ The releases page in GitHub will have the most recently available binaries for d
 
 [https://github.com/wordfence/wordfence-cli/releases](https://github.com/wordfence/wordfence-cli/releases)
 
-The binary files are in the format `wordfence_x.x.x_yyyy_linux_exec.tar.gz` where `x.x.x` is the Wordfence CLI version, and `yyyy` is the CPU architecture. The following example uses `2.0.0` as the version, and `AMD64` as the architecture. 
+The binary files are in the format `wordfence_yyyy.tar.gz` where `yyyy` is the CPU architecture. The following example uses `AMD64` as the architecture. 
 
 We recommend verifying the authenticity of the download prior to extracting the archive. You can do this by following [the steps outlined in the installation document](Installation.md#verifying-the-authenticity-of-a-release-asset) prior to following the rest of these updating steps. 
 
 Extract the binary:
 
-	tar xvzf wordfence_2.0.0_amd64_linux_exec.tar.gz
+	tar xvzf wordfence_amd64.tar.gz
 
 Verify the binary works correctly on your system:
 
@@ -26,7 +26,7 @@ Verify the binary works correctly on your system:
 
 You should see output similar to this:
 
-	Wordfence CLI 2.0.0
+	Wordfence CLI 2.0.1
 
 Copy the binary to the path you've installed your existing Wordfence CLI binary.
 
