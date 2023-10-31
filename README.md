@@ -1,6 +1,6 @@
 # Wordfence CLI
 
-Wordfence CLI is a multi-process malware scanner written in Python. It's designed to have low memory overhead while being able to utilize multiple cores for scanning large filesystems for malware. Wordfence CLI uses `libpcre` over Python's existing regex libraries for speed and compatibility with our signature set.
+ Wordfence CLI is a open source, high performance, multi-process security scanner, written in Python, that quickly scans network filesystems to detect PHP/other malware and WordPress vulnerabilities. CLI is parallelizable, can be scheduled, can accept input via pipe, and can pipe output to other commands.
 
 ## Installation
 
