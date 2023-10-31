@@ -6,6 +6,7 @@ from enum import Enum
 from contextlib import nullcontext
 
 from wordfence.logging import log
+from wordfence.util.io import resolve_path
 from .config import Config
 from .io import IoManager
 
@@ -350,8 +351,9 @@ class ReportManager:
         return self.io_manager
 
     def open_output_file(self) -> Optional[IO]:
-        return open(self.config.output_path, 'w') if self.config.output_path \
-                is not None else nullcontext()
+        return open(resolve_path(self.config.output_path), 'w') \
+                if self.config.output_path is not None \
+                else nullcontext()
 
     def _instantiate_report(
                 self,

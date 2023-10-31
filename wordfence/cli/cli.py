@@ -1,11 +1,11 @@
 import sys
-import os
 import logging
 
 from ..util import updater
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         CacheException
 from ..util.terminal import supports_colors
+from ..util.io import resolve_path
 from ..logging import log, enable_log_colors, VERBOSE
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
@@ -82,7 +82,7 @@ class WordfenceCli:
         if self.config.cache:
             try:
                 return CacheDirectory(
-                        os.path.expanduser(self.config.cache_directory),
+                        resolve_path(self.config.cache_directory),
                         cacheable_types
                     )
             except CacheException as exception:
