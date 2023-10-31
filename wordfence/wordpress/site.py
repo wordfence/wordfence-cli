@@ -241,8 +241,8 @@ class WordpressSite:
         configured = self.get_configured_plugins_directory(mu)
         if configured is not None:
             yield configured
-        relative_paths = self.structure_options.relative_plugins_paths \
-            if mu else self.structure_options.relative_mu_plugins_paths
+        relative_paths = self.structure_options.relative_mu_plugins_paths \
+            if mu else self.structure_options.relative_plugins_paths
         for path in relative_paths:
             yield self.resolve_core_path(path)
         yield self.resolve_content_path(
