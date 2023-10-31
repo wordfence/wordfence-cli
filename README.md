@@ -1,6 +1,6 @@
 # Wordfence CLI
 
- Wordfence CLI is a open source, high performance, multi-process security scanner, written in Python, that quickly scans network filesystems to detect PHP/other malware and WordPress vulnerabilities. CLI is parallelizable, can be scheduled, can accept input via pipe, and can pipe output to other commands.
+ Wordfence CLI is an open source, high performance, multi-process security scanner, written in Python, that quickly scans network filesystems to detect PHP/other malware and WordPress vulnerabilities. CLI is parallelizable, can be scheduled, can accept input via pipe, and can pipe output to other commands.
 
 ## Installation
 
