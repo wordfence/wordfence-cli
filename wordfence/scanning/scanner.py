@@ -74,7 +74,7 @@ class EventQueueLogHandler(Handler):
 
     def emit(self, record):
         data = {
-                'level': record.levelname,
+                'level': record.levelno,
                 'message': record.getMessage()
             }
         self._event_queue.put(
@@ -718,8 +718,7 @@ class ScanWorkerPool:
                     self._send_progress_update()
             elif event.type == ScanEventType.LOG_MESSAGE:
                 message: str = event.data['message']
-                method = getattr(log, event.data['level'].lower())
-                method(message)
+                log.log(event.data['level'], message)
 
     def is_failed(self) -> bool:
         return self._status.value == Status.FAILED
