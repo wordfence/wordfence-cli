@@ -17,7 +17,7 @@ from ..util.io import StreamReader
 from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
 from ..util.units import scale_byte_unit
 from ..intel.signatures import SignatureSet
-from ..logging import log, remove_initial_handler
+from ..logging import log, remove_initial_handler, VERBOSE
 
 MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
@@ -189,7 +189,7 @@ class FileLocator:
         real_path = os.path.realpath(self.path)
         if os.path.isdir(real_path):
             for path in self.search_directory(real_path):
-                log.info(f'File added to scan queue: {path}')
+                log.log(VERBOSE, f'File added to scan queue: {path}')
                 self.queue.put(path)
         else:
             if not self._is_loop(self.path):
@@ -382,7 +382,7 @@ class ScanWorker(Process):
             return min(self._scanned_content_limit - length, self._chunk_size)
 
     def _process_file(self, path: str, jit_stack: PcreJitStack):
-        log.info(f'Processing file: {path}')
+        log.log(VERBOSE, f'Processing file: {path}')
         with open(path, mode='rb') as file, \
                 self._matcher.create_context() as context:
             length = 0

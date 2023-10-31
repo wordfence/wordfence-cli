@@ -6,7 +6,7 @@ from ..util import updater
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         CacheException
 from ..util.terminal import supports_colors
-from ..logging import log, enable_log_colors
+from ..logging import log, enable_log_colors, VERBOSE
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
 from .config import load_config, RenamedSubcommandException
@@ -69,6 +69,8 @@ class WordfenceCli:
                     self.config.verbose is None
                     and sys.stdout is not None and sys.stdout.isatty()
                 ):
+            log.setLevel(VERBOSE)
+        else:
             log.setLevel(logging.INFO)
         if self.allows_color:
             enable_log_colors()

@@ -4,6 +4,7 @@ from typing import Optional
 from .formatting import ColoredFormatter
 
 DEFAULT_LOGGER_NAME = 'wordfence'
+VERBOSE = 15
 
 logging.basicConfig(format='%(message)s')
 log = logging.getLogger(DEFAULT_LOGGER_NAME)
