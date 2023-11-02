@@ -183,6 +183,7 @@ class FileLocator:
             contents = os.scandir(path)
         except OSError as os_error:
             self._handle_io_error(os_error, path)
+            return
         for item in contents:
             try:
                 if item.is_symlink() and self._is_loop(item.path, parents):
