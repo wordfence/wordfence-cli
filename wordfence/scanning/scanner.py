@@ -119,13 +119,17 @@ class Status(IntEnum):
 
 class FileLocator:
 
-    def __init__(self, path: str,
-                 queue: Queue,
-                 file_filter: FileFilter,
-                 ):
+    def __init__(
+                self,
+                path: str,
+                queue: Queue,
+                file_filter: FileFilter,
+                allow_io_errors: bool = False
+            ):
         self.path = path
         self.queue = queue
         self.file_filter = file_filter
+        self.allow_io_errors = allow_io_errors
         self.located_count = 0
         self.skipped_count = 0
 
@@ -160,12 +164,27 @@ class FileLocator:
             parents.append(path)
         return parents
 
+    def _handle_io_error(self, error: OSError, path: str) -> None:
+        detail = str(error)
+        if self.allow_io_errors:
+            log.warning(
+                    f'Path {path} could not be scanned due to an IO error and '
+                    f'will be skipped. ({detail})'
+                )
+        else:
+            raise ScanningIoException(
+                    f'Directory search of {path} failed ({detail})'
+                ) from error
+
     def search_directory(self, path: str, parents: Optional[list] = None):
         try:
             if parents is None:
                 parents = self._get_all_parents(path)
             contents = os.scandir(path)
-            for item in contents:
+        except OSError as os_error:
+            self._handle_io_error(os_error, path)
+        for item in contents:
+            try:
                 if item.is_symlink() and self._is_loop(item.path, parents):
                     continue
                 if item.is_dir():
@@ -179,11 +198,8 @@ class FileLocator:
                         continue
                     self.located_count += 1
                     yield item.path
-        except OSError as os_error:
-            detail = str(os_error)
-            raise ScanningIoException(
-                    f'Directory search of {path} failed ({detail})'
-                ) from os_error
+            except OSError as os_error:
+                self._handle_io_error(os_error, item.path)
 
     def locate(self):
         real_path = os.path.realpath(self.path)
@@ -204,7 +220,8 @@ class FileLocatorProcess(Process):
                 output_queue_size: int = MAX_PENDING_FILES,
                 file_filter: FileFilter = None,
                 use_log_events: bool = False,
-                event_queue: Optional[Queue] = None
+                event_queue: Optional[Queue] = None,
+                allow_io_errors: bool = False
             ):
         self._input_queue = Queue(input_queue_size)
         self.output_queue = Queue(output_queue_size)
@@ -215,6 +232,7 @@ class FileLocatorProcess(Process):
             raise ValueError('Using log events requires an event queue')
         self._use_log_events = use_log_events
         self._event_queue = event_queue
+        self.allow_io_errors = allow_io_errors
         self._path_count = 0
         self._skipped_count = Value('i', 0)
         super().__init__(name='file-locator')
@@ -246,7 +264,8 @@ class FileLocatorProcess(Process):
                 locator = FileLocator(
                         path=path,
                         file_filter=self.file_filter,
-                        queue=self.output_queue
+                        queue=self.output_queue,
+                        allow_io_errors=self.allow_io_errors
                     )
                 locator.locate()
                 skipped_count += locator.skipped_count
@@ -749,7 +768,8 @@ class Scanner:
         file_locator_process = FileLocatorProcess(
                 file_filter=self.options.file_filter,
                 use_log_events=use_log_events,
-                event_queue=event_queue if use_log_events else None
+                event_queue=event_queue if use_log_events else None,
+                allow_io_errors=self.options.allow_io_errors
             )
         self.active.append(file_locator_process)
         file_locator_process.start()
