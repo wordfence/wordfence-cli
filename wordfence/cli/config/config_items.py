@@ -183,6 +183,10 @@ class CanonicalValueExtractorInterface(metaclass=abc.ABCMeta):
         configuration source"""
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def get_context(self) -> Context:
+        raise NotImplementedError
+
 
 @lru_cache(maxsize=1)
 def get_data_item_fields() -> Set[str]:

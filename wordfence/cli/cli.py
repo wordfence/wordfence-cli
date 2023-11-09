@@ -15,7 +15,7 @@ from .config.base_config_definitions import config_map \
 from .subcommands import load_subcommand_definitions
 from .context import CliContext
 from .configurer import Configurer
-from .terms import TermsManager
+from .terms_management import TermsManager
 from .helper import Helper
 
 
@@ -159,9 +159,10 @@ class WordfenceCli:
             configurer.check_config()
             return 0
 
-        if self.subcommand_definition.requires_config \
-                and not configurer.check_config():
-            return 0
+        if self.subcommand_definition.requires_config:
+            if not configurer.check_config():
+                return 0
+            terms_manager.prompt_acceptance_if_needed()
 
         self.subcommand = None
         try:

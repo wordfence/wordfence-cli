@@ -100,6 +100,9 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
 
         return value
 
+    def get_context(self) -> Context:
+        return Context.CONFIG
+
 
 def get_ini_value_extractor(
             subcommand_definition: SubcommandDefinition

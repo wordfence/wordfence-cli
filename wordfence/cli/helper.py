@@ -2,7 +2,7 @@ import shutil
 import os
 from typing import Dict, Optional, Any, List
 
-from .config.config_items import ConfigItemDefinition
+from .config.config_items import ConfigItemDefinition, Context
 from .subcommands import SubcommandDefinition
 
 
@@ -19,7 +19,8 @@ class OptionHelp:
                 category: str,
                 default: str,
                 valid_values: Optional[List[str]],
-                is_flag: bool = False
+                context: Context,
+                is_flag: bool = False,
             ):
         self.long_name = long_name
         self.short_name = short_name
@@ -27,6 +28,7 @@ class OptionHelp:
         self.category = category
         self.default = default
         self.valid_values = valid_values
+        self.context = context
         self.is_flag = is_flag
         self.label = self.generate_label()
 
@@ -135,7 +137,7 @@ class OptionFormatter:
                 config_map: Dict[str, ConfigItemDefinition]
             ) -> None:
         for item in config_map.values():
-            if item.hidden:
+            if item.hidden or item.context is Context.CONFIG:
                 continue
             valid_values = None
             if item.has_options_list():
@@ -147,6 +149,7 @@ class OptionFormatter:
                     item.category,
                     item.default,
                     valid_values,
+                    item.context,
                     item.is_flag()
                 )
             self._add_option_help(option)
@@ -176,7 +179,10 @@ class OptionFormatter:
                 valid_options = 'Options: '
                 valid_options += ', '.join(option.valid_values)
                 lines.append(self._offset(valid_options, offset))
-            if option.is_flag:
+            if option.is_flag and (
+                        option.default or
+                        option.context is not Context.CLI
+                    ):
                 lines.append(self._offset(
                         f'(use --no-{option.long_name} to disable)',
                         offset

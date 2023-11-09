@@ -1,6 +1,7 @@
 import sys
 
 from wordfence.util.input import prompt_yes_no
+from wordfence.util.caching import NoCachedValueException
 from .context import CliContext
 
 TERMS_URL = \
@@ -14,9 +15,13 @@ class TermsManager:
         self.context = context
 
     def prompt_acceptance_if_needed(self):
-        accepted = self.context.cache.get(TERMS_CACHE_KEY)
-        if not accepted:
-            self.prompt_acceptance()
+        try:
+            accepted = self.context.cache.get(TERMS_CACHE_KEY)
+            if accepted:
+                return
+        except NoCachedValueException:
+            pass
+        self.prompt_acceptance()
 
     def trigger_update(self, paid: bool = False):
         self.context.cache.put(TERMS_CACHE_KEY, False)
@@ -29,6 +34,9 @@ class TermsManager:
         self.context.cache.put(TERMS_CACHE_KEY, True)
 
     def prompt_acceptance(self, paid: bool = False):
+        if self.context.config.accept_terms:
+            self.record_acceptance()
+            return
         if not (sys.stdout.isatty() and sys.stdin.isatty()):
             return
         if paid:
