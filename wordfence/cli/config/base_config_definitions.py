@@ -2,7 +2,7 @@ from .defaults import INI_DEFAULT_PATH
 from .config_items import config_definitions_to_config_map
 
 from ..terms_management import TERMS_URL
-from ..mailing_lists import MailingList
+from ..mailing_lists import EMAIL_SIGNUP_MESSAGE
 
 config_definitions = {
     "configuration": {
@@ -98,13 +98,7 @@ config_definitions = {
         "description": "Automatically accept the terms required to invoke "
                        "the specified command. The latest terms can be "
                        "viewed using the wordfence terms command  and found "
-                       f"at {TERMS_URL}. Register to receive updated "
-                       "Wordfence CLI Terms of Service via email at "
-                       f"{MailingList.TERMS.registration_url}. Join our "
-                       "WordPress Security mailing list at "
-                       f"{MailingList.WORDPRESS_SECURITY.registration_url} to "
-                       "get security alerts, news, and research directly to "
-                       "your inbox.",
+                       f"at {TERMS_URL}. {EMAIL_SIGNUP_MESSAGE}",
         "context": "CLI",
         "argument_type": "FLAG",
         "default": False

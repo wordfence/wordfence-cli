@@ -15,6 +15,7 @@ from .config import load_config
 from .subcommands import SubcommandDefinition
 from .terms_management import TERMS_URL, TermsManager
 from .helper import Helper
+from .mailing_lists import EMAIL_SIGNUP_MESSAGE
 
 
 CONFIG_SECTION_DEFAULT = 'DEFAULT'
@@ -352,6 +353,7 @@ class Configurer:
                     "Wordfence CLI has been successfully configured and is "
                     "now ready for use."
                 )
+        log.info(EMAIL_SIGNUP_MESSAGE)
         return True
 
     def convert_legacy_config(self) -> bool:
