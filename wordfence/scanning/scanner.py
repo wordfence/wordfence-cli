@@ -777,6 +777,10 @@ class Scanner:
         for path in self.options.paths:
             file_locator_process.add_path(path)
         worker_count = self.options.workers
+        if worker_count < 1:
+            raise ScanConfigurationException(
+                    'Scans require at least one worker'
+                )
         log.debug("Using " + str(worker_count) + " worker(s)...")
         matcher = RegexMatcher(
                     self.options.signatures,
