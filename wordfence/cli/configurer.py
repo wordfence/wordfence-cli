@@ -177,7 +177,7 @@ class Configurer:
         if self.config.has_ini_file():
             overwrite = prompt_yes_no(
                     'An existing configuration file was found at '
-                    f'{self.config.ini_path}, do you want to overwrite it?',
+                    f'{self.config.ini_path}, do you want to update it?',
                     default=False
                 )
             return overwrite
