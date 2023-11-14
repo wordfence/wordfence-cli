@@ -173,12 +173,7 @@ class VulnScanReport(Report):
 VULN_SCAN_REPORT_CONFIG_OPTIONS = get_config_options(
         VulnScanReportFormat,
         VulnScanReportColumn,
-        [
-            VulnScanReportColumn.SLUG,
-            VulnScanReportColumn.VERSION,
-            VulnScanReportColumn.LINK
-        ],
-        'human'
+        default_format='human'
     )
 
 

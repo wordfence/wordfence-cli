@@ -54,6 +54,9 @@ class ReportColumnEnum(ReportColumn, Enum):
         raise ValueError(f'Unrecognized report column: {header}')
 
 
+REPORT_COLUMNS_ALL = 'all'
+
+
 class ReportWriter:
 
     def __init__(self, target: IO):
@@ -250,9 +253,14 @@ class Report:
 def get_config_options(
             formats: Type[ReportFormatEnum],
             columns: Type[ReportColumnEnum],
-            default_columns: List[ReportColumnEnum],
+            default_columns: Union[List[ReportColumnEnum], str] =
+            REPORT_COLUMNS_ALL,
             default_format: str = 'csv'
         ) -> Dict[str, Dict[str, Any]]:
+    if not isinstance(default_columns, str):
+        default_columns = ','.join(
+                [column.header for column in default_columns]
+            )
     header_formats = []
     column_formats = []
     for format in formats:
@@ -287,7 +295,7 @@ def get_config_options(
                             ),
             "context": "ALL",
             "argument_type": "OPTION",
-            "default": ','.join([column.header for column in default_columns]),
+            "default": default_columns,
             "meta": {
                 "separator": ","
             },
@@ -378,14 +386,22 @@ class ReportManager:
         if output_file is not None:
             report.add_target(output_file)
 
+    def _get_configured_columns(self) -> List[ReportColumn]:
+        columns = []
+        for option in self.config.output_columns:
+            print(repr(option))
+            if option == REPORT_COLUMNS_ALL:
+                for column in self.columns:
+                    columns.append(column)
+            else:
+                columns.append(self.columns.for_option(option))
+        return columns
+
     def initialize_report(self, output_file: Optional[IO] = None) -> Report:
         format = self.formats.for_option(
                 self.config.output_format
             )
-        columns = [
-                self.columns.for_option(option) for option
-                in self.config.output_columns
-            ]
+        columns = self._get_configured_columns()
         report = self._instantiate_report(
                 format,
                 columns,
