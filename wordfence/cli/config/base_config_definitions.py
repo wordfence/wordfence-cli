@@ -68,7 +68,7 @@ config_definitions = {
         "category": "Caching"
     },
     "cache": {
-        "description": "Whether or not to enable the cache.",
+        "description": "Enable caching. Caching is enabled by default.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True,

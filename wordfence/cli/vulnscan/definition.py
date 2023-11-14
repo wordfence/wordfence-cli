@@ -7,8 +7,7 @@ config_definitions: ConfigDefinitions = {
     "read-stdin": {
         "description": "Read WordPress base paths from stdin. If not specified"
                        ", paths will automatically be read from stdin when "
-                       "input is not from a TTY. Specify --no-read-stdin to "
-                       "disable.",
+                       "input is not from a TTY.",
         "context": "ALL",
         "argument_type": "OPTIONAL_FLAG",
         "default": None
@@ -79,7 +78,7 @@ config_definitions: ConfigDefinitions = {
     },
     "relative-mu-plugins-path": {
         "short_name": "M",
-        "description": "Alternate path of the wp-content/plugins directory "
+        "description": "Alternate path of the wp-content/mu-plugins directory "
                        "relative to the WordPress root.",
         "context": "ALL",
         "argument_type": "OPTION_REPEATABLE",
@@ -113,8 +112,8 @@ config_definitions: ConfigDefinitions = {
     },
     "informational": {
         "short_name": "I",
-        "description": "Whether or not to include informational "
-                       "vulnerability records in results.",
+        "description": "Include informational vulnerability records in "
+                       "results.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": False

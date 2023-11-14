@@ -273,8 +273,7 @@ def get_config_options(
     return {
         "output": {
             "description": "Write results to stdout. This is the default "
-                           "behavior when --output-path is not specified. "
-                           "Use --no-output to disable.",
+                           "behavior when --output-path is not specified.",
             "context": "ALL",
             "argument_type": "OPTIONAL_FLAG",
             "default": None,
@@ -313,7 +312,7 @@ def get_config_options(
             "category": "Output Control"
         },
         "output-headers": {
-            "description": "Whether or not to include column headers in "
+            "description": "Include column headers in "
                            "output.\n"
                            f"Compatible formats: {header_format_string}",
             "context": "ALL",
