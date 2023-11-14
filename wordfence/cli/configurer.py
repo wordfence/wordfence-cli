@@ -13,8 +13,9 @@ from wordfence.api.exceptions import ApiException
 from wordfence.logging import log
 from .config import load_config
 from .subcommands import SubcommandDefinition
-from .terms import TERMS_URL, TermsManager
+from .terms_management import TERMS_URL, TermsManager
 from .helper import Helper
+from .mailing_lists import EMAIL_SIGNUP_MESSAGE
 
 
 CONFIG_SECTION_DEFAULT = 'DEFAULT'
@@ -137,6 +138,10 @@ class Configurer:
         self.terms_manager = terms_manager
         self.subcommand_definition = subcommand_definition
         self.subcommand_definitions = subcommand_definitions
+        self.overwrite = None
+        self.request_license = None
+        self.workers = None
+        self.default = False
         self.written = False
         self.config_file_manager = None
 
@@ -174,7 +179,7 @@ class Configurer:
         return True
 
     def _prompt_overwrite(self) -> bool:
-        if self.config.has_ini_file():
+        if not self.overwrite and self.config.has_ini_file():
             overwrite = prompt_yes_no(
                     'An existing configuration file was found at '
                     f'{self.config.ini_path}, do you want to update it?',
@@ -194,22 +199,6 @@ class Configurer:
         return client.get_cli_api_key(accept_terms=terms_accepted)
 
     def _prompt_for_license(self) -> str:
-        if self.config.license is not None:
-            print(f'Current license: {self.config.license}')
-            change_license = prompt_yes_no(
-                    'An existing license was found, '
-                    'would you like to change it?',
-                    default=False
-                )
-            if not change_license:
-                return self.config.license
-        request_free = prompt_yes_no(
-                'Would you like to automatically request a free Wordfence CLI'
-                ' license?',
-                default=True
-            )
-        if not request_free:
-            print(f'Please visit {LICENSE_URL} to obtain a license key.')
 
         def _validate_license(license: str) -> str:
             client = self._create_noc1_client(license)
@@ -227,8 +216,31 @@ class Configurer:
                         )
             return license
 
+        if self.config.is_from_cli('license'):
+            _validate_license(self.config.license)
+            return self.config.license
+
+        if self.config.license is not None:
+            print(f'Current license: {self.config.license}')
+            change_license = self.request_license \
+                or self.default \
+                or prompt_yes_no(
+                    'An existing license was found, '
+                    'would you like to change it?',
+                    default=False
+                )
+            if not change_license:
+                return self.config.license
+        request_free = self.default or self.request_license or prompt_yes_no(
+                'Would you like to automatically request a free Wordfence CLI'
+                ' license?',
+                default=True
+            )
+        if not request_free:
+            print(f'Please visit {LICENSE_URL} to obtain a license key.')
+
         if request_free:
-            terms_accepted = prompt_yes_no(
+            terms_accepted = self.config.accept_terms or prompt_yes_no(
                     'Your access to and use of Wordfence CLI Free edition is '
                     'subject to the Wordfence CLI License Terms and '
                     f'Conditions set forth at {TERMS_URL}. By entering "y" '
@@ -269,6 +281,10 @@ class Configurer:
                     ) from e
             return directory
 
+        if self.config.is_from_cli('cache_directory') or self.config.default:
+            _validate_writable(self.config.cache_directory)
+            return self.config.cache_directory
+
         directory = prompt(
                 'Cache directory',
                 self.config.cache_directory,
@@ -277,6 +293,10 @@ class Configurer:
         return directory
 
     def _prompt_for_worker_count(self) -> int:
+        if self.workers is not None:
+            return self.workers
+        if self.default:
+            return 1
         cpus = cpu_count()
         config = self.get_config('malware-scan')
         processes = prompt_int(
@@ -333,6 +353,7 @@ class Configurer:
                     "Wordfence CLI has been successfully configured and is "
                     "now ready for use."
                 )
+        log.info(EMAIL_SIGNUP_MESSAGE)
         return True
 
     def convert_legacy_config(self) -> bool:

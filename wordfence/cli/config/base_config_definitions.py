@@ -1,6 +1,9 @@
 from .defaults import INI_DEFAULT_PATH
 from .config_items import config_definitions_to_config_map
 
+from ..terms_management import TERMS_URL
+from ..mailing_lists import EMAIL_SIGNUP_MESSAGE
+
 config_definitions = {
     "configuration": {
         "short_name": "c",
@@ -51,7 +54,7 @@ config_definitions = {
         "category": "Logging"
     },
     "color": {
-        "description": "Enable ANSI escape sequences in output",
+        "description": "Enable ANSI escape sequences in output.",
         "context": "CLI",
         "argument_type": "OPTIONAL_FLAG",
         "default": None,
@@ -86,7 +89,16 @@ config_definitions = {
     },
     "help": {
         "short_name": "h",
-        "description": "Display help information",
+        "description": "Display help information.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False
+    },
+    "accept-terms": {
+        "description": "Automatically accept the terms required to invoke "
+                       "the specified command. The latest terms can be "
+                       "viewed using the wordfence terms command  and found "
+                       f"at {TERMS_URL}. {EMAIL_SIGNUP_MESSAGE}",
         "context": "CLI",
         "argument_type": "FLAG",
         "default": False
