@@ -96,9 +96,16 @@ class HumanReadableWriter(RowlessWriter):
             severity = severity.lower()
             severity_color = self.get_severity_color(severity)
             severity_message = f'{severity_color}{severity}{yellow} severity '
+        if vuln.informational:
+            bold_white = escape(color=Color.WHITE, bold=True)
+            info_message = f'{bold_white}informational{yellow} '
+            if len(severity_message) == 0:
+                info_message = ' ' + info_message
+        else:
+            info_message = ''
         return (
-            f'{yellow}Found {severity_message}vulnerability {vuln.title} in '
-            f'{sw.slug}({sw.version})\n'
+            f'{yellow}Found {severity_message}{info_message}vulnerability '
+            f'{vuln.title} in {sw.slug}({sw.version})\n'
             f'{white}Details: {blue}{link}{RESET}'
             )
 
