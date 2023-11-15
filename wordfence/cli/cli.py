@@ -15,6 +15,7 @@ from .config.base_config_definitions import config_map \
 from .subcommands import load_subcommand_definitions
 from .context import CliContext
 from .configurer import Configurer
+from . import licensing
 from .terms_management import TermsManager
 from .helper import Helper
 
@@ -76,7 +77,7 @@ class WordfenceCli:
             enable_log_colors()
 
     def initialize_cache(self) -> Cache:
-        cacheable_types = set()
+        cacheable_types = licensing.CACHEABLE_TYPES
         for definition in self.subcommand_definitions.values():
             cacheable_types.update(definition.cacheable_types)
         if self.config.cache:
@@ -142,12 +143,15 @@ class WordfenceCli:
         if self.config.check_for_update:
             updater.Version.check(self.cache)
 
+        license_manager = licensing.LicenseManager(context)
+
         terms_manager = TermsManager(context)
         context.register_terms_update_hook(terms_manager.trigger_update)
 
         configurer = Configurer(
                 self.config,
                 self.helper,
+                license_manager,
                 terms_manager,
                 self.subcommand_definitions,
                 self.subcommand_definition
@@ -162,6 +166,8 @@ class WordfenceCli:
         if self.subcommand_definition.requires_config:
             if not configurer.check_config():
                 return 0
+            if not self.subcommand_definition.uses_license:
+                license_manager.check_license()
             terms_manager.prompt_acceptance_if_needed()
 
         self.subcommand = None

@@ -7,12 +7,11 @@ from wordfence.util.input import prompt, prompt_yes_no, prompt_int, \
         InvalidInputException
 from wordfence.util.io import ensure_directory_is_writable, \
         ensure_file_is_writable, resolve_path, IoException
-from wordfence.api import noc1
-from wordfence.api.licensing import License, LICENSE_URL
-from wordfence.api.exceptions import ApiException
+from wordfence.api.licensing import LICENSE_URL
 from wordfence.logging import log
 from .config import load_config
 from .subcommands import SubcommandDefinition
+from .licensing import LicenseManager, LicenseValidationFailure
 from .terms_management import TERMS_URL, TermsManager
 from .helper import Helper
 from .mailing_lists import EMAIL_SIGNUP_MESSAGE
@@ -126,6 +125,7 @@ class Configurer:
                 self,
                 config,
                 helper: Helper,
+                license_manager: LicenseManager,
                 terms_manager: TermsManager,
                 subcommand_definitions: Dict[str, SubcommandDefinition],
                 subcommand_definition: Optional[SubcommandDefinition] = None
@@ -135,6 +135,7 @@ class Configurer:
         self.all_config = {}
         self.all_config[config.subcommand] = config
         self.config_values = []
+        self.license_manager = license_manager
         self.terms_manager = terms_manager
         self.subcommand_definition = subcommand_definition
         self.subcommand_definitions = subcommand_definitions
@@ -188,37 +189,10 @@ class Configurer:
             return overwrite
         return True
 
-    def _create_noc1_client(
-                self,
-                license: Optional[str] = None
-            ) -> noc1.Client:
-        return noc1.Client(License(license), self.config.noc1_url)
-
-    def _request_free_license(self, terms_accepted: bool = False) -> str:
-        client = self._create_noc1_client()
-        return client.get_cli_api_key(accept_terms=terms_accepted)
-
     def _prompt_for_license(self) -> str:
 
-        def _validate_license(license: str) -> str:
-            client = self._create_noc1_client(license)
-            try:
-                if not client.ping_api_key():
-                    raise InvalidInputException('Invalid license')
-            except ApiException as e:
-                if e.public_message is not None:
-                    raise InvalidInputException(
-                            f'Invalid license: {e.public_message}'
-                        )
-                else:
-                    raise InvalidInputException(
-                            'License validation failed. Please try again.'
-                        )
-            return license
-
         if self.config.is_from_cli('license'):
-            _validate_license(self.config.license)
-            return self.config.license
+            return self.license_manager.validate_license(self.config.license)
 
         if self.config.license is not None:
             print(f'Current license: {self.config.license}')
@@ -230,7 +204,17 @@ class Configurer:
                     default=False
                 )
             if not change_license:
-                return self.config.license
+                try:
+                    return self.license_manager.validate_license(
+                            self.config.license
+                        )
+                except LicenseValidationFailure as failure:
+                    print(failure.message)
+                    print(
+                            'Your existing license is invalid. Please specify '
+                            'a valid license.'
+                        )
+
         request_free = self.default or self.request_license or prompt_yes_no(
                 'Would you like to automatically request a free Wordfence CLI'
                 ' license?',
@@ -249,7 +233,9 @@ class Configurer:
                     default=False
                 )
             if terms_accepted:
-                license = self._request_free_license(terms_accepted)
+                license = self.license_manager.request_free_license(
+                        terms_accepted
+                    )
                 self.terms_manager.record_acceptance(False)
                 print(
                         'Free Wordfence CLI license obtained successfully: '
@@ -266,7 +252,7 @@ class Configurer:
         license = prompt(
                 'License',
                 self.config.license,
-                transformer=_validate_license
+                transformer=self.license_manager.validate_license
             )
         return license
 
@@ -329,9 +315,10 @@ class Configurer:
         if not overwrite and not self._prompt_overwrite():
             return False
         has_existing_config = self.config.has_ini_file()
+        license = self._prompt_for_license()
         self.update_config(
                 'license',
-                self._prompt_for_license()
+                license.key
             )
         self.update_config(
                 'cache_directory',
@@ -343,6 +330,7 @@ class Configurer:
                 'MALWARE_SCAN'
             )
         self.write_config()
+        self.license_manager.set_license(license)
         if has_existing_config:
             log.info(
                     "The configuration for Wordfence CLI has been "

@@ -1,3 +1,5 @@
+from typing import Union
+
 from .exceptions import ApiException
 
 
@@ -11,6 +13,15 @@ class License:
 
     def __eq__(self, other):
         return other.key == self.key
+
+    def __str__(self) -> str:
+        return self.key
+
+
+def to_license(license: Union[License, str]) -> License:
+    if isinstance(license, License):
+        return license
+    return License(license)
 
 
 class LicenseRequiredException(ApiException):
