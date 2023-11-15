@@ -1,6 +1,6 @@
 import sys
 
-from wordfence.util.input import prompt_yes_no
+from wordfence.util.input import prompt_yes_no, InputException
 from wordfence.util.caching import Cacheable, NoCachedValueException, \
         DURATION_ONE_DAY
 from .context import CliContext
@@ -40,13 +40,13 @@ class TermsManager:
         if self.context.config.accept_terms:
             self.record_acceptance()
             return
-        if not (sys.stdout.isatty() and sys.stdin.isatty()):
-            return
         if paid:
             edition = ''
         else:
             edition = ' Free edition'
-        terms_accepted = prompt_yes_no(
+        terms_accepted = False
+        try:
+            terms_accepted = prompt_yes_no(
                 f'Your access to and use of Wordfence CLI{edition} is '
                 'subject to the updated Wordfence CLI License Terms and '
                 f'Conditions set forth at {TERMS_URL}. By entering "y" and '
@@ -54,6 +54,13 @@ class TermsManager:
                 'updated Wordfence CLI License Terms and Conditions.',
                 default=False
             )
+        except InputException:
+            print(
+                    'Wordfence CLI does not appear to be running interactively'
+                    ' and cannot prompt for agreement to the license terms. '
+                    'Please run Wordfence CLI in a terminal or use the '
+                    '--accept-terms command line option instead.'
+                )
         if terms_accepted:
             self.record_acceptance()
         else:

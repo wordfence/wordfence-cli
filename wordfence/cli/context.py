@@ -1,10 +1,10 @@
-import sys
 from typing import Optional, Any
 
 from ..version import __version__, __version_name__
 from ..util import pcre
 from ..api import noc1, intelligence
 from ..util.caching import Cache, InvalidCachedValueException
+from ..util.input import has_terminal_input, has_terminal_output
 from ..api.licensing import License, LicenseRequiredException, LicenseSpecific
 from .config.config import Config
 
@@ -77,9 +77,7 @@ class CliContext:
             )
 
     def has_terminal_output(self) -> bool:
-        return sys.stdout is not None \
-                and sys.stdout.isatty()
+        return has_terminal_output()
 
     def has_terminal_input(self) -> bool:
-        return sys.stdin is not None \
-                and sys.stdin.isatty()
+        return has_terminal_input()

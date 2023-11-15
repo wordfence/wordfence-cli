@@ -1,10 +1,11 @@
+import sys
 from collections import namedtuple
 from configparser import ConfigParser, DuplicateSectionError
 from multiprocessing import cpu_count
 from typing import Optional, List, Dict, TextIO
 
 from wordfence.util.input import prompt, prompt_yes_no, prompt_int, \
-        InvalidInputException
+        InvalidInputException, InputException
 from wordfence.util.io import ensure_directory_is_writable, \
         ensure_file_is_writable, resolve_path, IoException
 from wordfence.api.licensing import LICENSE_URL
@@ -312,37 +313,40 @@ class Configurer:
             setattr(self.config, key, value)
 
     def prompt_for_config(self, overwrite: bool = False) -> bool:
-        if not overwrite and not self._prompt_overwrite():
-            return False
-        has_existing_config = self.config.has_ini_file()
-        license = self._prompt_for_license()
-        self.update_config(
-                'license',
-                license.key
-            )
-        self.update_config(
-                'cache_directory',
-                self._prompt_for_cache_directory()
-            )
-        self.update_config(
-                'workers',
-                self._prompt_for_worker_count(),
-                'MALWARE_SCAN'
-            )
-        self.write_config()
-        self.license_manager.set_license(license)
-        if has_existing_config:
-            log.info(
-                    "The configuration for Wordfence CLI has been "
-                    "successfully updated."
+        try:
+            if not overwrite and not self._prompt_overwrite():
+                return False
+            has_existing_config = self.config.has_ini_file()
+            license = self._prompt_for_license()
+            self.update_config(
+                    'license',
+                    license.key
                 )
-        else:
-            log.info(
-                    "Wordfence CLI has been successfully configured and is "
-                    "now ready for use."
+            self.update_config(
+                    'cache_directory',
+                    self._prompt_for_cache_directory()
                 )
-        log.info(EMAIL_SIGNUP_MESSAGE)
-        return True
+            self.update_config(
+                    'workers',
+                    self._prompt_for_worker_count(),
+                    'MALWARE_SCAN'
+                )
+            self.write_config()
+            self.license_manager.set_license(license)
+            if has_existing_config:
+                log.info(
+                        "The configuration for Wordfence CLI has been "
+                        "successfully updated."
+                    )
+            else:
+                log.info(
+                        "Wordfence CLI has been successfully configured and "
+                        "is now ready for use."
+                    )
+            log.info(EMAIL_SIGNUP_MESSAGE)
+            return True
+        except InputException:
+            self._handle_prompt_error()
 
     def convert_legacy_config(self) -> bool:
         values = self.read_config()
@@ -372,16 +376,30 @@ class Configurer:
         return True
 
     def prompt_for_missing_config(self) -> bool:
-        should_configure = prompt_yes_no(
-                'Wordfence CLI cannot be used until it has been configured. '
-                'Would you like to configure it now?',
-                default=False
+        try:
+            should_configure = prompt_yes_no(
+                    'Wordfence CLI cannot be used until it has been '
+                    'configured. Would you like to configure it now?',
+                    default=False
+                )
+            if should_configure:
+                self.prompt_for_config()
+                return True
+            else:
+                return False
+        except InputException:
+            self._handle_prompt_error()
+
+    def _handle_prompt_error(self) -> None:
+        print(
+                'Wordfence CLI does not appear to be running interactively '
+                'and cannot prompt for configuration. Please run Wordfence '
+                'CLI in a terminal, specify the configuration options using '
+                'the various command line parameters, or set up a '
+                'configuration file manually. Run wordfence configure --help '
+                'for additional information.'
             )
-        if should_configure:
-            self.prompt_for_config()
-            return True
-        else:
-            return False
+        sys.exit(1)
 
     def check_config(self) -> bool:
         if self.has_base_config():

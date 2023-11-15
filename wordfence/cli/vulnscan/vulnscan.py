@@ -169,7 +169,7 @@ class VulnScanSubcommand(Subcommand):
         required = self.config.require_path
         return (
                 required is True or
-                (required is None and self.context.has_terminal_input)
+                (required is None and self.context.has_terminal_input())
             )
 
     def _check_required_paths(self) -> bool:

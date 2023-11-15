@@ -1,10 +1,38 @@
+import sys
+
 from typing import Optional, Callable, Any
 
 
-class InvalidInputException(Exception):
+class InputException(Exception):
+    pass
+
+
+class InvalidInputException(InputException):
 
     def __init__(self, message: str):
         self.message = message
+
+
+class NoInputException(InputException):
+    pass
+
+
+class NoTerminalException(InputException):
+    pass
+
+
+def has_terminal_output() -> bool:
+    return sys.stdout is not None \
+            and sys.stdout.isatty()
+
+
+def has_terminal_input() -> bool:
+    return sys.stdin is not None \
+            and sys.stdin.isatty()
+
+
+def has_terminal() -> bool:
+    return has_terminal_input() and has_terminal_output()
 
 
 def prompt(
@@ -13,11 +41,16 @@ def prompt(
             transformer: Optional[Callable[[str], Any]] = None,
             allow_empty: bool = False
         ) -> Any:
+    if not has_terminal():
+        raise NoTerminalException('Interactive prompts require a terminal')
     default_message = ''
     if default is not None:
         default_message = f' (default: {default})'
     while True:
-        response = input(f'{message}{default_message}: ')
+        try:
+            response = input(f'{message}{default_message}: ')
+        except EOFError as error:
+            raise NoInputException('Unable to read input') from error
         if len(response) == 0 and not allow_empty:
             response = default
         if transformer is not None:
