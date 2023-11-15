@@ -1,7 +1,7 @@
 import os
 import os.path
 from dataclasses import dataclass, field
-from typing import Optional, List, Generator
+from typing import Optional, List, Generator, Set
 
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
@@ -38,17 +38,19 @@ class WordpressStructureOptions:
     relative_mu_plugins_paths: List[str] = field(default_factory=list)
 
 
-class WordpressSite:
+class PathResolver:
 
-    def __init__(
-                self,
-                path: str,
-                structure_options: Optional[WordpressStructureOptions] = None,
-            ):
+    def __init__(self, path: str):
         self.path = path
-        self.core_path = self._locate_core()
-        self.structure_options = structure_options \
-            if structure_options is not None else WordpressStructureOptions()
+
+    def _resolve_path(self, path: str, base: str) -> str:
+        return os.path.join(base, path.lstrip('/'))
+
+    def resolve_path(self, path: str) -> str:
+        return self._resolve_path(path, self.path)
+
+
+class WordpressLocator(PathResolver):
 
     def _is_core_directory(self, path: str) -> bool:
         missing_files = EXPECTED_CORE_FILES.copy()
@@ -83,47 +85,72 @@ class WordpressSite:
             pass
         return None
 
-    def _get_child_directories(self, path: str) -> List[str]:
+    def _get_child_directories(
+                self,
+                path: str,
+                processed: Set[str]
+            ) -> List[str]:
         directories = []
         for file in os.scandir(path):
             if file.is_dir():
+                if file.is_symlink():
+                    realpath = os.path.realpath(file.path)
+                    if realpath in processed:
+                        continue
                 directories.append(file.path)
         return directories
 
-    def _search_for_core_directory(self) -> Optional[str]:
+    def _search_for_core_directory(self) -> Generator[str, None, None]:
         paths = [self.path]
+        processed = set()
         while len(paths) > 0:
-            directories = []
+            directories = set()
             for path in paths:
                 try:
-                    directories.extend(self._get_child_directories(path))
+                    directories.update(
+                            self._get_child_directories(path, processed)
+                        )
                 except OSError as error:
                     raise WordpressException(
                             f'Unable to search child directory at {path}'
                         ) from error
+            paths = set()
             for directory in directories:
+                processed.add(directory)
                 if self._is_core_directory(directory):
-                    return directory
-            paths = directories
-        return None
+                    yield directory
+                else:
+                    paths.add(directory)
 
-    def _locate_core(self) -> str:
+    def locate_core_paths(self) -> str:
         if self._is_core_directory(self.path):
-            return self.path
+            yield self.path
         path = self._extract_core_path_from_index()
         if path is None:
-            path = self._search_for_core_directory()
-        if path is not None:
-            return path
-        raise WordpressException(
-                f'Unable to locate WordPress core files under {self.path}'
-            )
+            yield from self._search_for_core_directory()
+        else:
+            yield path
 
-    def _resolve_path(self, path: str, base: str) -> str:
-        return os.path.join(base, path.lstrip('/'))
 
-    def resolve_path(self, path: str) -> str:
-        return self._resolve_path(path, self.path)
+def locate_core_path(path: str) -> str:
+    locator = WordpressLocator(path)
+    for path in locator.locate_core_paths():
+        return path
+    raise WordpressException(f'Unable to locate core files under {path}')
+
+
+class WordpressSite(PathResolver):
+
+    def __init__(
+                self,
+                path: str,
+                structure_options: Optional[WordpressStructureOptions] = None,
+                core_path: str = None,
+            ):
+        super().__init__(path)
+        self.core_path = locate_core_path(path)
+        self.structure_options = structure_options \
+            if structure_options is not None else WordpressStructureOptions()
 
     def resolve_core_path(self, path: str) -> str:
         return self._resolve_path(path, self.core_path)

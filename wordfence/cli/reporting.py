@@ -388,7 +388,6 @@ class ReportManager:
     def _get_configured_columns(self) -> List[ReportColumn]:
         columns = []
         for option in self.config.output_columns:
-            print(repr(option))
             if option == REPORT_COLUMNS_ALL:
                 for column in self.columns:
                     columns.append(column)

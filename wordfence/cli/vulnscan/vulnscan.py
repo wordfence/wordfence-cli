@@ -5,7 +5,8 @@ from ...intel.vulnerabilities import VulnerabilityIndex, Vulnerability, \
         VulnerabilityScanner, VulnerabilityFilter, is_cve_id
 from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.caching import Cacheable, DURATION_ONE_DAY
-from ...wordpress.site import WordpressSite, WordpressStructureOptions
+from ...wordpress.site import WordpressSite, WordpressStructureOptions, \
+        WordpressLocator
 from ...wordpress.plugin import PluginLoader, Plugin
 from ...wordpress.theme import ThemeLoader, Theme
 from ...logging import log
@@ -143,19 +144,26 @@ class VulnScanSubcommand(Subcommand):
                 informational=self.config.informational
             )
 
-    def _scan_site(
+    def _scan_sites(
                 self,
                 path: str,
                 scanner: VulnerabilityScanner,
                 structure_options: WordpressStructureOptions = None
             ) -> None:
-        log.info(f'Scanning site at {path}...')
-        self._scan(
-                path,
-                scanner,
-                check_extensions=True,
-                structure_options=structure_options
-            )
+        log.info(f'Searching for WordPress installations under {path}...')
+        locator = WordpressLocator(path)
+        site_found = False
+        for core_path in locator.locate_core_paths():
+            site_found = True
+            log.info(f'Scanning site at {core_path}...')
+            self._scan(
+                    core_path,
+                    scanner,
+                    check_extensions=True,
+                    structure_options=structure_options
+                )
+        if not site_found:
+            log.warning('No sites found under {path}')
 
     def _requires_paths(self) -> bool:
         required = self.config.require_path
@@ -213,7 +221,7 @@ class VulnScanSubcommand(Subcommand):
             report = report_manager.initialize_report(output_file)
             scanner.register_result_callback(report.add_result)
             for path in self.config.trailing_arguments:
-                self._scan_site(
+                self._scan_sites(
                         path,
                         scanner,
                         structure_options=structure_options
@@ -222,7 +230,7 @@ class VulnScanSubcommand(Subcommand):
                 reader = io_manager.get_input_reader()
                 path_count = 0
                 for path in reader.read_all_entries():
-                    self._scan_site(
+                    self._scan_sites(
                             path,
                             scanner,
                             structure_options=structure_options
