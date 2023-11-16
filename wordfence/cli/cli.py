@@ -6,7 +6,7 @@ from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         CacheException
 from ..util.terminal import supports_colors
 from ..util.io import resolve_path
-from ..logging import log, enable_log_colors, VERBOSE
+from ..logging import log, set_log_format, LogLevel
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
 from .config import load_config, RenamedSubcommandException
@@ -29,7 +29,7 @@ class WordfenceCli:
         self._load_config()
         self.allows_color = self.config.color is not False \
             and supports_colors()
-        self.initialize_logging(self.config.verbose)
+        self.initialize_logging()
         self.cache = self.initialize_cache()
         self.subcommand = None
 
@@ -61,20 +61,31 @@ class WordfenceCli:
     def initialize_early_logging(self) -> None:
         log.setLevel(logging.INFO)
 
-    def initialize_logging(self, verbose: bool = False) -> None:
-        if self.config.quiet:
-            log.setLevel(logging.CRITICAL)
+    def get_log_level(self) -> LogLevel:
+        if self.config.log_level is not None:
+            return LogLevel[self.config.log_level]
+        elif self.config.quiet:
+            return LogLevel.CRITICAL
         elif self.config.debug:
-            log.setLevel(logging.DEBUG)
+            return LogLevel.DEBUG
         elif self.config.verbose or (
                     self.config.verbose is None
                     and sys.stdout is not None and sys.stdout.isatty()
                 ):
-            log.setLevel(VERBOSE)
+            return LogLevel.VERBOSE
         else:
-            log.setLevel(logging.INFO)
-        if self.allows_color:
-            enable_log_colors()
+            return LogLevel.INFO
+
+    def initialize_logging(self, verbose: bool = False) -> None:
+        level = self.get_log_level()
+        log.setLevel(level.value)
+        prefixed = not self.allows_color \
+            if self.config.prefix_log_levels is None \
+            else self.config.prefix_log_levels
+        set_log_format(
+                colored=self.allows_color,
+                prefixed=prefixed
+            )
 
     def initialize_cache(self) -> Cache:
         cacheable_types = licensing.CACHEABLE_TYPES

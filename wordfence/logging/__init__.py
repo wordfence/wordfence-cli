@@ -1,10 +1,21 @@
 import logging
 from typing import Optional
+from enum import IntEnum
 
-from .formatting import ColoredFormatter
+from .formatting import ConfigurableFormatter
 
 DEFAULT_LOGGER_NAME = 'wordfence'
 VERBOSE = 15
+
+
+class LogLevel(IntEnum):
+    DEBUG = logging.DEBUG
+    VERBOSE = VERBOSE
+    INFO = logging.INFO
+    WARNING = logging.WARNING
+    ERROR = logging.ERROR
+    CRITICAL = logging.CRITICAL
+
 
 logging.basicConfig(format='%(message)s')
 log = logging.getLogger(DEFAULT_LOGGER_NAME)
@@ -31,5 +42,7 @@ def restore_initial_handler(error_if_not_set: bool = False) -> None:
     initial_handler = None
 
 
-def enable_log_colors() -> None:
-    root_log.handlers[0].setFormatter(ColoredFormatter())
+def set_log_format(colored: bool = False, prefixed: bool = False) -> None:
+    root_log.handlers[0].setFormatter(
+            ConfigurableFormatter(colored, prefixed)
+        )

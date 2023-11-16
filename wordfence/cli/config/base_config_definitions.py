@@ -1,8 +1,10 @@
-from .defaults import INI_DEFAULT_PATH
-from .config_items import config_definitions_to_config_map
+from ...logging import LogLevel
 
 from ..terms_management import TERMS_URL
 from ..mailing_lists import EMAIL_SIGNUP_MESSAGE
+
+from .defaults import INI_DEFAULT_PATH
+from .config_items import config_definitions_to_config_map
 
 config_definitions = {
     "configuration": {
@@ -59,6 +61,26 @@ config_definitions = {
         "argument_type": "OPTIONAL_FLAG",
         "default": None,
         "category": "Output Control"
+    },
+    "prefix-log-levels": {
+        "description": "Prefix log messages with their respective levels. "
+                       "This is enabled by default when colored output is "
+                       "not enabled.",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None,
+        "category": "Logging"
+    },
+    "log-level": {
+        "short_name": "L",
+        "description": "Only log messages at or above the specified level.",
+        "context": "CLI",
+        "argument_type": "OPTION",
+        "default": None,
+        "meta": {
+            "valid_options": [level.name for level in LogLevel]
+        },
+        "category": "Logging"
     },
     "cache-directory": {
         "description": "A path to use for cache files.",
