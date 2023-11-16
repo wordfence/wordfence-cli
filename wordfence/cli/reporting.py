@@ -75,6 +75,9 @@ class ReportWriter:
     def allows_column_customization(self) -> bool:
         return True
 
+    def get_max_columns(self) -> Optional[int]:
+        return None
+
 
 class CsvReportWriter(ReportWriter):
 
@@ -103,10 +106,13 @@ class SingleColumnWriter(ReportWriter):
     def write_row(self, data: List[str]) -> None:
         for index, value in enumerate(data):
             if index > 0:
-                raise ValueError(
-                    'Only a single column can be written in this format'
-                )
-            self._target.write(value + self.delimiter)
+                break
+            if value is None:
+                value = ''
+            self._target.write(str(value) + self.delimiter)
+
+    def get_max_columns(self) -> Optional[int]:
+        return 1
 
 
 class RowlessWriter(ReportWriter):
@@ -209,6 +215,12 @@ class Report:
             log.warning(
                     'Columns cannot be specified when using the '
                     f'{self.format.option} output format'
+                )
+        max_columns = writer.get_max_columns()
+        if max_columns is not None and len(self.columns) > max_columns:
+            log.warning(
+                    'Too many output columns requested for specified format '
+                    f'(only {max_columns} allowed)'
                 )
         self.writers.append(writer)
 
