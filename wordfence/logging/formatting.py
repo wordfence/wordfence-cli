@@ -9,6 +9,7 @@ class ConfigurableFormatter(logging.Formatter):
         super().__init__()
         self.colored = colored
         self.prefixed = prefixed
+        self.reset = RESET if colored else ''
 
     def get_style(self, level) -> str:
         if not self.colored:
@@ -30,4 +31,4 @@ class ConfigurableFormatter(logging.Formatter):
         style = self.get_style(record.levelno)
         prefix = self.get_prefix(record.levelname)
         message = super().format(record)
-        return f'{style}{prefix}{message}{RESET}'
+        return f'{style}{prefix}{message}{self.reset}'
