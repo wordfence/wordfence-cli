@@ -52,6 +52,7 @@ class VulnScanReportColumn(ReportColumnEnum):
     UPDATED = 'updated', \
         lambda record: record.vulnerability.updated, \
         VulnerabilityFeedVariant.PRODUCTION
+    SCANNED_PATH = 'scanned_path', lambda record: record.software.scan_path
 
     def __init__(
                 self,

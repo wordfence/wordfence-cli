@@ -46,6 +46,7 @@ class ScannableSoftware:
     type: SoftwareType
     slug: str
     version: str
+    scan_path: Optional[str]
 
     def get_key(self) -> str:
         return f'{self.type.value}-{self.slug}-{self.version}'
@@ -349,36 +350,55 @@ class VulnerabilityScanner:
             self.affected[identifier].append(software)
         return vulnerabilities
 
-    def scan_core(self, version: str) -> Dict[str, Vulnerability]:
+    def scan_core(
+                self,
+                version: str,
+                scan_path: Optional[str]
+            ) -> Dict[str, Vulnerability]:
         return self.scan(
                 ScannableSoftware(
                     type=SoftwareType.CORE,
                     slug=SLUG_WORDPRESS,
-                    version=version
+                    version=version,
+                    scan_path=scan_path
                 )
             )
 
-    def scan_site(self, site: WordpressSite) -> Dict[str, Vulnerability]:
-        return self.scan_core(site.get_version())
+    def scan_site(
+                self,
+                site: WordpressSite,
+                scan_path: Optional[str] = None
+            ) -> Dict[str, Vulnerability]:
+        return self.scan_core(site.get_version(), scan_path)
 
     def scan_extension(
                 self,
                 extension: Extension,
-                type: SoftwareType
+                type: SoftwareType,
+                scan_path: Optional[str] = None
             ) -> Dict[str, Vulnerability]:
         return self.scan(
                 ScannableSoftware(
                     type=type,
                     slug=extension.slug,
-                    version=extension.version
+                    version=extension.version,
+                    scan_path=scan_path
                 )
             )
 
-    def scan_plugin(self, plugin: Plugin) -> Dict[str, Vulnerability]:
-        return self.scan_extension(plugin, SoftwareType.PLUGIN)
+    def scan_plugin(
+                self,
+                plugin: Plugin,
+                scan_path: Optional[str] = None
+            ) -> Dict[str, Vulnerability]:
+        return self.scan_extension(plugin, SoftwareType.PLUGIN, scan_path)
 
-    def scan_theme(self, theme: Theme) -> Dict[str, Vulnerability]:
-        return self.scan_extension(theme, SoftwareType.THEME)
+    def scan_theme(
+                self,
+                theme: Theme,
+                scan_path: Optional[str] = None
+            ) -> Dict[str, Vulnerability]:
+        return self.scan_extension(theme, SoftwareType.THEME, scan_path)
 
     def get_vulnerability_count(self) -> int:
         return len(self.vulnerabilities)

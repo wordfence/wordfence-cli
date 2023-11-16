@@ -1,4 +1,4 @@
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional
 from uuid import UUID
 
 from ...intel.vulnerabilities import VulnerabilityIndex, Vulnerability, \
@@ -35,29 +35,31 @@ class VulnScanSubcommand(Subcommand):
     def _scan_plugins(
                 self,
                 plugins: List[Plugin],
-                scanner: VulnerabilityScanner
+                scanner: VulnerabilityScanner,
+                path: str
             ) -> Dict[str, Vulnerability]:
         for plugin in plugins:
             log.debug(f'Plugin {plugin.slug}, version: {plugin.version}')
-            scanner.scan_plugin(plugin)
+            scanner.scan_plugin(plugin, path)
 
     def _scan_plugin_directory(
                 self,
                 directory: str,
-                scanner: VulnerabilityScanner
+                scanner: VulnerabilityScanner,
             ) -> Dict[str, Vulnerability]:
         loader = PluginLoader(directory)
         plugins = loader.load_all()
-        return self._scan_plugins(plugins, scanner)
+        return self._scan_plugins(plugins, scanner, directory)
 
     def _scan_themes(
                 self,
                 themes: List[Theme],
-                scanner: VulnerabilityScanner
+                scanner: VulnerabilityScanner,
+                path: str
             ) -> Dict[str, Vulnerability]:
         for theme in themes:
             log.debug(f'Theme {theme.slug}, version: {theme.version}')
-            scanner.scan_theme(theme)
+            scanner.scan_theme(theme, path)
 
     def _scan_theme_directory(
                 self,
@@ -66,14 +68,15 @@ class VulnScanSubcommand(Subcommand):
             ) -> Dict[str, Vulnerability]:
         loader = ThemeLoader(directory)
         themes = loader.load_all()
-        return self._scan_themes(themes, scanner)
+        return self._scan_themes(themes, scanner, directory)
 
     def _scan(
                 self,
                 path: str,
                 scanner: VulnerabilityScanner,
                 check_extensions: bool = False,
-                structure_options: WordpressStructureOptions = None
+                structure_options: WordpressStructureOptions = None,
+                scan_path: Optional[str] = None
             ) -> Dict[str, Vulnerability]:
         site = WordpressSite(
                 path=path,
@@ -82,10 +85,12 @@ class VulnScanSubcommand(Subcommand):
         log.debug(f'Located WordPress files at {site.core_path}')
         version = site.get_version()
         log.debug(f'WordPress Core Version: {version}')
-        scanner.scan_core(version)
+        if scan_path is None:
+            scan_path = path
+        scanner.scan_core(version, scan_path)
         if check_extensions:
-            self._scan_plugins(site.get_all_plugins(), scanner)
-            self._scan_themes(site.get_themes(), scanner)
+            self._scan_plugins(site.get_all_plugins(), scanner, scan_path)
+            self._scan_themes(site.get_themes(), scanner, scan_path)
 
     def _get_vulnerability_label(self, count: int) -> str:
         if count == 1:
@@ -160,7 +165,8 @@ class VulnScanSubcommand(Subcommand):
                     core_path,
                     scanner,
                     check_extensions=True,
-                    structure_options=structure_options
+                    structure_options=structure_options,
+                    scan_path=path
                 )
         if not site_found:
             log.warning('No sites found under {path}')
