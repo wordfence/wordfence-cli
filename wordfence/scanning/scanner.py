@@ -4,7 +4,7 @@ import time
 import traceback
 from ctypes import c_bool, c_uint
 from enum import IntEnum
-from multiprocessing import Queue, Process, Value
+from multiprocessing import Queue, Process, Value, get_start_method
 from dataclasses import dataclass
 from typing import Set, Optional, Callable, Dict, NamedTuple, Tuple, List
 from logging import Handler
@@ -26,6 +26,9 @@ PROGRESS_UPDATE_INTERVAL = 100
 DEFAULT_CHUNK_SIZE = 1024 * 1024
 FILE_LOCATOR_WORKER_INDEX = 0
 """Used by the file locator process when sending events"""
+
+
+USES_FORK = get_start_method() == 'fork'
 
 
 class ExceptionContainer(Exception):
@@ -345,6 +348,7 @@ class ScanWorker(Process):
 
     def work(self):
         self._working = True
+        self._matcher.prepare()
         log.debug(f'Worker {self.index} started, PID:' + str(os.getpid()))
         with PcreJitStack() as jit_stack:
             while self._working:
@@ -785,7 +789,8 @@ class Scanner:
         matcher = RegexMatcher(
                     self.options.signatures,
                     match_all=self.options.match_all,
-                    pcre_options=self.options.pcre_options
+                    pcre_options=self.options.pcre_options,
+                    lazy=not USES_FORK
                 )
         metrics = ScanMetrics(worker_count)
         with ScanWorkerPool(
