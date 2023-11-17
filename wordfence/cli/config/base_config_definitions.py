@@ -12,7 +12,10 @@ config_definitions = {
         "description": "Path to a configuration INI file to use.",
         "context": "CLI",
         "argument_type": "OPTION",
-        "default": INI_DEFAULT_PATH
+        "default": INI_DEFAULT_PATH,
+        "meta": {
+            "accepts_file": True
+        }
     },
     "banner": {
         "description": "Display the Wordfence banner in command output when "
@@ -87,7 +90,10 @@ config_definitions = {
         "context": "ALL",
         "argument_type": "OPTION",
         "default": "~/.cache/wordfence",
-        "category": "Caching"
+        "category": "Caching",
+        "meta": {
+            "accepts_directory": True
+        }
     },
     "cache": {
         "description": "Enable caching. Caching is enabled by default.",

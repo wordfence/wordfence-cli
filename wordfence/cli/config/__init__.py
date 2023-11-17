@@ -87,6 +87,13 @@ def _get_renamed_subcommand(
         )
 
 
+def resolve_config_map(subcommand_definition: SubcommandDefinition):
+    return {
+            **base_config_map,
+            **subcommand_definition.get_config_map()
+        }
+
+
 def load_config(
             subcommand_definitions: Dict[str, SubcommandDefinition],
             helper: Helper,
@@ -111,10 +118,8 @@ def load_config(
                         subcommand_definitions
                     )
                 )
-        config_map = {
-                **base_config_map,
-                **subcommand_definition.get_config_map()
-            }
+        config_map = resolve_config_map(subcommand_definition)
+
     else:
         subcommand_definition = None
         config_map = base_config_map

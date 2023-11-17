@@ -54,6 +54,8 @@ class ConfigItemMeta:
     multiple: Optional[bool] = None
     separator: Optional[str] = None
     value_type: Union[Type, Callable] = str
+    accepts_file: bool = False
+    accepts_directory: bool = False
 
 
 @dataclass(frozen=True)
@@ -83,6 +85,9 @@ class ConfigItemDefinition:
     def is_flag(self) -> bool:
         return self.argument_type == ArgumentType.FLAG \
             or self.argument_type == ArgumentType.OPTIONAL_FLAG
+
+    def accepts_value(self) -> bool:
+        return not self.is_flag()
 
     def get_value_type(self):
         if not self.meta:
@@ -138,6 +143,8 @@ class ConfigItemDefinition:
                                                    not_set_token) and is_flag:
                 source['meta']['value_type'] = 'bool'
             source['meta'] = ConfigItemMeta(**source['meta'])
+        else:
+            source['meta'] = ConfigItemMeta()
 
         # sanity check
         if is_flag and not (

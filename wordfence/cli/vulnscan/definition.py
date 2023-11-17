@@ -29,7 +29,8 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTION_REPEATABLE",
         "default": [],
         "meta": {
-            "separator": ","
+            "separator": ",",
+            "accepts_directory": True
         }
     },
     "plugin-directory": {
@@ -40,7 +41,8 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTION_REPEATABLE",
         "default": [],
         "meta": {
-            "separator": ","
+            "separator": ",",
+            "accepts_directory": True
         }
     },
     "theme-directory": {
@@ -51,7 +53,8 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTION_REPEATABLE",
         "default": [],
         "meta": {
-            "separator": ","
+            "separator": ",",
+            "accepts_directory": True
         }
     },
     "relative-content-path": {
@@ -179,5 +182,6 @@ definition = SubcommandDefinition(
     config_definitions=config_definitions,
     config_section='VULN_SCAN',
     cacheable_types=cacheable_types,
-    examples=examples
+    examples=examples,
+    accepts_directories=True
 )

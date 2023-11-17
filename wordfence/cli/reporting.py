@@ -296,7 +296,10 @@ def get_config_options(
             "context": "ALL",
             "argument_type": "OPTION",
             "default": None,
-            "category": "Output Control"
+            "category": "Output Control",
+            "meta": {
+                "accepts_file": True
+            }
         },
         "output-columns": {
             "description": ("An ordered, comma-delimited list of columns to"
