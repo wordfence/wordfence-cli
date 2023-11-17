@@ -61,7 +61,7 @@ jobs:
         with:
           python-version: '3.8'
       - name: Transform readme
-        run: ./scripts/transform-readme.py README.py ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.refname }}/
+        run: ./scripts/transform-readme.py README.md ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/
       - name: Python build
         run: |
           pip install build~=0.10
