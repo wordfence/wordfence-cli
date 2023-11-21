@@ -70,3 +70,6 @@ class LicenseManager:
             pass
         self.validate_license(current)
         self.set_license(current)
+
+    def set_paid(self, paid: bool) -> None:
+        pass

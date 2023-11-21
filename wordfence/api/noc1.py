@@ -37,6 +37,20 @@ class Client(NocClient):
         for hook in self.terms_update_hooks:
             hook(paid)
 
+    def register_paid_hook(
+                self,
+                callable: Callable[[bool], None]
+            ) -> None:
+        if not hasattr(self, 'paid_hooks'):
+            self.paid_hooks = []
+        self.paid_hooks.append(callable)
+
+    def _trigger_paid_hooks(self, paid: bool) -> None:
+        if not hasattr(self, 'paid_hooks'):
+            return
+        for hook in self.paid_hooks:
+            hook(paid)
+
     def validate_response(self, response, validator: Validator) -> None:
         if isinstance(response, dict):
             if 'errorMsg' in response:
@@ -44,8 +58,8 @@ class Client(NocClient):
                         'Error message received in response body',
                         response['errorMsg']
                     )
+            paid = '_isPaidKey' in response and response['_isPaidKey']
             if '_termsUpdated' in response:
-                paid = '_isPaidKey' in response and response['_isPaidKey']
                 self._trigger_terms_update_hooks(paid)
         return super().validate_response(response, validator)
 

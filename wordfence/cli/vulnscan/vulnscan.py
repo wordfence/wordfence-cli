@@ -193,7 +193,7 @@ class VulnScanSubcommand(Subcommand):
 
     def invoke(self) -> int:
         feed_variant = VulnerabilityFeedVariant.for_path(self.config.feed)
-        report_manager = VulnScanReportManager(self.config, feed_variant)
+        report_manager = VulnScanReportManager(self.context, feed_variant)
         io_manager = report_manager.get_io_manager()
         if not io_manager.should_read_stdin() and \
                 not self._check_required_paths():
@@ -258,6 +258,8 @@ class VulnScanSubcommand(Subcommand):
                 log.info(f'Scanning theme directory at {path}...')
                 self._scan_theme_directory(path, scanner)
             self._output_summary(scanner)
+            report.scanner = scanner
+            report.complete()
         return 0
 
 

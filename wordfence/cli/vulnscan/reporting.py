@@ -1,15 +1,20 @@
 from typing import List, Dict, Callable, Any, Optional
+from email.message import EmailMessage
+from email.headerregistry import Address
 
 from ...intel.vulnerabilities import ScannableSoftware, Vulnerability, \
         Software, ProductionVulnerability
 from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.terminal import Color, escape, RESET
+from ...util.html import Tag
 from ..reporting import Report, ReportColumnEnum, ReportFormatEnum, \
         ReportRecord, ReportManager, ReportFormat, ReportColumn, \
-        RowlessWriter, get_config_options, \
+        RowlessWriter, ReportEmail, get_config_options, \
+        generate_report_email_html, generate_html_table, \
         REPORT_FORMAT_CSV, REPORT_FORMAT_TSV, REPORT_FORMAT_NULL_DELIMITED, \
         REPORT_FORMAT_LINE_DELIMITED
-from ..config import Config
+from ..context import CliContext
+from ..email import Mailer
 
 
 class VulnScanReportColumn(ReportColumnEnum):
@@ -155,13 +160,18 @@ class VulnScanReport(Report):
                 self,
                 format: VulnScanReportFormat,
                 columns: List[VulnScanReportColumn],
+                email_addresses: List[str],
+                mailer: Optional[Mailer],
                 write_headers: bool = False
             ):
         super().__init__(
                 format=format,
                 columns=columns,
+                email_addresses=email_addresses,
+                mailer=mailer,
                 write_headers=write_headers
             )
+        self.scanner = None
 
     def add_result(
                 self,
@@ -177,6 +187,47 @@ class VulnScanReport(Report):
             records.append(record)
         self.write_records(records)
 
+    def generate_email(
+                self,
+                recipient: Address,
+                attachments: Dict[str, str],
+                hostname: str
+            ) -> EmailMessage:
+
+        unique_count = self.scanner.get_vulnerability_count()
+        total_count = self.scanner.get_total_count()
+
+        base_message = 'Vulnerabilities were found by Wordfence CLI during ' \
+                       'a scan.'
+
+        plain = f'{base_message}\n\n' \
+                f'Unique Vulnerabilities: {unique_count}\n' \
+                f'Total Vulnerabilities: {total_count}\n'
+
+        content = Tag('div')
+
+        content.append(Tag('p').append(base_message))
+
+        results = {
+                'Unique Vulnerabilities': unique_count,
+                'Total Vulnerabilities': total_count
+            }
+        table = generate_html_table(results)
+        content.append(table)
+
+        document = generate_report_email_html(
+                content,
+                'Vulnerability Scan Results',
+                hostname
+            )
+
+        return ReportEmail(
+                recipient=recipient,
+                subject=f'Vulnerability Scan Results for {hostname}',
+                plain_content=plain,
+                html_content=document.to_html()
+            )
+
 
 VULN_SCAN_REPORT_CONFIG_OPTIONS = get_config_options(
         VulnScanReportFormat,
@@ -189,15 +240,15 @@ class VulnScanReportManager(ReportManager):
 
     def __init__(
                 self,
-                config: Config,
+                context: CliContext,
                 feed_variant: VulnerabilityFeedVariant
             ):
         super().__init__(
                 formats=VulnScanReportFormat,
                 columns=VulnScanReportColumn,
-                config=config,
-                read_stdin=config.read_stdin,
-                input_delimiter=config.path_separator
+                context=context,
+                read_stdin=context.config.read_stdin,
+                input_delimiter=context.config.path_separator
             )
         self.feed_variant = feed_variant
 
@@ -205,6 +256,8 @@ class VulnScanReportManager(ReportManager):
                 self,
                 format: ReportFormat,
                 columns: List[ReportColumn],
+                email_addresses: List[str],
+                mailer: Optional[Mailer],
                 write_headers: bool
             ) -> VulnScanReport:
         for column in columns:
@@ -216,5 +269,7 @@ class VulnScanReportManager(ReportManager):
         return VulnScanReport(
                 format,
                 columns,
+                email_addresses,
+                mailer,
                 write_headers
             )

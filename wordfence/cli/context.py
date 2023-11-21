@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 
 from ..version import __version__, __version_name__
 from ..util import pcre
@@ -7,6 +7,7 @@ from ..util.caching import Cache, InvalidCachedValueException
 from ..util.input import has_terminal_input, has_terminal_output
 from ..api.licensing import License, LicenseRequiredException, LicenseSpecific
 from .config.config import Config
+from .email import Mailer
 
 
 class CliContext:
@@ -26,11 +27,22 @@ class CliContext:
         self._license = None
         self._noc1_client = None
         self._terms_update_hooks = []
+        self._paid_update_hooks = []
         self._wfi_client = None
+        self._mailer = None
         self.configurer = None
 
-    def register_terms_update_hook(self, callable: [[], None]) -> None:
+    def register_terms_update_hook(
+                self,
+                callable: Callable[[bool], None]
+            ) -> None:
         self._terms_update_hooks.append(callable)
+
+    def register_paid_update_hook(
+                self,
+                callable: Callable[[bool], None]
+            ) -> None:
+        self._paid_update_hooks.append(callable)
 
     def get_license(self) -> Optional[License]:
         if self._license is None and self.config.license is not None:
@@ -59,6 +71,8 @@ class CliContext:
                 )
             for hook in self._terms_update_hooks:
                 self._noc1_client.register_terms_update_hook(hook)
+            for hook in self._paid_update_hooks:
+                self._noc1_client.register_paid_hook(hook)
         return self._noc1_client
 
     def get_wfi_client(self) -> intelligence.Client:
@@ -67,6 +81,11 @@ class CliContext:
                     self.config.wfi_url
                 )
         return self._wfi_client
+
+    def get_mailer(self) -> Mailer:
+        if self._mailer is None:
+            self._mailer = Mailer(self.config)
+        return self._mailer
 
     def display_version(self) -> None:
         print(f"Wordfence CLI {__version__} \"{__version_name__}\"")
@@ -81,3 +100,7 @@ class CliContext:
 
     def has_terminal_input(self) -> bool:
         return has_terminal_input()
+
+    def clean_up(self) -> None:
+        if self._mailer is not None:
+            self._mailer.close()

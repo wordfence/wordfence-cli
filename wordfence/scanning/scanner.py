@@ -766,7 +766,7 @@ class Scanner:
                 scan_finished_handler: ScanFinishedCallback =
                 default_scan_finished_handler,
                 use_log_events: bool = False
-            ):
+            ) -> ScanMetrics:
         """Run a scan"""
         timer = timing.Timer()
         event_queue = Queue(MAX_PENDING_RESULTS)
@@ -823,6 +823,7 @@ class Scanner:
             else default_scan_finished_handler
         metrics.skipped_files = file_locator_process.get_skipped_count()
         scan_finished_handler(metrics, timer)
+        return (metrics, timer)
 
     def terminate(self) -> None:
         for active in self.active:

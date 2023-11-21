@@ -10,6 +10,7 @@ class License:
 
     def __init__(self, key: str):
         self.key = key
+        self.paid = False
 
     def __eq__(self, other):
         return other.key == self.key

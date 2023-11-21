@@ -155,6 +155,7 @@ class WordfenceCli:
             updater.Version.check(self.cache)
 
         license_manager = licensing.LicenseManager(context)
+        context.register_paid_update_hook(license_manager.set_paid)
 
         terms_manager = TermsManager(context)
         context.register_terms_update_hook(terms_manager.trigger_update)
@@ -191,6 +192,8 @@ class WordfenceCli:
             if self.subcommand is not None:
                 self.subcommand.terminate()
             return self.process_exception(exception)
+        finally:
+            context.clean_up()
 
 
 def main():
