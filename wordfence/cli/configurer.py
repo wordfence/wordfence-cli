@@ -281,7 +281,8 @@ class Configurer:
         config = self.get_config('malware-scan')
         processes = prompt_int(
                     f'Number of worker processes ({cpus} CPUs available)',
-                    config.workers
+                    config.workers,
+                    min=1
                 )
         return processes
 

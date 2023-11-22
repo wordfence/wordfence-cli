@@ -52,6 +52,24 @@ def transform_str_to_int(response: str) -> int:
         )
 
 
+def initialize_str_to_int_transformer(
+            min: Optional[int] = None,
+            max: Optional[int] = None
+        ):
+    def transformer(response: str) -> int:
+        value = transform_str_to_int(response)
+        if min is not None and value < min:
+            raise InvalidInputException(
+                    f'Please enter a value that is at least {min}'
+                )
+        if max is not None and value > max:
+            raise InvalidInputException(
+                    f'Please enter a value that is no greater than {max}'
+                )
+        return value
+    return transformer
+
+
 def prompt_yes_no(message: str, default: Optional[bool] = None) -> bool:
     default_string = None
     if default is not None:
@@ -63,11 +81,18 @@ def prompt_yes_no(message: str, default: Optional[bool] = None) -> bool:
         )
 
 
-def prompt_int(message: str, default: Optional[int] = None) -> int:
+def prompt_int(
+            message: str,
+            default: Optional[int] = None,
+            min: Optional[int] = None,
+            max: Optional[int] = None
+        ) -> int:
     default_string = None
     if default is not None:
         default_string = str(default)
+    transformer = initialize_str_to_int_transformer(min, max)
     return prompt(
             message,
             default=default_string,
-            transformer=transform_str_to_int)
+            transformer=transformer
+        )
