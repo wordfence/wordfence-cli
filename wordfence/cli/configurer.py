@@ -26,6 +26,7 @@ LEGACY_CONFIG_KEYS = {
         'workers'
     }
 LEGACY_CONVERSION_SECTION = 'MALWARE_SCAN'
+MIN_WORKERS = 1
 
 
 ConfigValue = namedtuple('ConfigValue', ['section', 'key', 'value'])
@@ -283,12 +284,14 @@ class Configurer:
         if self.workers is not None:
             return self.workers
         if self.default:
-            return 1
+            return MIN_WORKERS
         cpus = cpu_count()
         config = self.get_config('malware-scan')
+        workers = max(int(config.workers), MIN_WORKERS)
         processes = prompt_int(
                     f'Number of worker processes ({cpus} CPUs available)',
-                    config.workers
+                    workers,
+                    min=MIN_WORKERS
                 )
         return processes
 
