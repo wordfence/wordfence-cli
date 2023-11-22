@@ -127,3 +127,11 @@ class Client(NocClient):
         if success:
             self.terms_updated = False
         return success
+
+    def get_terms(self) -> str:
+        response = self.request('get_terms')
+        validator = DictionaryValidator({
+                'terms': str
+            })
+        self.validate_response(response, validator)
+        return response['terms']

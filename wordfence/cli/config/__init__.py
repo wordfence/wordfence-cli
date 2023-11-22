@@ -55,6 +55,8 @@ def create_config_object(
             # later values always replace previous values
             if new_value is not not_set_token:
                 setattr(target, item_definition.property_name, new_value)
+                target.sources[item_definition.property_name] = \
+                    extractor.get_context()
                 try:
                     target.defaulted_options.remove(
                             item_definition.property_name

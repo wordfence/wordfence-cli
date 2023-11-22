@@ -42,6 +42,9 @@ class CliCanonicalValueExtractor(CanonicalValueExtractorInterface):
                 value = not_set_token
         return value
 
+    def get_context(self) -> Context:
+        return Context.CLI
+
 
 def create_split_and_append_action(delimiter: str, value_type=None):
 

@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from types import SimpleNamespace
 from typing import Any, Dict, Optional
 
-from .config_items import ConfigItemDefinition
+from .config_items import ConfigItemDefinition, Context
 
 
 class Config(SimpleNamespace):
@@ -21,6 +21,7 @@ class Config(SimpleNamespace):
         self.ini_path = ini_path
         self.trailing_arguments = None
         self.defaulted_options = set()
+        self.sources = {}
 
     def values(self) -> Dict[str, Any]:
         result: Dict[str, Any] = dict()
@@ -46,3 +47,7 @@ class Config(SimpleNamespace):
 
     def is_specified(self, option: str) -> bool:
         return option not in self.defaulted_options
+
+    def is_from_cli(self, option: str) -> bool:
+        return option in self.sources \
+            and self.sources[option] is Context.CLI
