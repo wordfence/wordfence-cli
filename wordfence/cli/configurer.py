@@ -268,7 +268,7 @@ class Configurer:
                     ) from e
             return directory
 
-        if self.config.is_from_cli('cache_directory') or self.config.default:
+        if self.config.is_from_cli('cache_directory') or self.default:
             _validate_writable(self.config.cache_directory)
             return self.config.cache_directory
 
