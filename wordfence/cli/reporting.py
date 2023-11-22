@@ -479,7 +479,7 @@ class Report:
             self.mailer.send(email)
 
     def complete(self) -> None:
-        if self.rows_written > 0:
+        if self.rows_written > 0 and len(self.email_addresses) > 0:
             self.send_emails()
 
 
