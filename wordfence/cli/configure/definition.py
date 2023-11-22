@@ -1,4 +1,4 @@
-from ..subcommands import SubcommandDefinition
+from ..subcommands import SubcommandDefinition, UsageExample
 from ..config.typing import ConfigDefinitions
 
 config_definitions: ConfigDefinitions = {
@@ -43,12 +43,26 @@ config_definitions: ConfigDefinitions = {
 
 cacheable_types = set()
 
+examples = [
+    UsageExample(
+        'Interactively configure Wordfence CLI',
+        'wordfence configure'
+    ),
+    UsageExample(
+        'Non-interactively configure Wordfence CLI to use 4 worker processes '
+        'and the default values for all other options, automatically '
+        'accepting the terms and requesting a free license',
+        'wordfence configure --default --workers 4 --accept-terms'
+    )
+]
+
 definition = SubcommandDefinition(
     name='configure',
     usage='',
-    description='Interactively configure Wordfence CLI',
+    description='Configure Wordfence CLI',
     config_definitions=config_definitions,
     config_section='DEFAULT',
     cacheable_types=cacheable_types,
-    requires_config=False
+    requires_config=False,
+    examples=examples
 )
