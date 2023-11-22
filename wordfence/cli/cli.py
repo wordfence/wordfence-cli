@@ -167,7 +167,10 @@ class WordfenceCli:
             if not configurer.check_config():
                 return 0
             if not self.subcommand_definition.uses_license:
-                license_manager.check_license()
+                try:
+                    license_manager.check_license()
+                except BaseException as exception:
+                    return self.process_exception(exception)
             terms_manager.prompt_acceptance_if_needed()
 
         self.subcommand = None
