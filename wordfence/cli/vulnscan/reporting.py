@@ -13,7 +13,7 @@ from ..config import Config
 
 
 class VulnScanReportColumn(ReportColumnEnum):
-    SOFTWARE_TYPE = 'software_type', lambda record: record.software.type
+    SOFTWARE_TYPE = 'software_type', lambda record: record.software.type.value
     SLUG = 'slug', lambda record: record.software.slug
     VERSION = 'version', lambda record: record.software.version
     ID = 'id', \
