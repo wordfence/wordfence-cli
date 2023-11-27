@@ -3,6 +3,6 @@ packaging >= 21.0
 requests >= 2.3
 # Build requirements
 build ~= 0.10
-setuptools ~= 68.0.0
+setuptools ~= 68.0
 # Helpful development tools
 pyinstaller ~= 5.13.0
