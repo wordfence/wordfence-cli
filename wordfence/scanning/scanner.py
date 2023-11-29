@@ -146,6 +146,9 @@ class FileLocator:
                     )
                 return True
         except OSError as error:
+            if error.errno == 2:
+                log.debug(f'Path at {path} does not exist')
+                return False
             if error.errno == 40:
                 log.warning(
                         f'Symlink loop detected at {path}'
@@ -740,7 +743,7 @@ class ScanWorkerPool:
                 exception = event.data['exception']
                 detail = str(exception)
                 if self._debug:
-                    detail += exception.trace
+                    detail += '\n' + exception.trace
                     detail = detail.strip()
                 log.warning(
                         f'Exception occurred during scanning: {detail}'
