@@ -17,6 +17,8 @@ class LogLevel(IntEnum):
     CRITICAL = logging.CRITICAL
 
 
+logging.addLevelName(LogLevel.VERBOSE.value, LogLevel.VERBOSE.name)
+
 logging.basicConfig(format='%(message)s')
 log = logging.getLogger(DEFAULT_LOGGER_NAME)
 root_log = logging.getLogger()
