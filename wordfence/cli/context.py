@@ -1,11 +1,15 @@
-from typing import Optional, Any, Callable
+from typing import Optional, Any, Callable, Set, Union
 
 from ..version import __version__, __version_name__
 from ..util import pcre
 from ..api import noc1, intelligence
-from ..util.caching import Cache, InvalidCachedValueException
+from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
+        InvalidCachedValueException, CacheException
 from ..util.input import has_terminal_input, has_terminal_output
-from ..api.licensing import License, LicenseRequiredException, LicenseSpecific
+from ..util.io import resolve_path
+from ..api.licensing import License, LicenseRequiredException, \
+        LicenseSpecific, to_license
+from ..logging import log
 from .config.config import Config
 from .email import Mailer
 
@@ -15,34 +19,53 @@ class CliContext:
     def __init__(
                 self,
                 config: Config,
-                cache: Cache,
+                cacheable_types: Set[str],
                 helper,
                 allows_color: bool
             ):
         self.config = config
-        cache.add_filter(self.filter_cache_entry)
-        self.cache = cache
+        self.cacheable_types = cacheable_types
+        self.set_up_cache(self.config.cache_directory)
         self.helper = helper
         self.allows_color = allows_color
         self._license = None
         self._noc1_client = None
         self._terms_update_hooks = []
-        self._paid_update_hooks = []
+        self._license_update_hooks = []
         self._wfi_client = None
         self._mailer = None
         self.configurer = None
 
+    def set_up_cache(self, directory: str) -> None:
+        cache = self._initialize_cache(directory)
+        cache.add_filter(self.filter_cache_entry)
+        self.cache = cache
+
+    def _initialize_cache(self, directory: str) -> Cache:
+        if self.config.cache:
+            try:
+                return CacheDirectory(
+                        resolve_path(directory),
+                        self.cacheable_types
+                    )
+            except CacheException as exception:
+                log.warning(
+                        'Failed to initialize directory cache: '
+                        + str(exception)
+                    )
+        return RuntimeCache()
+
     def register_terms_update_hook(
                 self,
-                callable: Callable[[bool], None]
+                callable: Callable[[bool, License], None]
             ) -> None:
         self._terms_update_hooks.append(callable)
 
-    def register_paid_update_hook(
+    def register_license_update_hook(
                 self,
                 callable: Callable[[bool], None]
             ) -> None:
-        self._paid_update_hooks.append(callable)
+        self._license_update_hooks.append(callable)
 
     def get_license(self) -> Optional[License]:
         if self._license is None and self.config.license is not None:
@@ -63,16 +86,29 @@ class CliContext:
                     )
         return value
 
+    def create_noc1_client(
+                self,
+                license: Optional[Union[License, str]] = None,
+                use_hooks: bool = True
+            ) -> noc1.Client:
+        license = to_license(license)
+        client = noc1.Client(
+                license,
+                self.config.noc1_url
+            )
+        if use_hooks:
+            for hook in self._terms_update_hooks:
+                client.register_terms_update_hook(hook)
+            for hook in self._license_update_hooks:
+                client.register_license_update_hook(hook)
+        return client
+
     def get_noc1_client(self) -> noc1.Client:
         if self._noc1_client is None:
-            self._noc1_client = noc1.Client(
+            self._noc1_client = self.create_noc1_client(
                     self.require_license(),
-                    self.config.noc1_url
+                    use_hooks=True
                 )
-            for hook in self._terms_update_hooks:
-                self._noc1_client.register_terms_update_hook(hook)
-            for hook in self._paid_update_hooks:
-                self._noc1_client.register_paid_hook(hook)
         return self._noc1_client
 
     def get_wfi_client(self) -> intelligence.Client:

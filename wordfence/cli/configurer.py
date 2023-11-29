@@ -8,9 +8,10 @@ from wordfence.util.input import prompt, prompt_yes_no, prompt_int, \
         InvalidInputException, InputException
 from wordfence.util.io import ensure_directory_is_writable, \
         ensure_file_is_writable, resolve_path, IoException
-from wordfence.api.licensing import LICENSE_URL
+from wordfence.api.licensing import License, LICENSE_URL
 from wordfence.logging import log
 from .config import load_config
+from .context import CliContext
 from .subcommands import SubcommandDefinition
 from .licensing import LicenseManager, LicenseValidationFailure
 from .terms_management import TERMS_URL, TermsManager
@@ -125,17 +126,18 @@ class Configurer:
 
     def __init__(
                 self,
-                config,
+                context: CliContext,
                 helper: Helper,
                 license_manager: LicenseManager,
                 terms_manager: TermsManager,
                 subcommand_definitions: Dict[str, SubcommandDefinition],
                 subcommand_definition: Optional[SubcommandDefinition] = None
             ):
-        self.config = config
+        self.context = context
+        self.config = context.config
         self.helper = helper
         self.all_config = {}
-        self.all_config[config.subcommand] = config
+        self.all_config[context.config.subcommand] = context.config
         self.config_values = []
         self.license_manager = license_manager
         self.terms_manager = terms_manager
@@ -191,7 +193,7 @@ class Configurer:
             return overwrite
         return True
 
-    def _prompt_for_license(self) -> str:
+    def _prompt_for_license(self) -> License:
 
         if self.config.is_from_cli('license'):
             return self.license_manager.validate_license(self.config.license)
@@ -238,7 +240,10 @@ class Configurer:
                 license = self.license_manager.request_free_license(
                         terms_accepted
                     )
-                self.terms_manager.record_acceptance(False)
+                self.terms_manager.record_acceptance(
+                        license=license,
+                        remote=False
+                    )
                 print(
                         'Free Wordfence CLI license obtained successfully: '
                         f'{license}'
@@ -320,14 +325,16 @@ class Configurer:
             if not overwrite and not self._prompt_overwrite():
                 return False
             has_existing_config = self.config.has_ini_file()
+            cache_directory = self._prompt_for_cache_directory()
+            self.update_config(
+                    'cache_directory',
+                    cache_directory
+                )
+            self.context.set_up_cache(cache_directory)
             license = self._prompt_for_license()
             self.update_config(
                     'license',
                     license.key
-                )
-            self.update_config(
-                    'cache_directory',
-                    self._prompt_for_cache_directory()
                 )
             self.update_config(
                     'workers',
@@ -335,6 +342,7 @@ class Configurer:
                     'MALWARE_SCAN'
                 )
             self.write_config()
+            # TODO: Ensure TermsManager is called
             self.license_manager.set_license(license)
             if has_existing_config:
                 log.info(

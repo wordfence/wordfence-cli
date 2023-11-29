@@ -1,11 +1,9 @@
 import sys
 import logging
+from typing import Set
 
 from ..util import updater
-from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
-        CacheException
 from ..util.terminal import supports_colors
-from ..util.io import resolve_path
 from ..logging import log, set_log_format, LogLevel
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
@@ -17,6 +15,7 @@ from .context import CliContext
 from .configurer import Configurer
 from . import licensing
 from .terms_management import TermsManager
+from .import terms_management
 from .helper import Helper
 
 
@@ -30,7 +29,6 @@ class WordfenceCli:
         self.allows_color = self.config.color is not False \
             and supports_colors()
         self.initialize_logging()
-        self.cache = self.initialize_cache()
         self.subcommand = None
 
     def _initialize_helper(self) -> Helper:
@@ -87,22 +85,13 @@ class WordfenceCli:
                 prefixed=prefixed
             )
 
-    def initialize_cache(self) -> Cache:
-        cacheable_types = licensing.CACHEABLE_TYPES
+    def _get_cacheable_types(self) -> Set[str]:
+        cacheable_types = set()
+        cacheable_types.update(licensing.CACHEABLE_TYPES)
+        cacheable_types.update(terms_management.CACHEABLE_TYPES)
         for definition in self.subcommand_definitions.values():
             cacheable_types.update(definition.cacheable_types)
-        if self.config.cache:
-            try:
-                return CacheDirectory(
-                        resolve_path(self.config.cache_directory),
-                        cacheable_types
-                    )
-            except CacheException as exception:
-                log.warning(
-                        'Failed to initialize directory cache: '
-                        + str(exception)
-                    )
-        return RuntimeCache()
+        return cacheable_types
 
     def process_exception(self, exception: BaseException) -> int:
         if isinstance(exception, ExceptionContainer):
@@ -131,8 +120,15 @@ class WordfenceCli:
         self.helper.display_help(self.config.subcommand)
 
     def invoke(self) -> int:
+        context = CliContext(
+                self.config,
+                self._get_cacheable_types(),
+                self.helper,
+                self.allows_color
+            )
+
         if self.config.purge_cache:
-            self.cache.purge()
+            context.cache.purge()
 
         show_welcome_banner_if_enabled(self.config)
 
@@ -140,28 +136,21 @@ class WordfenceCli:
             self.display_help()
             return 0
 
-        context = CliContext(
-                self.config,
-                self.cache,
-                self.helper,
-                self.allows_color
-            )
-
         if self.config.version:
             context.display_version()
             return 0
 
         if self.config.check_for_update:
-            updater.Version.check(self.cache)
+            updater.Version.check(context.cache)
 
         license_manager = licensing.LicenseManager(context)
-        context.register_paid_update_hook(license_manager.set_paid)
+        context.register_license_update_hook(license_manager.update_license)
 
         terms_manager = TermsManager(context)
         context.register_terms_update_hook(terms_manager.trigger_update)
 
         configurer = Configurer(
-                self.config,
+                context,
                 self.helper,
                 license_manager,
                 terms_manager,

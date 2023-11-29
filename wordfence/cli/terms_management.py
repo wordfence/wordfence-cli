@@ -3,12 +3,23 @@ import sys
 from wordfence.util.input import prompt_yes_no, InputException
 from wordfence.util.caching import Cacheable, NoCachedValueException, \
         DURATION_ONE_DAY
+from wordfence.api.licensing import License, LicenseSpecific
 from .context import CliContext
 
 TERMS_URL = \
     'https://www.wordfence.com/wordfence-cli-license-terms-and-conditions/'
 TERMS_CACHE_KEY = 'terms'
 ACCEPTANCE_CACHE_KEY = 'terms-accepted'
+CACHEABLE_TYPES = {
+        'wordfence.cli.terms_management.LicenseTermsAcceptance'
+    }
+
+
+class LicenseTermsAcceptance(LicenseSpecific):
+
+    def __init__(self, license: License, accepted: bool = False):
+        super().__init__(license)
+        self.accepted = accepted
 
 
 class TermsManager:
@@ -16,31 +27,58 @@ class TermsManager:
     def __init__(self, context: CliContext):
         self.context = context
 
-    def prompt_acceptance_if_needed(self):
+    def prompt_acceptance_if_needed(self, use_api: bool = True):
         try:
-            accepted = self.context.cache.get(ACCEPTANCE_CACHE_KEY)
-            if accepted:
+            acceptance = self.context.cache.get(ACCEPTANCE_CACHE_KEY)
+            if acceptance.accepted:
                 return
         except NoCachedValueException:
-            pass
-        self.prompt_acceptance()
+            if use_api:
+                client = self.context.get_noc1_client()
+                client.ping_api_key()
+                self.prompt_acceptance_if_needed(False)
+                return
+        self.prompt_acceptance(license=self.context.require_license())
 
-    def trigger_update(self, paid: bool = False):
-        self.context.cache.remove(TERMS_CACHE_KEY)
-        self.context.cache.put(ACCEPTANCE_CACHE_KEY, False)
-        self.prompt_acceptance(paid)
+    def _cache_acceptance(
+                self,
+                license: License,
+                accepted: bool = True
+            ):
+        self.context.cache.put(
+                ACCEPTANCE_CACHE_KEY,
+                LicenseTermsAcceptance(license, accepted)
+            )
 
-    def record_acceptance(self, remote: bool = True):
+    def record_acceptance(
+                self,
+                license: License = None,
+                accepted: bool = True,
+                remote: bool = True
+            ) -> None:
+        if license is None:
+            license = self.context.require_license()
         if remote:
-            client = self.context.get_noc1_client()
+            client = self.context.create_noc1_client(license)
             client.record_toupp()
-        self.context.cache.put(ACCEPTANCE_CACHE_KEY, True)
+        self._cache_acceptance(license, accepted)
 
-    def prompt_acceptance(self, paid: bool = False):
+    def trigger_update(self, updated: bool, license: License):
+        if updated:
+            self.context.cache.remove(TERMS_CACHE_KEY)
+        self.record_acceptance(
+                license=license,
+                accepted=not updated,
+                remote=False
+            )
+        if updated:
+            self.prompt_acceptance(license.paid)
+
+    def prompt_acceptance(self, license: License):
         if self.context.config.accept_terms:
-            self.record_acceptance()
+            self.record_acceptance(license=license)
             return
-        if paid:
+        if license.paid:
             edition = ''
         else:
             edition = ' Free edition'
@@ -62,7 +100,7 @@ class TermsManager:
                     '--accept-terms command line option instead.'
                 )
         if terms_accepted:
-            self.record_acceptance()
+            self.record_acceptance(license=license)
         else:
             print(
                     'You must accept the terms in order to continue using'
