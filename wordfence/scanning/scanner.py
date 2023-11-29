@@ -110,7 +110,8 @@ class Options:
     match_all: bool = False
     pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
     allow_io_errors: bool = False,
-    debug: bool = False
+    debug: bool = False,
+    logging_initializer: Callable[[], None] = None
 
 
 class Status(IntEnum):
@@ -225,7 +226,8 @@ class FileLocatorProcess(Process):
                 file_filter: FileFilter = None,
                 use_log_events: bool = False,
                 event_queue: Optional[Queue] = None,
-                allow_io_errors: bool = False
+                allow_io_errors: bool = False,
+                logging_initializer: Callable[[], None] = None
             ):
         self._input_queue = Queue(input_queue_size)
         self.output_queue = Queue(output_queue_size)
@@ -237,6 +239,7 @@ class FileLocatorProcess(Process):
         self._use_log_events = use_log_events
         self._event_queue = event_queue
         self.allow_io_errors = allow_io_errors
+        self._logging_initializer = logging_initializer
         self._path_count = 0
         self._skipped_count = Value('i', 0)
         super().__init__(name='file-locator')
@@ -257,6 +260,8 @@ class FileLocatorProcess(Process):
         return self.output_queue.get()
 
     def run(self):
+        if self._logging_initializer is not None:
+            self._logging_initializer()
         if self._use_log_events:
             use_event_queue_log_handler(
                     self._event_queue,
@@ -328,7 +333,8 @@ class ScanWorker(Process):
                 chunk_size: int = DEFAULT_CHUNK_SIZE,
                 scanned_content_limit: Optional[int] = None,
                 use_log_events: bool = False,
-                allow_io_errors: bool = False
+                allow_io_errors: bool = False,
+                logging_initializer: Callable[[], None] = None
             ):
         self.index = index
         self._status = status
@@ -340,6 +346,7 @@ class ScanWorker(Process):
         self._scanned_content_limit = scanned_content_limit
         self._use_log_events = use_log_events
         self._allow_io_errors = allow_io_errors
+        self._logging_initializer = logging_initializer
         self.complete = Value(c_bool, False)
         super().__init__(name=self._generate_name())
 
@@ -429,6 +436,8 @@ class ScanWorker(Process):
                 )
 
     def run(self):
+        if self._logging_initializer is not None:
+            self._logging_initializer()
         if self._use_log_events:
             use_event_queue_log_handler(self._event_queue, self.index)
         self.work()
@@ -581,7 +590,8 @@ class ScanWorkerPool:
                 scanned_content_limit: Optional[int] = None,
                 use_log_events: bool = False,
                 allow_io_errors: bool = False,
-                debug: bool = False
+                debug: bool = False,
+                logging_initializer: Callable[[], None] = False
             ):
         self.size = size
         self._matcher = matcher
@@ -596,6 +606,7 @@ class ScanWorkerPool:
         self._use_log_events = use_log_events
         self._allow_io_errors = allow_io_errors
         self._debug = debug
+        self._logging_initializer = logging_initializer
 
     def __enter__(self):
         self.start()
@@ -653,7 +664,8 @@ class ScanWorkerPool:
                     self._chunk_size,
                     self._scanned_content_limit,
                     self._use_log_events,
-                    self._allow_io_errors
+                    self._allow_io_errors,
+                    self._logging_initializer
                 )
             worker.start()
             self._workers.append(worker)
@@ -774,7 +786,8 @@ class Scanner:
                 file_filter=self.options.file_filter,
                 use_log_events=use_log_events,
                 event_queue=event_queue if use_log_events else None,
-                allow_io_errors=self.options.allow_io_errors
+                allow_io_errors=self.options.allow_io_errors,
+                logging_initializer=self.options.logging_initializer
             )
         self.active.append(file_locator_process)
         file_locator_process.start()
@@ -805,7 +818,8 @@ class Scanner:
                     scanned_content_limit=self.options.scanned_content_limit,
                     use_log_events=use_log_events,
                     allow_io_errors=self.options.allow_io_errors,
-                    debug=self.options.debug
+                    debug=self.options.debug,
+                    logging_initializer=self.options.logging_initializer
                 ) as worker_pool:
             self.active.append(worker_pool)
             if self.options.path_source is not None:

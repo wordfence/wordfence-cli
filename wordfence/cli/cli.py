@@ -4,7 +4,7 @@ from typing import Set
 
 from ..util import updater
 from ..util.terminal import supports_colors
-from ..logging import log, set_log_format, LogLevel
+from ..logging import log
 from ..scanning.scanner import ExceptionContainer
 from .banner.banner import show_welcome_banner_if_enabled
 from .config import load_config, RenamedSubcommandException
@@ -28,7 +28,6 @@ class WordfenceCli:
         self._load_config()
         self.allows_color = self.config.color is not False \
             and supports_colors()
-        self.initialize_logging()
         self.subcommand = None
 
     def _initialize_helper(self) -> Helper:
@@ -58,32 +57,6 @@ class WordfenceCli:
 
     def initialize_early_logging(self) -> None:
         log.setLevel(logging.INFO)
-
-    def get_log_level(self) -> LogLevel:
-        if self.config.log_level is not None:
-            return LogLevel[self.config.log_level]
-        elif self.config.quiet:
-            return LogLevel.CRITICAL
-        elif self.config.debug:
-            return LogLevel.DEBUG
-        elif self.config.verbose or (
-                    self.config.verbose is None
-                    and sys.stdout is not None and sys.stdout.isatty()
-                ):
-            return LogLevel.VERBOSE
-        else:
-            return LogLevel.INFO
-
-    def initialize_logging(self, verbose: bool = False) -> None:
-        level = self.get_log_level()
-        log.setLevel(level.value)
-        prefixed = not self.allows_color \
-            if self.config.prefix_log_levels is None \
-            else self.config.prefix_log_levels
-        set_log_format(
-                colored=self.allows_color,
-                prefixed=prefixed
-            )
 
     def _get_cacheable_types(self) -> Set[str]:
         cacheable_types = set()
@@ -126,6 +99,7 @@ class WordfenceCli:
                 self.helper,
                 self.allows_color
             )
+        context.initialize_logging()
 
         if self.config.purge_cache:
             context.cache.purge()
