@@ -30,6 +30,9 @@ class TermsManager:
     def prompt_acceptance_if_needed(self, use_api: bool = True):
         try:
             acceptance = self.context.cache.get(ACCEPTANCE_CACHE_KEY)
+            if acceptance is True:
+                self.record_acceptance(remote=False)
+                return
             if acceptance.accepted:
                 return
         except NoCachedValueException:
