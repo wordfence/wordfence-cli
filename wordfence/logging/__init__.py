@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 from enum import IntEnum
+from dataclasses import dataclass
 
 from .formatting import ConfigurableFormatter
 
@@ -48,3 +49,17 @@ def set_log_format(colored: bool = False, prefixed: bool = False) -> None:
     root_log.handlers[0].setFormatter(
             ConfigurableFormatter(colored, prefixed)
         )
+
+
+@dataclass
+class LogSettings:
+    level: LogLevel = LogLevel.WARNING
+    colored: bool = False
+    prefixed: bool = False
+
+    def apply(self) -> None:
+        log.setLevel(self.level)
+        set_log_format(
+                colored=self.colored,
+                prefixed=self.prefixed
+            )
