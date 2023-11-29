@@ -142,10 +142,7 @@ class WordfenceCli:
             if not configurer.check_config():
                 return 0
             if not self.subcommand_definition.uses_license:
-                try:
-                    license_manager.check_license()
-                except BaseException as exception:
-                    return self.process_exception(exception)
+                license_manager.check_license()
             terms_manager.prompt_acceptance_if_needed()
 
         self.subcommand = None
@@ -157,19 +154,21 @@ class WordfenceCli:
         except BaseException as exception:
             if self.subcommand is not None:
                 self.subcommand.terminate()
-            return self.process_exception(exception)
+            raise exception
         finally:
             context.clean_up()
 
 
 def main():
+    cli = WordfenceCli()
     try:
-        cli = WordfenceCli()
-        exit_code = cli.invoke()
-        sys.exit(exit_code)
+        return cli.invoke()
+    except BaseException as exception:
+        return cli.process_exception(exception)
     except KeyboardInterrupt:
-        sys.exit(130)
+        return 130
 
 
 if __name__ == '__main__':
-    main()
+    exit_code = main()
+    sys.exit(exit_code)

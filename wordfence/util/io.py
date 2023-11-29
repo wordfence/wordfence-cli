@@ -95,7 +95,7 @@ def ensure_directory_is_writable(
     try:
         os.makedirs(path, mode=create_mode, exist_ok=True)
     except OSError:
-        raise IoException('Failed to create directory at {$path}')
+        raise IoException(f'Failed to create directory at {path}')
     return path
 
 
