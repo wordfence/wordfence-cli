@@ -10,7 +10,7 @@ from ..util.input import has_terminal_input, has_terminal_output
 from ..util.io import resolve_path
 from ..api.licensing import License, LicenseRequiredException, \
         LicenseSpecific, to_license
-from ..logging import log, set_log_format, LogLevel
+from ..logging import log, LogLevel, LogSettings
 from .config.config import Config
 from .email import Mailer
 
@@ -36,6 +36,7 @@ class CliContext:
         self._wfi_client = None
         self._mailer = None
         self.configurer = None
+        self._log_settings = None
 
     def get_log_level(self) -> LogLevel:
         if self.config.log_level is not None:
@@ -52,16 +53,21 @@ class CliContext:
         else:
             return LogLevel.INFO
 
+    def get_log_settings(self) -> LogSettings:
+        if self._log_settings is None:
+            prefixed = not self.allows_color \
+                if self.config.prefix_log_levels is None \
+                else self.config.prefix_log_levels
+            self._log_settings = LogSettings(
+                    level=self.get_log_level(),
+                    colored=self.allows_color,
+                    prefixed=prefixed
+                )
+        return self._log_settings
+
     def initialize_logging(self) -> None:
-        level = self.get_log_level()
-        log.setLevel(level.value)
-        prefixed = not self.allows_color \
-            if self.config.prefix_log_levels is None \
-            else self.config.prefix_log_levels
-        set_log_format(
-                colored=self.allows_color,
-                prefixed=prefixed
-            )
+        settings = self.get_log_settings()
+        settings.apply()
 
     def set_up_cache(self, directory: str) -> None:
         cache = self._initialize_cache(directory)
