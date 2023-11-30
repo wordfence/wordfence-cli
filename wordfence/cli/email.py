@@ -49,8 +49,10 @@ class SmtpSender(Sender):
                     port=port
                 )
             if tls_mode is SmtpTlsMode.STARTTLS:
+                log.debug('Starting SMTP TLS...')
                 self.smtp.starttls()
             if user is not None:
+                log.debug(f'Authenticating with SMTP server as {user}...')
                 self.smtp.login(user, password)
         except smtplib.SMTPException as e:
             raise EmailException('SMTP client creation failed') from e
@@ -91,7 +93,7 @@ def initialize_sender(config: Config) -> Sender:
         return SmtpSender(
                 config.smtp_host,
                 config.smtp_port,
-                config.smtp_tls_mode,
+                SmtpTlsMode(config.smtp_tls_mode),
                 config.smtp_user,
                 config.smtp_password
             )
