@@ -44,17 +44,17 @@ class Client(NocClient):
 
     def register_license_update_hook(
                 self,
-                callable: Callable[[bool], None]
+                callable: Callable[[License], None]
             ) -> None:
         if not hasattr(self, 'license_update_hooks'):
             self.license_update_hooks = []
         self.license_update_hooks.append(callable)
 
-    def _trigger_license_update_hooks(self, paid: bool) -> None:
+    def _trigger_license_update_hooks(self, license: License) -> None:
         if not hasattr(self, 'license_update_hooks'):
             return
         for hook in self.license_update_hooks:
-            hook(paid)
+            hook(license)
 
     def validate_response(self, response, validator: Validator) -> None:
         if isinstance(response, dict):
@@ -66,7 +66,7 @@ class Client(NocClient):
             paid = bool('_isPaidKey' in response and response['_isPaidKey'])
             if paid != self.license.paid:
                 self.license.paid = paid
-                self._trigger_license_update_hooks(paid)
+                self._trigger_license_update_hooks(self.license)
             terms_updated = '_termsUpdated' in response
             self._trigger_terms_update_hooks(terms_updated, self.license)
         return super().validate_response(response, validator)

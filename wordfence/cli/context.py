@@ -96,7 +96,7 @@ class CliContext:
 
     def register_license_update_hook(
                 self,
-                callable: Callable[[bool], None]
+                callable: Callable[[License], None]
             ) -> None:
         self._license_update_hooks.append(callable)
 

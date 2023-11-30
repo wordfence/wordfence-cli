@@ -2,7 +2,7 @@ import sys
 
 from wordfence.util.input import prompt_yes_no, InputException
 from wordfence.util.caching import Cacheable, NoCachedValueException, \
-        DURATION_ONE_DAY
+        InvalidCachedValueException, DURATION_ONE_DAY
 from wordfence.api.licensing import License, LicenseSpecific
 from .context import CliContext
 
@@ -35,7 +35,7 @@ class TermsManager:
                 return
             if acceptance.accepted:
                 return
-        except NoCachedValueException:
+        except (NoCachedValueException, InvalidCachedValueException):
             if use_api:
                 client = self.context.get_noc1_client()
                 client.ping_api_key()
