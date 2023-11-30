@@ -173,3 +173,9 @@ class CliContext:
     def clean_up(self) -> None:
         if self._mailer is not None:
             self._mailer.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb) -> None:
+        self.clean_up()

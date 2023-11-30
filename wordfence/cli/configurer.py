@@ -2,7 +2,7 @@ import sys
 from collections import namedtuple
 from configparser import ConfigParser, DuplicateSectionError
 from multiprocessing import cpu_count
-from typing import Optional, List, Dict, TextIO
+from typing import Optional, List, Dict, TextIO, Callable
 
 from wordfence.util.input import prompt, prompt_yes_no, prompt_int, \
         InvalidInputException, InputException
@@ -83,7 +83,7 @@ class ConfigFileManager:
                 )
         self._read = True
 
-    def write(self, updates: List[ConfigValue]) -> None:
+    def write(self, updater: Callable[[], List[ConfigValue]]) -> None:
         # TODO: What if the INI file changes after the config is loaded?
         self.require_parser()
         ini_path = self.resolve_ini_path()
@@ -92,6 +92,8 @@ class ConfigFileManager:
         with open(ini_path, open_mode + '+') as file:
             if self.config.has_ini_file():
                 self.read_existing_config(file, ini_path)
+
+            updates = updater()
 
             for update in updates:
                 self.apply_update(update)
@@ -304,10 +306,6 @@ class Configurer:
         manager = self.get_config_file_manager()
         return manager.read()
 
-    def write_config(self) -> None:
-        manager = self.get_config_file_manager()
-        manager.write(self.config_values)
-
     def update_config(
                 self,
                 key: str,
@@ -320,28 +318,32 @@ class Configurer:
         if self.supports_option(key):
             setattr(self.config, key, value)
 
+    def prompt_for_all(self) -> List[ConfigValue]:
+        cache_directory = self._prompt_for_cache_directory()
+        self.update_config(
+                'cache_directory',
+                cache_directory
+            )
+        self.context.set_up_cache(cache_directory)
+        license = self._prompt_for_license()
+        self.update_config(
+                'license',
+                license.key
+            )
+        self.update_config(
+                'workers',
+                self._prompt_for_worker_count(),
+                'MALWARE_SCAN'
+            )
+        return self.config_values
+
     def prompt_for_config(self, overwrite: bool = False) -> bool:
         try:
             if not overwrite and not self._prompt_overwrite():
                 return False
+            manager = self.get_config_file_manager()
             has_existing_config = self.config.has_ini_file()
-            cache_directory = self._prompt_for_cache_directory()
-            self.update_config(
-                    'cache_directory',
-                    cache_directory
-                )
-            self.context.set_up_cache(cache_directory)
-            license = self._prompt_for_license()
-            self.update_config(
-                    'license',
-                    license.key
-                )
-            self.update_config(
-                    'workers',
-                    self._prompt_for_worker_count(),
-                    'MALWARE_SCAN'
-                )
-            self.write_config()
+            manager.write(updater=self.prompt_for_all)
             # TODO: Ensure TermsManager is called
             self.license_manager.set_license(license)
             if has_existing_config:

@@ -1,4 +1,5 @@
 from typing import List, Dict, Tuple
+from dataclasses import dataclass
 
 from ..helper import Helper
 from .cli_parser import CliCanonicalValueExtractor, get_cli_values
@@ -94,15 +95,25 @@ def resolve_config_map(subcommand_definition: SubcommandDefinition):
         }
 
 
+@dataclass
+class GlobalConfig:
+    debug: bool = False
+
+
 def load_config(
             subcommand_definitions: Dict[str, SubcommandDefinition],
             helper: Helper,
-            subcommand: str = None
+            subcommand: str = None,
+            global_config: GlobalConfig = None
         ) -> Tuple[Config, SubcommandDefinition]:
     cli_values, trailing_arguments, parser = get_cli_values(
             subcommand_definitions,
             helper
         )
+
+    if global_config is not None:
+        global_config.debug = False if cli_values.debug is not_set_token \
+            else cli_values.debug
 
     if subcommand is None:
         subcommand = cli_values.subcommand
@@ -139,5 +150,9 @@ def load_config(
             ini_values,
             cli_values
         )
+
+    if global_config is not None:
+        global_config.debug = instance.debug
+
     instance.ini_path = ini_path
     return instance, subcommand_definition
