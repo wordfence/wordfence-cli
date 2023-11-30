@@ -90,8 +90,10 @@ class ConfigItemDefinition:
         return not self.is_flag()
 
     def get_value_type(self):
+        if self.is_flag():
+            return bool
         if not self.meta:
-            return str if not self.is_flag() else bool
+            return str
         return_type = self.meta.value_type
         if not return_type:
             raise ValueError(
