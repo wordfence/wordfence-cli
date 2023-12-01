@@ -80,7 +80,11 @@ class RuntimeCache(Cache):
         raise NoCachedValueException()
 
     def remove(self, key: str) -> None:
-        del self.items[key]
+        try:
+            del self.items[key]
+        except KeyError:
+            # The item already does not exist
+            pass
 
     def purge(self) -> None:
         self.items = {}

@@ -28,18 +28,15 @@ class LicenseManager:
                 self,
                 license: Optional[License] = None
             ) -> noc1.Client:
-        return noc1.Client(
-                license,
-                self.context.config.noc1_url
-            )
+        return self.context.create_noc1_client(license)
 
     def request_free_license(self, terms_accepted: bool = False) -> License:
-        client = self._create_noc1_client()
+        client = self.context.create_noc1_client()
         return License(client.get_cli_api_key(accept_terms=terms_accepted))
 
-    def validate_license(self, license: Union[License, str]) -> str:
+    def validate_license(self, license: Union[License, str]) -> License:
         license = to_license(license)
-        client = self._create_noc1_client(license)
+        client = self.context.create_noc1_client(license)
         try:
             if not client.ping_api_key():
                 raise LicenseValidationFailure('Invalid license')
@@ -58,18 +55,19 @@ class LicenseManager:
         license = to_license(license)
         self.context.cache.put(CACHE_KEY, LicenseSpecific(license))
 
-    def check_license(self):
-        current = License(self.context.config.license)
+    def check_license(self) -> License:
+        current = self.context.get_license()
         try:
             cached = self.context.cache.get(CACHE_KEY)
             if cached.is_compatible_with_license(current):
-                return
+                return cached
         except NoCachedValueException:
             pass
         except InvalidCachedValueException:
             pass
         self.validate_license(current)
         self.set_license(current)
+        return current
 
-    def set_paid(self, paid: bool) -> None:
-        pass
+    def update_license(self, license: License) -> None:
+        self.set_license(license)

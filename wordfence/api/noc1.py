@@ -3,6 +3,7 @@ from typing import Callable
 
 from .noc_client import NocClient
 from .exceptions import ApiException
+from .licensing import License
 
 from ..intel.signatures import CommonString, Signature, SignatureSet
 from ..util.validation import DictionaryValidator, ListValidator, Validator
@@ -25,31 +26,35 @@ class Client(NocClient):
 
     def register_terms_update_hook(
                 self,
-                callable: Callable[[bool], None]
+                callable: Callable[[bool, License], None]
             ) -> None:
         if not hasattr(self, 'terms_update_hooks'):
             self.terms_update_hooks = []
         self.terms_update_hooks.append(callable)
 
-    def _trigger_terms_update_hooks(self, paid: bool = False) -> None:
+    def _trigger_terms_update_hooks(
+                self,
+                updated: bool,
+                license: License
+            ) -> None:
         if not hasattr(self, 'terms_update_hooks'):
             return
         for hook in self.terms_update_hooks:
-            hook(paid)
+            hook(updated, license)
 
-    def register_paid_hook(
+    def register_license_update_hook(
                 self,
-                callable: Callable[[bool], None]
+                callable: Callable[[License], None]
             ) -> None:
-        if not hasattr(self, 'paid_hooks'):
-            self.paid_hooks = []
-        self.paid_hooks.append(callable)
+        if not hasattr(self, 'license_update_hooks'):
+            self.license_update_hooks = []
+        self.license_update_hooks.append(callable)
 
-    def _trigger_paid_hooks(self, paid: bool) -> None:
-        if not hasattr(self, 'paid_hooks'):
+    def _trigger_license_update_hooks(self, license: License) -> None:
+        if not hasattr(self, 'license_update_hooks'):
             return
-        for hook in self.paid_hooks:
-            hook(paid)
+        for hook in self.license_update_hooks:
+            hook(license)
 
     def validate_response(self, response, validator: Validator) -> None:
         if isinstance(response, dict):
@@ -58,9 +63,12 @@ class Client(NocClient):
                         'Error message received in response body',
                         response['errorMsg']
                     )
-            paid = '_isPaidKey' in response and response['_isPaidKey']
-            if '_termsUpdated' in response:
-                self._trigger_terms_update_hooks(paid)
+            paid = bool('_isPaidKey' in response and response['_isPaidKey'])
+            if paid != self.license.paid:
+                self.license.paid = paid
+                self._trigger_license_update_hooks(self.license)
+            terms_updated = '_termsUpdated' in response
+            self._trigger_terms_update_hooks(terms_updated, self.license)
         return super().validate_response(response, validator)
 
     def process_simple_request(self, action: str) -> bool:

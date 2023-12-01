@@ -2,15 +2,16 @@ import sys
 from collections import namedtuple
 from configparser import ConfigParser, DuplicateSectionError
 from multiprocessing import cpu_count
-from typing import Optional, List, Dict, TextIO
+from typing import Optional, List, Dict, TextIO, Callable
 
 from wordfence.util.input import prompt, prompt_yes_no, prompt_int, \
         InvalidInputException, InputException
 from wordfence.util.io import ensure_directory_is_writable, \
         ensure_file_is_writable, resolve_path, IoException
-from wordfence.api.licensing import LICENSE_URL
+from wordfence.api.licensing import License, LICENSE_URL
 from wordfence.logging import log
 from .config import load_config
+from .context import CliContext
 from .subcommands import SubcommandDefinition
 from .licensing import LicenseManager, LicenseValidationFailure
 from .terms_management import TERMS_URL, TermsManager
@@ -82,7 +83,7 @@ class ConfigFileManager:
                 )
         self._read = True
 
-    def write(self, updates: List[ConfigValue]) -> None:
+    def write(self, updater: Callable[[], List[ConfigValue]]) -> None:
         # TODO: What if the INI file changes after the config is loaded?
         self.require_parser()
         ini_path = self.resolve_ini_path()
@@ -91,6 +92,8 @@ class ConfigFileManager:
         with open(ini_path, open_mode + '+') as file:
             if self.config.has_ini_file():
                 self.read_existing_config(file, ini_path)
+
+            updates = updater()
 
             for update in updates:
                 self.apply_update(update)
@@ -125,17 +128,18 @@ class Configurer:
 
     def __init__(
                 self,
-                config,
+                context: CliContext,
                 helper: Helper,
                 license_manager: LicenseManager,
                 terms_manager: TermsManager,
                 subcommand_definitions: Dict[str, SubcommandDefinition],
                 subcommand_definition: Optional[SubcommandDefinition] = None
             ):
-        self.config = config
+        self.context = context
+        self.config = context.config
         self.helper = helper
         self.all_config = {}
-        self.all_config[config.subcommand] = config
+        self.all_config[context.config.subcommand] = context.config
         self.config_values = []
         self.license_manager = license_manager
         self.terms_manager = terms_manager
@@ -191,7 +195,7 @@ class Configurer:
             return overwrite
         return True
 
-    def _prompt_for_license(self) -> str:
+    def _prompt_for_license(self) -> License:
 
         if self.config.is_from_cli('license'):
             return self.license_manager.validate_license(self.config.license)
@@ -238,7 +242,10 @@ class Configurer:
                 license = self.license_manager.request_free_license(
                         terms_accepted
                     )
-                self.terms_manager.record_acceptance(False)
+                self.terms_manager.record_acceptance(
+                        license=license,
+                        remote=False
+                    )
                 print(
                         'Free Wordfence CLI license obtained successfully: '
                         f'{license}'
@@ -299,10 +306,6 @@ class Configurer:
         manager = self.get_config_file_manager()
         return manager.read()
 
-    def write_config(self) -> None:
-        manager = self.get_config_file_manager()
-        manager.write(self.config_values)
-
     def update_config(
                 self,
                 key: str,
@@ -315,26 +318,33 @@ class Configurer:
         if self.supports_option(key):
             setattr(self.config, key, value)
 
+    def prompt_for_all(self) -> List[ConfigValue]:
+        cache_directory = self._prompt_for_cache_directory()
+        self.update_config(
+                'cache_directory',
+                cache_directory
+            )
+        self.context.set_up_cache(cache_directory)
+        license = self._prompt_for_license()
+        self.update_config(
+                'license',
+                license.key
+            )
+        self.update_config(
+                'workers',
+                self._prompt_for_worker_count(),
+                'MALWARE_SCAN'
+            )
+        return self.config_values
+
     def prompt_for_config(self, overwrite: bool = False) -> bool:
         try:
             if not overwrite and not self._prompt_overwrite():
                 return False
+            manager = self.get_config_file_manager()
             has_existing_config = self.config.has_ini_file()
-            license = self._prompt_for_license()
-            self.update_config(
-                    'license',
-                    license.key
-                )
-            self.update_config(
-                    'cache_directory',
-                    self._prompt_for_cache_directory()
-                )
-            self.update_config(
-                    'workers',
-                    self._prompt_for_worker_count(),
-                    'MALWARE_SCAN'
-                )
-            self.write_config()
+            manager.write(updater=self.prompt_for_all)
+            # TODO: Ensure TermsManager is called
             self.license_manager.set_license(license)
             if has_existing_config:
                 log.info(
