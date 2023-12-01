@@ -157,7 +157,11 @@ class CliContext:
         return self._mailer
 
     def display_version(self) -> None:
-        print(f"Wordfence CLI {__version__} \"{__version_name__}\"")
+        if __version_name__ is None:
+            name_suffix = ''
+        else:
+            name_suffix = f' "{__version_name__}"'
+        print(f"Wordfence CLI {__version__}{name_suffix}")
         jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
         print(
                 f"PCRE Version: {pcre.VERSION} - "
