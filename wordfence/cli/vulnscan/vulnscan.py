@@ -169,7 +169,7 @@ class VulnScanSubcommand(Subcommand):
                     scan_path=path
                 )
         if not site_found:
-            log.warning('No sites found under {path}')
+            log.warning(f'No sites found under {path}')
 
     def _requires_paths(self) -> bool:
         required = self.config.require_path
