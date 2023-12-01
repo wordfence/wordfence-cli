@@ -325,10 +325,10 @@ class Configurer:
                 cache_directory
             )
         self.context.set_up_cache(cache_directory)
-        license = self._prompt_for_license()
+        self.license = self._prompt_for_license()
         self.update_config(
                 'license',
-                license.key
+                self.license.key
             )
         self.update_config(
                 'workers',
@@ -344,8 +344,7 @@ class Configurer:
             manager = self.get_config_file_manager()
             has_existing_config = self.config.has_ini_file()
             manager.write(updater=self.prompt_for_all)
-            # TODO: Ensure TermsManager is called
-            self.license_manager.set_license(license)
+            self.license_manager.set_license(self.license)
             if has_existing_config:
                 log.info(
                         "The configuration for Wordfence CLI has been "
