@@ -75,7 +75,7 @@ class TermsManager:
                 remote=False
             )
         if updated:
-            self.prompt_acceptance(license.paid)
+            self.prompt_acceptance(license)
 
     def prompt_acceptance(self, license: License):
         if self.context.config.accept_terms:
