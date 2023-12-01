@@ -46,9 +46,10 @@ def restore_initial_handler(error_if_not_set: bool = False) -> None:
 
 
 def set_log_format(colored: bool = False, prefixed: bool = False) -> None:
-    root_log.handlers[0].setFormatter(
-            ConfigurableFormatter(colored, prefixed)
-        )
+    for handler in root_log.handlers:
+        handler.setFormatter(
+                ConfigurableFormatter(colored, prefixed)
+            )
 
 
 @dataclass
