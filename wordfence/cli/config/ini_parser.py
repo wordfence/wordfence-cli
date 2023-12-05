@@ -183,7 +183,7 @@ def load_ini(
                         "Ignoring unknown config setting "
                         f"{json.dumps(property_name)}"
                     )
-                config.remove_option(section, key)
+                config.remove_option(section, property_name)
                 invalid_settings = True
             if key in definitions:
                 valid_ini_value = definitions[key].context in valid_contexts
@@ -192,7 +192,7 @@ def load_ini(
                         f"Ignoring setting that is not valid in the config "
                         f"file context: {json.dumps(definitions[key].name)}.")
                     invalid_settings = True
-                    config.remove_option(section, key)
+                    config.remove_option(section, property_name)
                     continue
     if invalid_settings:
         log.warning(
