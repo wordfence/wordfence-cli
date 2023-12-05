@@ -115,23 +115,23 @@ def ensure_file_is_writable(
 
 
 class PathType(Enum):
-	FILE = 'file',
-	DIRECTORY = 'directory',
-	LINK = 'link'
+    FILE = 'file',
+    DIRECTORY = 'directory',
+    LINK = 'link'
 
 
 def get_path_type(path: str) -> PathType:
-	if os.path.islink(path):
-		return PathType.LINK
-	elif os.path.isdir(path):
-		return PathType.DIRECTORY
-	else:
-		return PathType.FILE
+    if os.path.islink(path):
+        return PathType.LINK
+    elif os.path.isdir(path):
+        return PathType.DIRECTORY
+    else:
+        return PathType.FILE
 
 
 def is_same_file(path: str, other: str) -> bool:
-	type = get_path_type(path)
-	other_type = get_path_type(other)
-	if type is not other_type:
-		return False
-	return os.path.samefile(path, other)
+    type = get_path_type(path)
+    other_type = get_path_type(other)
+    if type is not other_type:
+        return False
+    return os.path.samefile(path, other)
