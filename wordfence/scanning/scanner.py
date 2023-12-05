@@ -13,7 +13,7 @@ from .exceptions import ScanningException, ScanningIoException
 from .matching import Matcher, RegexMatcher
 from .filtering import FileFilter, filter_any
 from ..util import timing
-from ..util.io import StreamReader
+from ..util.io import StreamReader, is_same_file
 from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
 from ..util.units import scale_byte_unit
 from ..intel.signatures import SignatureSet
@@ -140,7 +140,7 @@ class FileLocator:
     def _is_loop(self, path: str, parents: Optional[List[str]] = None) -> bool:
         realpath = os.path.realpath(path)
         try:
-            if os.path.samefile(path, realpath):
+            if is_same_file(path, realpath):
                 log.warning(
                         f'Symlink pointing to itself detected at {path}'
                     )

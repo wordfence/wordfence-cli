@@ -1,7 +1,7 @@
 import fcntl
 import os
 from typing import Optional, IO, TextIO, Generator
-from enum import IntEnum
+from enum import Enum, IntEnum
 
 
 class IoException(Exception):
@@ -112,3 +112,26 @@ def ensure_file_is_writable(
         return path
     else:
         return ensure_directory_is_writable(os.path.dirname(path))
+
+
+class PathType(Enum):
+	FILE = 'file',
+	DIRECTORY = 'directory',
+	LINK = 'link'
+
+
+def get_path_type(path: str) -> PathType:
+	if os.path.islink(path):
+		return PathType.LINK
+	elif os.path.isdir(path):
+		return PathType.DIRECTORY
+	else:
+		return PathType.FILE
+
+
+def is_same_file(path: str, other: str) -> bool:
+	type = get_path_type(path)
+	other_type = get_path_type(other)
+	if type is not other_type:
+		return False
+	return os.path.samefile(path, other)
