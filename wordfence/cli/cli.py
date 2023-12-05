@@ -132,7 +132,7 @@ class WordfenceCli:
                     license_manager.update_license
                 )
 
-            terms_manager = TermsManager(context)
+            terms_manager = TermsManager(context, license_manager)
             context.register_terms_update_hook(terms_manager.trigger_update)
 
             configurer = Configurer(

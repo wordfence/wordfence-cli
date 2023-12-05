@@ -5,6 +5,7 @@ from wordfence.util.caching import Cacheable, NoCachedValueException, \
         InvalidCachedValueException, DURATION_ONE_DAY
 from wordfence.api.licensing import License, LicenseSpecific
 from .context import CliContext
+from .licensing import LicenseManager
 
 TERMS_URL = \
     'https://www.wordfence.com/wordfence-cli-license-terms-and-conditions/'
@@ -24,8 +25,9 @@ class LicenseTermsAcceptance(LicenseSpecific):
 
 class TermsManager:
 
-    def __init__(self, context: CliContext):
+    def __init__(self, context: CliContext, license_manager: LicenseManager):
         self.context = context
+        self.license_manager = license_manager
 
     def prompt_acceptance_if_needed(self, use_api: bool = True):
         try:
@@ -41,7 +43,7 @@ class TermsManager:
                 client.ping_api_key()
                 self.prompt_acceptance_if_needed(False)
                 return
-        self.prompt_acceptance(license=self.context.require_license())
+        self.prompt_acceptance(license=self.license_manager.check_license())
 
     def _cache_acceptance(
                 self,
@@ -60,7 +62,7 @@ class TermsManager:
                 remote: bool = True
             ) -> None:
         if license is None:
-            license = self.context.require_license()
+            license = self.license_manager.check_license()
         if remote:
             client = self.context.create_noc1_client(license)
             client.record_toupp()

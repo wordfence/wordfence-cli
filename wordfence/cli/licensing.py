@@ -60,7 +60,7 @@ class LicenseManager:
         try:
             cached = self.context.cache.get(CACHE_KEY)
             if cached.is_compatible_with_license(current):
-                return cached
+                return cached.license
         except NoCachedValueException:
             pass
         except InvalidCachedValueException:
