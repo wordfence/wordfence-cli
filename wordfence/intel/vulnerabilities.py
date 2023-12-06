@@ -231,7 +231,8 @@ class VulnerabilityIndex:
             )
 
     def includes_vulnerability(self, identifier: str) -> bool:
-        return identifier in self.vulnerabilities or identifier in self.cve_map
+        casefolded = identifier.casefold()
+        return casefolded in self.vulnerabilities or casefolded in self.cve_map
 
 
 CVE_PATTERN = re.compile(r'^CVE-(199\d|20\d{2})-\d{4,}$', re.IGNORECASE)
