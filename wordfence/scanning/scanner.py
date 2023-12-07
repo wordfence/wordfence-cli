@@ -216,7 +216,7 @@ class FileLocator:
                 log.log(VERBOSE, f'File added to scan queue: {path}')
                 self.queue.put(path)
         else:
-            if not self._is_loop(self.path):
+            if not (os.path.islink(self.path) and self._is_loop(self.path)):
                 self.queue.put(real_path)
 
 
