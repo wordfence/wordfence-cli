@@ -792,8 +792,8 @@ class Scanner:
                 allow_io_errors=self.options.allow_io_errors,
                 logging_initializer=self.options.logging_initializer
             )
-        self.active.append(file_locator_process)
         file_locator_process.start()
+        self.active.append(file_locator_process)
         for path in self.options.paths:
             file_locator_process.add_path(path)
         worker_count = self.options.workers
