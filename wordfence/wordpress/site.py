@@ -6,6 +6,7 @@ from typing import Optional, List, Generator, Set
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
 from ..logging import log
+from ..util.io import is_symlink_loop, is_symlink_error
 from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
@@ -52,7 +53,7 @@ class PathResolver:
 
 class WordpressLocator(PathResolver):
 
-    def _is_core_directory(self, path: str) -> bool:
+    def _is_core_directory(self, path: str, quiet: bool = False) -> bool:
         missing_files = EXPECTED_CORE_FILES.copy()
         missing_directories = EXPECTED_CORE_DIRECTORIES.copy()
         try:
@@ -67,9 +68,12 @@ class WordpressLocator(PathResolver):
                 return False
             return True
         except OSError as error:
-            raise WordpressException(
-                    f'Unable to scan directory at {path}'
-                ) from error
+            if is_symlink_error(error):
+                return False
+            else:
+                raise WordpressException(
+                        f'Unable to scan directory at {path}'
+                    ) from error
         return False
 
     def _extract_core_path_from_index(self) -> Optional[str]:
@@ -93,16 +97,15 @@ class WordpressLocator(PathResolver):
         directories = []
         for file in os.scandir(path):
             if file.is_dir():
-                if file.is_symlink():
-                    realpath = os.path.realpath(file.path)
-                    if realpath in processed:
-                        continue
-                directories.append(file.path)
+                if file.is_symlink() and is_symlink_loop(file.path, processed):
+                    continue
+                directories.append(os.path.realpath(file.path))
         return directories
 
     def _search_for_core_directory(self) -> Generator[str, None, None]:
         paths = [self.path]
         processed = set()
+        core_found = False
         while len(paths) > 0:
             directories = set()
             for path in paths:
@@ -111,20 +114,30 @@ class WordpressLocator(PathResolver):
                             self._get_child_directories(path, processed)
                         )
                 except OSError as error:
-                    raise WordpressException(
-                            f'Unable to search child directory at {path}'
-                        ) from error
+                    if is_symlink_error(error):
+                        log.warning(
+                                f'Unable to search child directory at {path}'
+                                ' due to symlink error'
+                            )
+                    else:
+                        raise WordpressException(
+                                f'Unable to search child directory at {path}'
+                            ) from error
             paths = set()
             for directory in directories:
                 processed.add(directory)
                 if self._is_core_directory(directory):
+                    core_found = True
                     yield directory
                 else:
                     paths.add(directory)
+            if core_found:
+                break
 
     def locate_core_paths(self) -> str:
         if self._is_core_directory(self.path):
             yield self.path
+            return
         path = self._extract_core_path_from_index()
         if path is None:
             yield from self._search_for_core_directory()

@@ -2,7 +2,8 @@ from typing import Dict, List, Set, Optional
 from uuid import UUID
 
 from ...intel.vulnerabilities import VulnerabilityIndex, Vulnerability, \
-        VulnerabilityScanner, VulnerabilityFilter, is_cve_id
+        VulnerabilityScanner, VulnerabilityFilter, AlreadyScannedException, \
+        is_cve_id
 from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.caching import Cacheable, DURATION_ONE_DAY
 from ...wordpress.site import WordpressSite, WordpressStructureOptions, \
@@ -36,8 +37,11 @@ class VulnScanSubcommand(Subcommand):
                 self,
                 plugins: List[Plugin],
                 scanner: VulnerabilityScanner,
-                path: str
+                path: str,
+                child_scan: bool = False
             ) -> Dict[str, Vulnerability]:
+        if not child_scan:
+            scanner.add_scan_path(path)
         for plugin in plugins:
             log.debug(f'Plugin {plugin.slug}, version: {plugin.version}')
             scanner.scan_plugin(plugin, path)
@@ -55,8 +59,11 @@ class VulnScanSubcommand(Subcommand):
                 self,
                 themes: List[Theme],
                 scanner: VulnerabilityScanner,
-                path: str
+                path: str,
+                child_scan: bool = False
             ) -> Dict[str, Vulnerability]:
+        if not child_scan:
+            scanner.add_scan_path(path)
         for theme in themes:
             log.debug(f'Theme {theme.slug}, version: {theme.version}')
             scanner.scan_theme(theme, path)
@@ -78,6 +85,7 @@ class VulnScanSubcommand(Subcommand):
                 structure_options: WordpressStructureOptions = None,
                 scan_path: Optional[str] = None
             ) -> Dict[str, Vulnerability]:
+        scanner.add_scan_path(path)
         site = WordpressSite(
                 path=path,
                 structure_options=structure_options
@@ -89,8 +97,10 @@ class VulnScanSubcommand(Subcommand):
             scan_path = path
         scanner.scan_core(version, scan_path)
         if check_extensions:
-            self._scan_plugins(site.get_all_plugins(), scanner, scan_path)
-            self._scan_themes(site.get_themes(), scanner, scan_path)
+            self._scan_plugins(
+                    site.get_all_plugins(), scanner, scan_path, True
+                )
+            self._scan_themes(site.get_themes(), scanner, scan_path, True)
 
     def _get_vulnerability_label(self, count: int) -> str:
         if count == 1:
@@ -161,13 +171,19 @@ class VulnScanSubcommand(Subcommand):
         for core_path in locator.locate_core_paths():
             site_found = True
             log.info(f'Scanning site at {core_path}...')
-            self._scan(
-                    core_path,
-                    scanner,
-                    check_extensions=True,
-                    structure_options=structure_options,
-                    scan_path=path
-                )
+            try:
+                self._scan(
+                        core_path,
+                        scanner,
+                        check_extensions=True,
+                        structure_options=structure_options,
+                        scan_path=path
+                    )
+            except AlreadyScannedException:
+                log.warning(
+                        f'Site found at {core_path} has already been '
+                        'scanned'
+                    )
         if not site_found:
             log.warning(f'No sites found under {path}')
 
@@ -246,17 +262,35 @@ class VulnScanSubcommand(Subcommand):
                     self._raise_path_error()
             for path in self.config.wordpress_path:
                 log.info(f'Scanning core installation at {path}...')
-                self._scan(
-                        path,
-                        scanner,
-                        structure_options=structure_options
-                    )
+                try:
+                    self._scan(
+                            path,
+                            scanner,
+                            structure_options=structure_options
+                        )
+                except AlreadyScannedException:
+                    log.warning(
+                            f'Core installation at {path} has already been '
+                            'scanned'
+                        )
             for path in self.config.plugin_directory:
                 log.info(f'Scanning plugin directory at {path}...')
-                self._scan_plugin_directory(path, scanner)
+                try:
+                    self._scan_plugin_directory(path, scanner)
+                except AlreadyScannedException:
+                    log.warning(
+                            f'Plugin directory at {path} has already been '
+                            'scanned'
+                        )
             for path in self.config.theme_directory:
                 log.info(f'Scanning theme directory at {path}...')
-                self._scan_theme_directory(path, scanner)
+                try:
+                    self._scan_theme_directory(path, scanner)
+                except AlreadyScannedException:
+                    log.warning(
+                            f'Theme directory at {path} has already been '
+                            'scanned'
+                        )
             self._output_summary(scanner)
             report.scanner = scanner
             report.complete()

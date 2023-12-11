@@ -1,4 +1,5 @@
 import re
+import os.path
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Optional, Union, Set, Callable, Generator
@@ -306,6 +307,10 @@ DEFAULT_FILTER = VulnerabilityFilter(
     )
 
 
+class AlreadyScannedException(Exception):
+    pass
+
+
 class VulnerabilityScanner:
 
     def __init__(
@@ -318,6 +323,7 @@ class VulnerabilityScanner:
         self.vulnerabilities = {}
         self.affected = {}
         self.callbacks = []
+        self.scan_paths = set()
 
     def register_result_callback(
                     self,
@@ -335,6 +341,12 @@ class VulnerabilityScanner:
             ) -> None:
         for callback in self.callbacks:
             callback(software, vulnerabilities)
+
+    def add_scan_path(self, path: str) -> None:
+        realpath = os.path.realpath(path)
+        if realpath in self.scan_paths:
+            raise AlreadyScannedException(f'{path} has already been scanned')
+        self.scan_paths.add(realpath)
 
     def scan(self, software: ScannableSoftware) -> Dict[str, Vulnerability]:
         vulnerabilities = self.index.get_vulnerabilities(

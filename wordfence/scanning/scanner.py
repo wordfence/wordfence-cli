@@ -13,7 +13,7 @@ from .exceptions import ScanningException, ScanningIoException
 from .matching import Matcher, RegexMatcher
 from .filtering import FileFilter, filter_any
 from ..util import timing
-from ..util.io import StreamReader, is_same_file
+from ..util.io import StreamReader, is_symlink_loop, is_symlink_and_loop
 from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
 from ..util.units import scale_byte_unit
 from ..intel.signatures import SignatureSet
@@ -138,31 +138,8 @@ class FileLocator:
         self.skipped_count = 0
 
     def _is_loop(self, path: str, parents: Optional[List[str]] = None) -> bool:
-        realpath = os.path.realpath(path)
-        try:
-            if is_same_file(path, realpath):
-                log.warning(
-                        f'Symlink pointing to itself detected at {path}'
-                    )
-                return True
-        except OSError as error:
-            if error.errno == 2:
-                log.debug(f'Path at {path} does not exist')
-                return False
-            if error.errno == 40:
-                log.warning(
-                        f'Symlink loop detected at {path}'
-                    )
-                return True
-            raise
-        if parents is not None:
-            for parent in parents:
-                if realpath == parent:
-                    log.warning(
-                            f'Recursive symlink detected at {path}'
-                        )
-                    return True
-        return False
+        if is_symlink_loop(path, parents):
+            log.warning(f'Symlink loop detected at {path}')
 
     def _get_all_parents(self, path: str) -> List[str]:
         parents = [path]
@@ -216,7 +193,7 @@ class FileLocator:
                 log.log(VERBOSE, f'File added to scan queue: {path}')
                 self.queue.put(path)
         else:
-            if not (os.path.islink(self.path) and self._is_loop(self.path)):
+            if not is_symlink_and_loop(self.path):
                 self.queue.put(real_path)
 
 

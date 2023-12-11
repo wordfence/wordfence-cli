@@ -1,7 +1,13 @@
 import fcntl
 import os
-from typing import Optional, IO, TextIO, Generator
+from typing import Optional, IO, TextIO, Generator, Iterable
 from enum import Enum, IntEnum
+
+
+SYMLINK_IO_ERRORS = {
+        2,  # File not found
+        40  # Too many levels of symbolic links
+    }
 
 
 class IoException(Exception):
@@ -135,3 +141,40 @@ def is_same_file(path: str, other: str) -> bool:
     if type is not other_type:
         return False
     return os.path.samefile(path, other)
+
+
+def is_symlink_error(error: OSError) -> bool:
+    return error.errno in SYMLINK_IO_ERRORS
+
+
+def is_symlink_loop(
+            path: str,
+            parents: Optional[Iterable[str]] = None
+        ) -> bool:
+    realpath = os.path.realpath(path)
+    try:
+        if is_same_file(path, realpath):
+            return True
+    except OSError as error:
+        if error.errno == 2:
+            return False
+        if error.errno == 40:
+            return True
+        raise
+    if parents is not None:
+        for parent in parents:
+            if realpath == parent:
+                return True
+    return False
+
+
+def is_symlink_and_loop(
+            path: str,
+            parents: Optional[Iterable[str]] = None
+        ) -> bool:
+    try:
+        if not os.path.islink(path):
+            return False
+    except OSError:
+        return False
+    return is_symlink_loop(path, parents)
