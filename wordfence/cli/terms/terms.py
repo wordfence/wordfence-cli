@@ -7,7 +7,7 @@ from ..mailing_lists import EMAIL_SIGNUP_MESSAGE
 class TermsSubcommand(Subcommand):
 
     def fetch_terms(self) -> str:
-        client = self.context.get_noc1_client()
+        client = self.context.create_noc1_client(use_hooks=False)
         return client.get_terms()
 
     def get_terms(self) -> str:
