@@ -140,6 +140,8 @@ class FileLocator:
     def _is_loop(self, path: str, parents: Optional[List[str]] = None) -> bool:
         if is_symlink_loop(path, parents):
             log.warning(f'Symlink loop detected at {path}')
+            return True
+        return False
 
     def _get_all_parents(self, path: str) -> List[str]:
         parents = [path]
