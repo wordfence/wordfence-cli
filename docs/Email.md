@@ -1,6 +1,6 @@
 # Email
 
-Wordfence CLI can be configured to send a summary of scan results (both the malware scan and the vulnerability scan) to an email address. The email will only send when the scan actually finds something, for instance a file contains malware, or a WordPress plugin has a vulnerability. 
+Wordfence CLI can be configured to send a summary of scan results (both the malware scan and the vulnerability scan) to an email address. The email will only send when the scan actually finds something, for instance a file contains malware, or a WordPress plugin has a vulnerability. An email will also not be sent in the event a scan fails. We recommend reviewing scan findings regularly.
 
 ## Configuration
 
