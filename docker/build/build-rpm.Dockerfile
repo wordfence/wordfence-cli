@@ -1,6 +1,7 @@
 FROM almalinux:9.3
 
 RUN dnf -y upgrade && \
+    dnf -y install dnf-plugins-core && \
     dnf config-manager --set-enabled crb && \
     dnf -y install epel-release && \
     dnf -y install rpmdevtools \
