@@ -3,8 +3,6 @@ set -e
 
 cd /root/wordfence-cli
 
-ARCHITECTURE=$(dpkg --print-architecture)
-
 if [ "$PACKAGE_TYPE" = 'deb' ]; then
 
   # build deb package
@@ -67,6 +65,7 @@ if [ "$PACKAGE_TYPE" = 'standalone' ]; then
 
   # build standalone executable
   
+  ARCHITECTURE=$(dpkg --print-architecture)
   VERSION=$(python3.8 -c 'from wordfence import version; print(version.__version__)')
 
   # install build requirements
