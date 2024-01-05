@@ -96,6 +96,7 @@ jobs:
     needs:
       - linux_standalone_build
       - deb_build
+      - rpm_build
       - python_build
     steps:
       - name: Download artifacts
