@@ -88,6 +88,8 @@ if [ "$PACKAGE_TYPE" = 'standalone' ]; then
     --hidden-import wordfence.cli.help.definition \
     --hidden-import wordfence.cli.version.version \
     --hidden-import wordfence.cli.version.definition \
+    --hidden-import wordfence.cli.terms.terms \
+    --hidden-import wordfence.cli.terms.definition \
     main.py
 
   # compress and copy to output volume

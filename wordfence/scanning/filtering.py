@@ -83,14 +83,18 @@ def filter_images(path: str) -> bool:
     return matches_regex(PATTERN_IMAGES, path)
 
 
-def filter_filename(value: str) -> Callable[[str], bool]:
-    def filter(path: str) -> bool:
+class FilenameFilter:
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def __call__(self, path: str):
         filename = os.path.basename(path)
-        return filename == value
-    return filter
+        return filename == self.value
 
 
 class Filter:
+
     def __init__(self, pattern: Pattern[AnyStr]):
         self.pattern = pattern
 

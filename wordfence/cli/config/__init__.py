@@ -1,4 +1,5 @@
 from typing import List, Dict, Tuple
+from dataclasses import dataclass
 
 from ..helper import Helper
 from .cli_parser import CliCanonicalValueExtractor, get_cli_values
@@ -55,6 +56,8 @@ def create_config_object(
             # later values always replace previous values
             if new_value is not not_set_token:
                 setattr(target, item_definition.property_name, new_value)
+                target.sources[item_definition.property_name] = \
+                    extractor.get_context()
                 try:
                     target.defaulted_options.remove(
                             item_definition.property_name
@@ -85,15 +88,32 @@ def _get_renamed_subcommand(
         )
 
 
+def resolve_config_map(subcommand_definition: SubcommandDefinition):
+    return {
+            **base_config_map,
+            **subcommand_definition.get_config_map()
+        }
+
+
+@dataclass
+class GlobalConfig:
+    debug: bool = False
+
+
 def load_config(
             subcommand_definitions: Dict[str, SubcommandDefinition],
             helper: Helper,
-            subcommand: str = None
+            subcommand: str = None,
+            global_config: GlobalConfig = None
         ) -> Tuple[Config, SubcommandDefinition]:
     cli_values, trailing_arguments, parser = get_cli_values(
             subcommand_definitions,
             helper
         )
+
+    if global_config is not None:
+        global_config.debug = False if cli_values.debug is not_set_token \
+            else cli_values.debug
 
     if subcommand is None:
         subcommand = cli_values.subcommand
@@ -109,10 +129,8 @@ def load_config(
                         subcommand_definitions
                     )
                 )
-        config_map = {
-                **base_config_map,
-                **subcommand_definition.get_config_map()
-            }
+        config_map = resolve_config_map(subcommand_definition)
+
     else:
         subcommand_definition = None
         config_map = base_config_map
@@ -132,5 +150,9 @@ def load_config(
             ini_values,
             cli_values
         )
+
+    if global_config is not None:
+        global_config.debug = instance.debug
+
     instance.ini_path = ini_path
     return instance, subcommand_definition

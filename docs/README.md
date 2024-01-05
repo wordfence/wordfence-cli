@@ -13,6 +13,7 @@ Wordfence CLI is a high performance, multi-process, command-line malware scanner
 - [Updating](Updating.md)
 - [Configuration](Configuration.md)
 - [Output](Output.md)
+- [Configuring your server to send email](Email.md)
 - **Malware Scanning**
 	- [Subcommand Configuration](malware-scan/Configuration.md)
 	- [Examples](malware-scan/Examples.md)
@@ -26,4 +27,5 @@ Wordfence CLI is a high performance, multi-process, command-line malware scanner
 		- [Scanning a single WordPress installation for vulnerabilities](vuln-scan/Examples.md#scanning-a-single-wordpress-installation-for-vulnerabilities)
 		- [Writing vulnerability scan results to a CSV](vuln-scan/Examples.md#writing-vulnerability-scan-results-to-a-csv)
 		- [Running the vulnerability scan in a cron](vuln-scan/Examples.md#running-the-vulnerability-scan-in-a-cron)
+- [Autocomplete of CLI's subcommands and parameters](Autocomplete.md)
 - [Frequently Asked Questions](FAQs.md)

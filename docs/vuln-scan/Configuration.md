@@ -18,20 +18,21 @@ In order to store vulnerability scan specific configuration in the INI file, you
 
 ## Vulnerability Scan Command Line Arguments
 
-- `--read-stdin`: Read WordPress base paths from stdin. If not specified, paths will automatically be read from stdin when input is not from a TTY. Specify --no-read-stdin to disable.
+- `--read-stdin`: Read WordPress base paths from stdin. If not specified, paths will automatically be read from stdin when input is not from a TTY.
 - `-s`, `--path-separator`: Separator used to delimit paths when reading from stdin. Defaults to the null byte.
 - `-w`, `--wordpress-path`: Path to the root of a WordPress installation to scan for core vulnerabilities.
 - `-p`, `--plugin-directory`: Path to a directory containing WordPress plugins to scan for vulnerabilities.
 - `-t`, `--theme-directory`: Path to a directory containing WordPress themes to scan for vulnerabilities.
 - `-C`, `--relative-content-path`: Alternate path of the wp-content directory relative to the WordPress root.
 - `-P`, `--relative-plugins-path`: Alternate path of the wp-content/plugins directory relative to the WordPress root.
-- `-M`, `--relative-mu-plugins-path`: Alternate path of the wp-content/plugins directory relative to the WordPress root.
-- `--output`: Write results to stdout. This is the default behavior when --output-path is not specified. Use `--no-output` to disable.
+- `-M`, `--relative-mu-plugins-path`: Alternate path of the wp-content/mu-plugins directory relative to the WordPress root.
+- `--output`: Write results to stdout. This is the default behavior when --output-path is not specified.
 - `--output-path`: Path to which to write results.
-- `--output-columns`: An ordered, comma-delimited list of columns to include in the output. Available columns: `software_type`, `slug`, `version`, `id`, `title`, `link`, `description`, `cve`, `cvss_vector`, `cvss_score`, `cvss_rating`, `cwe_id`, `cwe_name`, `cwe_description`, `patched`, `remediation`, `published`, `updated`
+- `--output-columns`: An ordered, comma-delimited list of columns to include in the output. Available columns: `software_type`, `slug`, `version`, `id`, `title`, `link`, `description`, `cve`, `cvss_vector`, `cvss_score`, `cvss_rating`, `cwe_id`, `cwe_name`, `cwe_description`, `patched`, `remediation`, `published`, `updated`, `scanned_path`. Compatible formats: csv, tsv, null-delimited, line-delimited.
 - `-m`, `--output-format`: Output format used for result data.
-- `--output-headers`: Whether or not to include column headers in output
+- `--output-headers`: Include column headers in output. Compatible formats: csv, tsv, null-delimited, line-delimited.
 - `-e`, `--exclude-vulnerability`: Vulnerability UUIDs or CVE IDs to exclude from scan results.
 - `-i`, `--include-vulnerability`: Vulnerabilitiy UUIDs or CVE IDs to include in scan results.
-- `-I`, `--informational`: Whether or not to include informational vulnerability records in results.
-- `-f`, `--feed`: The feed to use for vulnerability information. The production feed provides additional details that are not included in the scanner feed while the scanner feed includes additional vulnerabilities that do not yet have sufficient information to be included in the production feed.
+- `-I`, `--informational`: Include informational vulnerability records in results.
+- `-f`, `--feed`: The feed to use for vulnerability information. The production feed provides all available information fields. The scanner feed contains only the minimum fields necessary to conduct a scan and may be a better choice when detailed vulnerability information is not needed.
+- `--require-path`: When enabled, an error will be issued if at least one path to scan is not specified. This is the default behavior when running in a terminal.

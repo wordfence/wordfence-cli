@@ -1,4 +1,5 @@
 import re
+import os.path
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Optional, Union, Set, Callable, Generator
@@ -46,6 +47,7 @@ class ScannableSoftware:
     type: SoftwareType
     slug: str
     version: str
+    scan_path: Optional[str]
 
     def get_key(self) -> str:
         return f'{self.type.value}-{self.slug}-{self.version}'
@@ -230,7 +232,8 @@ class VulnerabilityIndex:
             )
 
     def includes_vulnerability(self, identifier: str) -> bool:
-        return identifier in self.vulnerabilities or identifier in self.cve_map
+        casefolded = identifier.casefold()
+        return casefolded in self.vulnerabilities or casefolded in self.cve_map
 
 
 CVE_PATTERN = re.compile(r'^CVE-(199\d|20\d{2})-\d{4,}$', re.IGNORECASE)
@@ -304,6 +307,10 @@ DEFAULT_FILTER = VulnerabilityFilter(
     )
 
 
+class AlreadyScannedException(Exception):
+    pass
+
+
 class VulnerabilityScanner:
 
     def __init__(
@@ -316,6 +323,7 @@ class VulnerabilityScanner:
         self.vulnerabilities = {}
         self.affected = {}
         self.callbacks = []
+        self.scan_paths = set()
 
     def register_result_callback(
                     self,
@@ -334,6 +342,12 @@ class VulnerabilityScanner:
         for callback in self.callbacks:
             callback(software, vulnerabilities)
 
+    def add_scan_path(self, path: str) -> None:
+        realpath = os.path.realpath(path)
+        if realpath in self.scan_paths:
+            raise AlreadyScannedException(f'{path} has already been scanned')
+        self.scan_paths.add(realpath)
+
     def scan(self, software: ScannableSoftware) -> Dict[str, Vulnerability]:
         vulnerabilities = self.index.get_vulnerabilities(
                 software.type,
@@ -349,36 +363,55 @@ class VulnerabilityScanner:
             self.affected[identifier].append(software)
         return vulnerabilities
 
-    def scan_core(self, version: str) -> Dict[str, Vulnerability]:
+    def scan_core(
+                self,
+                version: str,
+                scan_path: Optional[str]
+            ) -> Dict[str, Vulnerability]:
         return self.scan(
                 ScannableSoftware(
                     type=SoftwareType.CORE,
                     slug=SLUG_WORDPRESS,
-                    version=version
+                    version=version,
+                    scan_path=scan_path
                 )
             )
 
-    def scan_site(self, site: WordpressSite) -> Dict[str, Vulnerability]:
-        return self.scan_core(site.get_version())
+    def scan_site(
+                self,
+                site: WordpressSite,
+                scan_path: Optional[str] = None
+            ) -> Dict[str, Vulnerability]:
+        return self.scan_core(site.get_version(), scan_path)
 
     def scan_extension(
                 self,
                 extension: Extension,
-                type: SoftwareType
+                type: SoftwareType,
+                scan_path: Optional[str] = None
             ) -> Dict[str, Vulnerability]:
         return self.scan(
                 ScannableSoftware(
                     type=type,
                     slug=extension.slug,
-                    version=extension.version
+                    version=extension.version,
+                    scan_path=scan_path
                 )
             )
 
-    def scan_plugin(self, plugin: Plugin) -> Dict[str, Vulnerability]:
-        return self.scan_extension(plugin, SoftwareType.PLUGIN)
+    def scan_plugin(
+                self,
+                plugin: Plugin,
+                scan_path: Optional[str] = None
+            ) -> Dict[str, Vulnerability]:
+        return self.scan_extension(plugin, SoftwareType.PLUGIN, scan_path)
 
-    def scan_theme(self, theme: Theme) -> Dict[str, Vulnerability]:
-        return self.scan_extension(theme, SoftwareType.THEME)
+    def scan_theme(
+                self,
+                theme: Theme,
+                scan_path: Optional[str] = None
+            ) -> Dict[str, Vulnerability]:
+        return self.scan_extension(theme, SoftwareType.THEME, scan_path)
 
     def get_vulnerability_count(self) -> int:
         return len(self.vulnerabilities)

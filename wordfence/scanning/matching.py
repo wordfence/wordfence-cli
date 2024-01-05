@@ -34,6 +34,9 @@ class Matcher:
         self.timeout = timeout
         self.match_all = match_all
 
+    def prepare():
+        pass
+
 
 class MatcherContext:
     pass
@@ -199,13 +202,13 @@ class RegexMatcher(Matcher):
                 signature_set: SignatureSet,
                 timeout: int = DEFAULT_TIMEOUT,
                 match_all: bool = False,
-                pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
+                pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS,
+                lazy: bool = False
             ):
         super().__init__(signature_set, timeout, match_all)
         self.pcre_options = pcre_options
-        self._compile_regexes()
-        self.signatures_without_common_strings = \
-            self._extract_signatures_without_common_strings()
+        if not lazy:
+            self.prepare()
 
     def _extract_signatures_without_common_strings(self) -> list:
         signatures = []
@@ -231,6 +234,11 @@ class RegexMatcher(Matcher):
     def _compile_regexes(self) -> None:
         self._compile_common_strings()
         self._compile_signatures()
+        self.signatures_without_common_strings = \
+            self._extract_signatures_without_common_strings()
+
+    def prepare(self) -> None:
+        self._compile_regexes()
 
     def create_context(self) -> RegexMatcherContext:
         return RegexMatcherContext(self)

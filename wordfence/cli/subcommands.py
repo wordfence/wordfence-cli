@@ -13,7 +13,8 @@ VALID_SUBCOMMANDS = {
         'malware-scan',
         'vuln-scan',
         'help',
-        'version'
+        'version',
+        'terms'
     }
 
 
@@ -72,7 +73,10 @@ class SubcommandDefinition:
                 cacheable_types: Set[str],
                 requires_config: bool = True,
                 previous_names: Set[str] = None,
-                examples: List[UsageExample] = None
+                examples: List[UsageExample] = None,
+                uses_license: bool = False,
+                accepts_files: bool = False,
+                accepts_directories: bool = False
             ):
         self.name = name
         self.usage = usage
@@ -85,6 +89,9 @@ class SubcommandDefinition:
         self.previous_names = previous_names if previous_names is not None \
             else set()
         self.examples = examples
+        self.uses_license = uses_license
+        self.accepts_files = accepts_files
+        self.accepts_directories = accepts_directories
 
     def get_config_map(self) -> Dict[str, ConfigItemDefinition]:
         if self.config_map is None:

@@ -354,10 +354,10 @@ class PcrePattern:
             return PcreMatch(matched_string)
 
     def _free(self) -> None:
-        if self.extra is not None:
+        if self.extra is not None and _pcre_free_study is not None:
             _pcre_free_study(self.extra)
             self.extra = None
-        if self.compiled is not None:
+        if self.compiled is not None and _pcre_free is not None:
             _pcre_free(self.compiled)
             self.compiled = None
 

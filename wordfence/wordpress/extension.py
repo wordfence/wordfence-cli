@@ -3,6 +3,7 @@ import os
 from typing import Optional, Dict, List
 from pathlib import Path
 
+from ..util.io import SYMLINK_IO_ERRORS
 from .exceptions import ExtensionException
 
 
@@ -93,11 +94,18 @@ class ExtensionLoader:
         extensions = []
         try:
             for entry in os.scandir(self.directory):
-                extension = self._process_entry(entry)
-                if extension is not None:
-                    extensions.append(extension)
+                try:
+                    extension = self._process_entry(entry)
+                    if extension is not None:
+                        extensions.append(extension)
+                except OSError as error:
+                    if error.errno in SYMLINK_IO_ERRORS:
+                        continue
+                    raise
         except OSError as error:
-            raise ExtensionException(
-                    f'Unable to scan extension directory at {self.directory}'
-                ) from error
+            if error.errno not in SYMLINK_IO_ERRORS:
+                raise ExtensionException(
+                        'Unable to scan extension directory at '
+                        f'{self.directory}'
+                    ) from error
         return extensions

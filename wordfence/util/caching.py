@@ -50,6 +50,9 @@ class Cache:
                 self._deserialize_value(self._load(key, max_age))
             )
 
+    def remove(self, key: str) -> None:
+        raise NotImplementedError('Removing is not implemented for this cache')
+
     def purge(self) -> None:
         pass
 
@@ -75,6 +78,13 @@ class RuntimeCache(Cache):
         if key in self.items:
             return self.items[key]
         raise NoCachedValueException()
+
+    def remove(self, key: str) -> None:
+        try:
+            del self.items[key]
+        except KeyError:
+            # The item already does not exist
+            pass
 
     def purge(self) -> None:
         self.items = {}
@@ -138,6 +148,12 @@ class CacheDirectory(Cache):
                         + str(e)
                     )
             raise NoCachedValueException() from e
+
+    def remove(self, key: str) -> None:
+        path = self._get_path(key)
+        with open(path, 'wb') as file:
+            with FileLock(file, LockType.EXCLUSIVE):
+                os.remove(path)
 
     def purge(self) -> None:
         try:

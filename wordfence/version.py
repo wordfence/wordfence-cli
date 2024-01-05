@@ -1,2 +1,2 @@
-__version__ = '2.0.3'
-__version_name__ = 'Voodoo Child'
+__version__ = '2.1.0'
+__version_name__ = None

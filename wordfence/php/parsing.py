@@ -642,7 +642,8 @@ class PhpConstant(PhpIdentifiedEntity, Evaluable):
         try:
             return state.constants[self.name]
         except KeyError:
-            return self.name  # Constants are treated as strings if undefined
+            # Constants are treated as strings if undefined
+            return PhpValue.for_python_value(self.name)
 
 
 class PhpMagicConstant(PhpEntity, Evaluable):
