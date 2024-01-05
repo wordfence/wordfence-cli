@@ -12,6 +12,7 @@ VALID_SUBCOMMANDS = {
         'configure',
         'malware-scan',
         'vuln-scan',
+        'remediate',
         'help',
         'version',
         'terms'
@@ -44,6 +45,10 @@ class Subcommand:
         self.config = context.config
         self.cache = context.cache
         self.helper = context.helper
+        self.prepare()
+
+    def prepare(self) -> None:
+        pass
 
     def invoke(self) -> int:
         return 0

@@ -37,12 +37,24 @@ class NocClient:
         query['cli'] = 1
         return query
 
-    def request(self, action: str, query: dict = None):
+    def request(
+                self,
+                action: str,
+                query: Optional[dict] = None,
+                body: Optional[dict] = None,
+                json: bool = True
+            ):
         query = self.build_query(action, query)
         url = self.base_url + '?' + urlencode(query)
         try:
-            response = requests.get(url, timeout=self.timeout)
-            return response.json()
+            if body is None:
+                response = requests.get(url, timeout=self.timeout)
+            else:
+                response = requests.post(url, timeout=self.timeout, data=body)
+            if json:
+                return response.json()
+            else:
+                return response.content
         except Exception as error:
             raise ApiException('Request failed') from error
 

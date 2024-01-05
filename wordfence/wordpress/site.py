@@ -2,6 +2,7 @@ import os
 import os.path
 from dataclasses import dataclass, field
 from typing import Optional, List, Generator, Set
+from pathlib import Path
 
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
@@ -144,12 +145,34 @@ class WordpressLocator(PathResolver):
         else:
             yield path
 
+    def locate_parent_installation(self) -> Optional[str]:
+        current = Path(self.path).expanduser().resolve()
+        if not current.is_dir():
+            current = current.parent.resolve()
+        while True:
+            current_string = str(current)
+            if self._is_core_directory(current_string):
+                return current_string
+            parent = current.parent.resolve()
+            if parent == current:
+                break
+            current = parent
+        return None
 
-def locate_core_path(path: str) -> str:
+
+def locate_core_path(path: str, up: bool = False) -> str:
     locator = WordpressLocator(path)
-    for path in locator.locate_core_paths():
-        return path
-    raise WordpressException(f'Unable to locate core files under {path}')
+    if up:
+        core_path = locator.locate_parent_installation()
+        if core_path is None:
+            raise WordpressException(
+                    f'Unable to locate core files above {path}'
+                )
+        return core_path
+    else:
+        for path in locator.locate_core_paths():
+            return path
+        raise WordpressException(f'Unable to locate core files under {path}')
 
 
 class WordpressSite(PathResolver):
@@ -159,11 +182,13 @@ class WordpressSite(PathResolver):
                 path: str,
                 structure_options: Optional[WordpressStructureOptions] = None,
                 core_path: str = None,
+                is_child_path: bool = False
             ):
         super().__init__(path)
-        self.core_path = locate_core_path(path)
+        self.core_path = locate_core_path(path, is_child_path)
         self.structure_options = structure_options \
             if structure_options is not None else WordpressStructureOptions()
+        self._version = None
 
     def resolve_core_path(self, path: str) -> str:
         return self._resolve_path(path, self.core_path)
@@ -171,7 +196,7 @@ class WordpressSite(PathResolver):
     def resolve_content_path(self, path: str) -> str:
         return self._resolve_path(path, self.get_content_directory())
 
-    def get_version(self) -> str:
+    def _determine_version(self) -> str:
         version_path = self.resolve_core_path('wp-includes/version.php')
         context = parse_php_file(version_path)
         try:
@@ -186,6 +211,11 @@ class WordpressSite(PathResolver):
                     f'Unable to parse WordPress version file at {version_path}'
                 ) from exception
         raise WordpressException('Unable to determine WordPress version')
+
+    def get_version(self) -> str:
+        if self._version is None:
+            self._version = self._determine_version()
+        return self._version
 
     def _locate_config_file(self) -> str:
         paths = [

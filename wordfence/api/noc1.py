@@ -1,5 +1,6 @@
 import json
-from typing import Callable
+import re
+from typing import Callable, Optional
 
 from .noc_client import NocClient
 from .exceptions import ApiException
@@ -9,6 +10,9 @@ from ..intel.signatures import CommonString, Signature, SignatureSet
 from ..util.validation import DictionaryValidator, ListValidator, Validator
 
 NOC1_BASE_URL = 'https://noc1.wordfence.com/v2.27/'
+
+
+API_ERROR_PATTERN = re.compile(r'\{.*errorMsg')
 
 
 class Client(NocClient):
@@ -56,13 +60,16 @@ class Client(NocClient):
         for hook in self.license_update_hooks:
             hook(license)
 
+    def _check_error_message(self, response: dict) -> None:
+        if 'errorMsg' in response:
+            raise ApiException(
+                    'Error message received in response body',
+                    response['errorMsg']
+                )
+
     def validate_response(self, response, validator: Validator) -> None:
         if isinstance(response, dict):
-            if 'errorMsg' in response:
-                raise ApiException(
-                        'Error message received in response body',
-                        response['errorMsg']
-                    )
+            self._check_error_message(response)
             paid = bool('_isPaidKey' in response and response['_isPaidKey'])
             if paid != self.license.paid:
                 self.license.paid = paid
@@ -157,3 +164,47 @@ class Client(NocClient):
             })
         self.validate_response(response, validator)
         return response['terms']
+
+    def request_raw(
+                self,
+                action: str,
+                query: Optional[dict] = None,
+                body: Optional[dict] = None
+            ) -> bytes:
+        response = self.request(
+                action,
+                query,
+                body,
+                json=False
+            )
+        try:
+            response_string = response.decode('utf-8')
+            if API_ERROR_PATTERN.match(response_string):
+                json_data = json.loads(response)
+                self._check_error_message(json_data)
+        except (UnicodeError, json.JSONDecodeError):
+            pass  # If the response isn't valid JSON, then there's no error
+        return response
+
+    def get_wp_file_content(
+                self,
+                type: str,
+                path: str,
+                coreVersion: str,
+                name: Optional[str] = None,
+                version: Optional[str] = None
+            ) -> str:
+        parameters = {
+                'cType': type,
+                'file': path,
+                'v': coreVersion,
+            }
+        if name is not None:
+            parameters['cName'] = name
+        if version is not None:
+            parameters['cVersion'] = version
+        response = self.request_raw(
+                'get_wp_file_content',
+                body=parameters
+            )
+        return response

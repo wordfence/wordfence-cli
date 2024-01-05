@@ -37,12 +37,14 @@ class PluginLoader(ExtensionLoader):
                 self,
                 slug: str,
                 version: Optional[str],
-                header: Dict[str, str]
+                header: Dict[str, str],
+                path: Path
             ):
         return Plugin(
                 slug=slug,
                 version=version,
-                header=header
+                header=header,
+                path=path
             )
 
     def _has_php_extension(self, path: Path) -> bool:
@@ -62,7 +64,7 @@ class PluginLoader(ExtensionLoader):
                 if child.is_file():
                     child_path = path / child.name
                     if self._has_php_extension(child_path):
-                        plugin = self.load(slug, child_path)
+                        plugin = self.load(slug, child_path, base_path=path)
                         if plugin is not None:
                             return plugin
         return None
