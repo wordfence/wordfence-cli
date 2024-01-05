@@ -1,4 +1,4 @@
-FROM almalinux:9.3-minimal
+FROM almalinux:9.3
 
 RUN dnf -y upgrade && \
     dnf config-manager --set-enabled crb && \
