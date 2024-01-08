@@ -13,8 +13,8 @@ class RemediateSubcommand(Subcommand):
 
     def process_path(self, path: str, report: RemediationReport) -> None:
         log.debug(f'Attempting to remediate {path}...')
-        result = self.remediator.remediate(path)
-        report.add_result(result)
+        for result in self.remediator.remediate(path):
+            report.add_result(result)
 
     def invoke(self) -> int:
         report_manager = RemediationReportManager(self.context)

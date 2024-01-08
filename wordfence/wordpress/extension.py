@@ -32,6 +32,9 @@ class Extension:
         except KeyError:
             return self.slug
 
+    def __str__(self) -> str:
+        return f'{self.slug}({self.version})'
+
 
 class ExtensionLoader:
 

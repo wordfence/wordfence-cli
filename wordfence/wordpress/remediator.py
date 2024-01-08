@@ -1,6 +1,7 @@
-from pathlib import Path
 from typing import Optional
+from pathlib import Path
 
+from ..util.io import pathlib_resolve, iterate_files
 from ..logging import log
 from ..api import noc1
 from ..api.exceptions import ApiException
@@ -54,15 +55,17 @@ class RemediationResult:
 
     def __init__(
                 self,
-                path: str,
+                path: Path,
                 identity: FileIdentity,
                 known: bool = False,
-                remediated: bool = False
+                remediated: bool = False,
+                target_path: Optional[Path] = None
             ):
         self.path = path
         self.identity = identity
         self.known = known
         self.remediated = remediated
+        self.target_path = target_path if target_path is not None else path
 
     def __bool__(self) -> bool:
         return self.remediated
@@ -77,10 +80,13 @@ class Remediator:
     def get_correct_content(self, identity: KnownFileIdentity) -> bytes:
         return self.source.get_correct_content(identity)
 
-    def remediate(self, path: str) -> RemediationResult:
-        path = Path(path)
+    def remediate_file(
+                self,
+                path: Path,
+                target_path: Optional[Path] = None
+            ) -> RemediationResult:
         identity = self.identifier.identify(path)
-        result = RemediationResult(path, identity)
+        result = RemediationResult(path, identity, target_path=target_path)
         if identity.type is FileType.UNKNOWN:
             log.warning(f'Unable to identify {path}')
             return result
@@ -104,3 +110,11 @@ class Remediator:
                     + str(error)
                 )
         return result
+
+    def remediate(self, path: str) -> RemediationResult:
+        path = pathlib_resolve(path)
+        if path.is_dir():
+            for file in iterate_files(path):
+                yield self.remediate_file(pathlib_resolve(file), path)
+        else:
+            yield self.remediate_file(path)
