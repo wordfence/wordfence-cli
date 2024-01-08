@@ -1,7 +1,8 @@
 import fcntl
 import os
-from typing import Optional, IO, TextIO, Generator, Iterable
+from typing import Optional, IO, TextIO, Generator, Iterable, List
 from enum import Enum, IntEnum
+from pathlib import Path
 
 
 SYMLINK_IO_ERRORS = {
@@ -74,6 +75,10 @@ class FileLock:
 def resolve_path(path: str) -> str:
     """ Resolve a path to a normalized, absolute path """
     return os.path.abspath(os.path.expanduser(path))
+
+
+def pathlib_resolve(path: str) -> Path:
+    return Path(path).expanduser().resolve()
 
 
 DEFAULT_CREATE_MODE = 0o700
@@ -178,3 +183,21 @@ def is_symlink_and_loop(
     except OSError:
         return False
     return is_symlink_loop(path, parents)
+
+
+def iterate_files(
+            path: str,
+            parents: Optional[List[str]] = None
+        ) -> Generator[str, None, None]:
+    contents = os.scandir(path)
+    if parents is None:
+        parents = [path]
+    else:
+        parents.copy().append(path)
+    for item in contents:
+        if is_symlink_and_loop(item.path, parents):
+            continue
+        if item.is_dir():
+            yield from iterate_files(item.path, parents)
+        else:
+            yield item.path

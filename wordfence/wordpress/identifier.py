@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Optional
 from pathlib import Path
 
+from ..util.io import pathlib_resolve
 from .site import WordpressSite
 from .exceptions import WordpressException
 from .extension import Extension
@@ -87,12 +88,9 @@ class KnownPath:
     def is_root(self) -> bool:
         return self.path is None
 
-    def prepare_path(self, path: Path) -> Path:
-        return path.expanduser().resolve()
-
     def find_identity(self, path: Path) -> type:
         node = self
-        path = self.prepare_path(path)
+        path = pathlib_resolve(path)
         for component in path.parts:
             if node.identity is not None and node.identity.is_final():
                 break
@@ -104,7 +102,7 @@ class KnownPath:
 
     def set_identity(self, path: Path, identity: FileIdentity) -> None:
         node = self
-        path = self.prepare_path(path)
+        path = pathlib_resolve(path)
         for component in path.parts:
             if component not in node.children:
                 node.children[component] = KnownPath()

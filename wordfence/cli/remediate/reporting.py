@@ -22,6 +22,20 @@ class RemediationReportColumn(ReportColumnEnum):
         lambda record: record.result.identity.site.core_path \
         if record.result.identity.site is not None \
         else None
+    TARGET_PATH = 'target_path', lambda record: record.result.target_path,
+    WORDPRESS_VERSION = 'wordpress_version', \
+        lambda record: record.result.identity.site.get_version() \
+        if record.result.identity.site is not None \
+        else None
+    EXTENSION_SLUG = 'extension_slug', \
+        lambda record: record.result.identity.extension.slug \
+        if record.result.identity.extension is not None else None
+    EXTENSION_NAME = 'extension_name', \
+        lambda record: record.result.identity.extension.get_name() \
+        if record.result.identity.extension is not None else None
+    EXTENSION_VERSION = 'extension_version', \
+        lambda record: record.result.identity.extension.version \
+        if record.result.identity.extension is not None else None
 
 
 class HumanReadableWriter(BaseHumanReadableWriter):
