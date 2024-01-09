@@ -47,7 +47,17 @@ Once this is done, we recommend [reviewing the configuration](Configuration.md) 
 
 ## Install the RPM package
 
-This method will work for Red Hat Enterprise Linux 9 and compatible distributions (AlmaLinux, Rocky Linux, etc) where you have root access to the system.
+This method will work for Red Hat Enterprise Linux 9 and compatible distributions (AlmaLinux, Rocky Linux, etc) where you have root access to the system. You must have the CodeReady Linux Builder (CRB) repo enabled before installing.
+
+On RHEL, run:
+
+	subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms`
+
+On RHEL-compatible distributions, run:
+
+	dnf config-manager --set-enabled crb
+
+You should now be able to install the RPM package:
 
 	sudo dnf install ./wordfence-el9.rpm
 
