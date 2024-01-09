@@ -38,11 +38,7 @@ Or
 
 For Red Hat/Fedora based Linux distributions:
 
-	yum install libpcre
-
-Or
-
-	yum install libpcre3
+	dnf install pcre
 
 #### How often are signatures refreshed locally?
 

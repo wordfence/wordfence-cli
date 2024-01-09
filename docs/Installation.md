@@ -20,7 +20,7 @@ Verify the executable works correctly on your system:
 
 You should see output similar to this:
 
-	Wordfence CLI 2.0.1
+	Wordfence CLI 3.0.1
 
 Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
 
@@ -41,7 +41,23 @@ Verify the executable works correctly on your system:
 
 You should see output similar to this:
 
-	Wordfence CLI 2.0.1
+	Wordfence CLI 3.0.1
+
+Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
+
+## Install the RPM package
+
+This method will work for Red Hat Enterprise Linux 9 and compatible distributions (AlmaLinux, Rocky Linux, etc) where you have root access to the system.
+
+	sudo dnf install ./wordfence-el9.rpm
+
+Verify the executable works correctly on your system:
+
+	wordfence --version
+
+You should see output similar to this:
+
+	Wordfence CLI 3.0.1
 
 Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
 
@@ -65,7 +81,7 @@ Verify the binary works correctly on your system:
 
 You should see output similar to this:
 
-	Wordfence CLI 2.0.1
+	Wordfence CLI 3.0.1
 
 Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
 
@@ -83,7 +99,7 @@ Once the Docker image is built, you can start the docker container with the volu
 
 You should see output similar to this:
 
-	Wordfence CLI 2.0.1
+	Wordfence CLI 3.0.1
 
 Once this is done, we recommend [reviewing the configuration](Configuration.md) to go through configuring a license followed by [running your first scan](malware-scan/Examples.md).
 
