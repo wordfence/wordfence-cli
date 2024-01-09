@@ -38,12 +38,14 @@ class ThemeLoader(ExtensionLoader):
                 self,
                 slug: str,
                 version: Optional[str],
-                header: Dict[str, str]
+                header: Dict[str, str],
+                path: Path
             ):
         return Theme(
                 slug=slug,
                 version=version,
-                header=header
+                header=header,
+                path=path
             )
 
     def _process_entry(self, entry: os.DirEntry) -> Optional[Theme]:
@@ -54,4 +56,4 @@ class ThemeLoader(ExtensionLoader):
         if not path.is_file():
             return None
         slug = base.name
-        return self.load(slug, path)
+        return self.load(slug, path, base_path=base)

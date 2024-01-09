@@ -1,2 +1,2 @@
-__version__ = '2.1.0'
-__version_name__ = None
+__version__ = '3.0.1rc3'
+__version_name__ = 'Ghost Rider'

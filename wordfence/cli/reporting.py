@@ -139,6 +139,16 @@ class RowlessWriter(ReportWriter):
         raise NotImplementedError()
 
 
+class BaseHumanReadableWriter(RowlessWriter):
+
+    def format_record(self, record) -> str:
+        raise NotImplementedError()
+
+    def write_record(self, record) -> None:
+        self._target.write(self.format_record(record))
+        self._target.write('\n')
+
+
 class ReportFormat:
 
     def __init__(

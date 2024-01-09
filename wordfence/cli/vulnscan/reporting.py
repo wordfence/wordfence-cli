@@ -9,7 +9,7 @@ from ...util.terminal import Color, escape, RESET
 from ...util.html import Tag
 from ..reporting import Report, ReportColumnEnum, ReportFormatEnum, \
         ReportRecord, ReportManager, ReportFormat, ReportColumn, \
-        RowlessWriter, ReportEmail, get_config_options, \
+        BaseHumanReadableWriter, ReportEmail, get_config_options, \
         generate_report_email_html, generate_html_table, \
         REPORT_FORMAT_CSV, REPORT_FORMAT_TSV, REPORT_FORMAT_NULL_DELIMITED, \
         REPORT_FORMAT_LINE_DELIMITED
@@ -76,7 +76,7 @@ class VulnScanReportColumn(ReportColumnEnum):
                 variant == self.feed_variant
 
 
-class HumanReadableWriter(RowlessWriter):
+class HumanReadableWriter(BaseHumanReadableWriter):
 
     def get_severity_color(self, severity: str) -> str:
         if severity == 'none' or severity == 'low':
@@ -114,10 +114,6 @@ class HumanReadableWriter(RowlessWriter):
             f'{vuln.title} in {sw.slug}({sw.version})\n'
             f'{white}Details: {blue}{link}{RESET}'
             )
-
-    def write_record(self, record) -> None:
-        self._target.write(self.format_record(record))
-        self._target.write('\n')
 
 
 REPORT_FORMAT_HUMAN = ReportFormat(

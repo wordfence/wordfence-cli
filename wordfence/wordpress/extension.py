@@ -18,11 +18,22 @@ class Extension:
                 self,
                 slug: str,
                 version: Optional[str],
-                header: Dict[str, str]
+                header: Dict[str, str],
+                path: Path
             ):
         self.slug = slug
         self.version = version
         self.header = header
+        self.path = path
+
+    def get_name(self) -> str:
+        try:
+            return self.header['Name']
+        except KeyError:
+            return self.slug
+
+    def __str__(self) -> str:
+        return f'{self.slug}({self.version})'
 
 
 class ExtensionLoader:
@@ -64,7 +75,12 @@ class ExtensionLoader:
                 values[field] = self._clean_up_header_value(match.group(1))
         return values
 
-    def load(self, slug: str, path: Path) -> Optional[Extension]:
+    def load(
+                self,
+                slug: str,
+                path: Path,
+                base_path: Optional[Path] = None
+            ) -> Optional[Extension]:
         header_data = self._read_header(str(path))
         header = self._parse_header(header_data)
         if 'Name' not in header:
@@ -73,18 +89,22 @@ class ExtensionLoader:
             version = header['Version']
         except KeyError:
             version = None
-        return self._initialize_extension(slug, version, header)
+        if base_path is None:
+            base_path = path
+        return self._initialize_extension(slug, version, header, base_path)
 
     def _initialize_extension(
                 self,
                 slug: str,
                 version: Optional[str],
-                header: Dict[str, str]
+                header: Dict[str, str],
+                path: Path
             ):
         return Extension(
                 slug=slug,
                 version=version,
-                header=header
+                header=header,
+                path=path
             )
 
     def _process_entry(entry: os.DirEntry) -> Optional[Extension]:
