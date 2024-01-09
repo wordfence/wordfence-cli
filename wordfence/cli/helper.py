@@ -181,6 +181,7 @@ class OptionFormatter:
                 lines.append(self._offset(valid_options, offset))
             if option.is_flag and (
                         option.default or
+                        option.default is None or
                         option.context is not Context.CLI
                     ):
                 lines.append(self._offset(

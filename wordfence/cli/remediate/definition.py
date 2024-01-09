@@ -20,7 +20,16 @@ config_definitions: ConfigDefinitions = {
         "default": "AA==",
         "default_type": "base64"
     },
-    **REMEDIATION_REPORT_CONFIG_OPTIONS
+    **REMEDIATION_REPORT_CONFIG_OPTIONS,
+    "require-path": {
+        "description": "When enabled, invoking the remediate command without "
+                       "specifying at least one path will trigger an error. "
+                       "This is the default behavior when running in a "
+                       "terminal.",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
+    },
 }
 
 definition = SubcommandDefinition(
