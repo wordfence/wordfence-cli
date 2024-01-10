@@ -51,7 +51,7 @@ This method will work for Red Hat Enterprise Linux 9 and compatible distribution
 
 On RHEL, run:
 
-	subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms`
+	subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms
 
 On RHEL-compatible distributions, run:
 
