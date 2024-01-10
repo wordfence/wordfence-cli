@@ -13,7 +13,8 @@ from .exceptions import ScanningException, ScanningIoException
 from .matching import Matcher, RegexMatcher
 from .filtering import FileFilter, filter_any
 from ..util import timing
-from ..util.io import StreamReader, is_symlink_loop, is_symlink_and_loop
+from ..util.io import StreamReader, is_symlink_loop, is_symlink_and_loop, \
+    get_all_parents
 from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
 from ..util.units import scale_byte_unit
 from ..intel.signatures import SignatureSet
@@ -143,13 +144,6 @@ class FileLocator:
             return True
         return False
 
-    def _get_all_parents(self, path: str) -> List[str]:
-        parents = [path]
-        while len(path) > 1:
-            path = os.path.dirname(path)
-            parents.append(path)
-        return parents
-
     def _handle_io_error(self, error: OSError, path: str) -> None:
         detail = str(error)
         if self.allow_io_errors:
@@ -165,7 +159,7 @@ class FileLocator:
     def search_directory(self, path: str, parents: Optional[list] = None):
         try:
             if parents is None:
-                parents = self._get_all_parents(path)
+                parents = get_all_parents(path)
             contents = os.scandir(path)
         except OSError as os_error:
             self._handle_io_error(os_error, path)
@@ -177,7 +171,7 @@ class FileLocator:
                 if item.is_dir():
                     yield from self.search_directory(
                             item.path,
-                            parents + self._get_all_parents(item.path)
+                            parents + get_all_parents(item.path)
                         )
                 elif item.is_file():
                     if not self.file_filter.filter(item.path):

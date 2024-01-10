@@ -46,7 +46,7 @@ class Noc1RemediationSource(RemediationSource):
                     )
         except ApiException as e:
             log.warning(
-                    f'Unable to fetch correct content for {identity}: {e}'
+                    f'Unable to fetch correct content for {identity} - {e}'
                 )
             return None
 

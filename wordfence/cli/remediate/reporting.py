@@ -17,6 +17,7 @@ from ..context import CliContext
 
 class RemediationReportColumn(ReportColumnEnum):
     PATH = 'path', lambda record: record.result.path,
+    STATUS = 'status', lambda record: record.get_status(),
     TYPE = 'type', lambda record: record.result.identity.type,
     SITE = 'site', \
         lambda record: record.result.identity.site.core_path \
@@ -76,6 +77,15 @@ class RemediationReportRecord(ReportRecord):
 
     def __init__(self, result: RemediationResult):
         self.result = result
+
+    def get_status(self) -> str:
+        if self.result.remediated:
+            return 'remediated'
+        if self.result.identity.type == FileType.UNKNOWN:
+            return 'unidentified'
+        if not self.result.known:
+            return 'unrecognized'
+        return 'failed'
 
 
 class RemediationCounts:
