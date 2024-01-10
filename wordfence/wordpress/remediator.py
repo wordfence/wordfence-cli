@@ -6,7 +6,7 @@ from ..logging import log
 from ..api import noc1
 from ..api.exceptions import ApiException
 from .identifier import FileIdentifier, FileType, FileIdentity, \
-    KnownFileIdentity
+    KnownFileIdentity, GroupIdentity
 
 
 class RemediationSource:
@@ -46,7 +46,7 @@ class Noc1RemediationSource(RemediationSource):
                     )
         except ApiException as e:
             log.warning(
-                    f'Unable to fetch correct content for {identity}: {e}'
+                    f'Unable to fetch correct content for {identity} - {e}'
                 )
             return None
 
@@ -76,6 +76,7 @@ class Remediator:
     def __init__(self, source: RemediationSource):
         self.identifier = FileIdentifier()
         self.source = source
+        self.input_count = 0
 
     def get_correct_content(self, identity: KnownFileIdentity) -> bytes:
         return self.source.get_correct_content(identity)
@@ -111,10 +112,24 @@ class Remediator:
                 )
         return result
 
+    def handle_symlink_loop(self, path: str) -> None:
+        log.warning(f'Symlink loop detected at {path}')
+
     def remediate(self, path: str) -> RemediationResult:
+        self.input_count += 1
         path = pathlib_resolve(path)
         if path.is_dir():
-            for file in iterate_files(path):
+            file_found = False
+            for file in iterate_files(
+                        path,
+                        loop_callback=self.handle_symlink_loop
+                    ):
                 yield self.remediate_file(pathlib_resolve(file), path)
+                file_found = True
+            if not file_found:
+                yield RemediationResult(
+                        path,
+                        GroupIdentity(FileType.UNKNOWN, path)
+                    )
         else:
             yield self.remediate_file(path)

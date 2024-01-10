@@ -174,6 +174,12 @@ class CliContext:
     def has_terminal_input(self) -> bool:
         return has_terminal_input()
 
+    def requires_input(self, option: Optional[bool]) -> bool:
+        return (
+                option is True or
+                (option is None and self.has_terminal_input())
+            )
+
     def clean_up(self) -> None:
         if self._mailer is not None:
             self._mailer.close()

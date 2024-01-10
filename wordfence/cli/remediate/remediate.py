@@ -1,6 +1,7 @@
 from ...wordpress.remediator import Remediator, Noc1RemediationSource
 from ...logging import log
 from ..subcommands import Subcommand
+from ..exceptions import ConfigurationException
 from .reporting import RemediationReportManager, RemediationReport
 
 
@@ -27,6 +28,11 @@ class RemediateSubcommand(Subcommand):
                 reader = io_manager.get_input_reader()
                 for path in reader.read_all_entries():
                     self.process_path(path, report)
+            if self.remediator.input_count == 0 and \
+                    self.context.requires_input(self.config.require_path):
+                raise ConfigurationException(
+                        'At least one path to remediate must be specified'
+                    )
             report.complete()
             if report.counts.remediated == report.counts.total:
                 log.info(

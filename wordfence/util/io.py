@@ -1,6 +1,7 @@
 import fcntl
 import os
-from typing import Optional, IO, TextIO, Generator, Iterable, List
+from typing import Optional, IO, TextIO, Generator, Iterable, List, Union, \
+    Callable, Set
 from enum import Enum, IntEnum
 from pathlib import Path
 
@@ -185,19 +186,44 @@ def is_symlink_and_loop(
     return is_symlink_loop(path, parents)
 
 
-def iterate_files(
-            path: str,
-            parents: Optional[List[str]] = None
-        ) -> Generator[str, None, None]:
-    contents = os.scandir(path)
+def get_all_parents(path: str) -> List[str]:
+    parents = [path]
+    while len(path) > 1:
+        path = os.path.dirname(path)
+        parents.append(path)
+    return parents
+
+
+def populate_parents(
+            path: Union[str, os.PathLike],
+            parents: Optional[Set[str]] = None
+        ) -> Set[str]:
+    path = str(path)
     if parents is None:
-        parents = [path]
+        parents = set()
     else:
-        parents.copy().append(path)
+        parents = parents.copy()
+    parents.update(get_all_parents(path))
+    return parents
+
+
+def iterate_files(
+            path: Union[str, os.PathLike],
+            parents: Optional[Set[str]] = None,
+            loop_callback: Optional[Callable[[str], None]] = None
+        ) -> Generator[str, None, None]:
+    parents = populate_parents(path, parents)
+    if is_symlink_and_loop(str(path), parents):
+        if loop_callback is not None:
+            loop_callback(str(path))
+        return
+    contents = os.scandir(path)
     for item in contents:
-        if is_symlink_and_loop(item.path, parents):
+        if is_symlink_and_loop(str(item.path), parents):
+            if loop_callback is not None:
+                loop_callback(str(item.path))
             continue
         if item.is_dir():
-            yield from iterate_files(item.path, parents)
+            yield from iterate_files(item.path, parents, loop_callback)
         else:
             yield item.path
