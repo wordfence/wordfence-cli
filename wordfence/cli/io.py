@@ -10,8 +10,8 @@ class IoManager:
                 self,
                 read_stdin: Optional[bool],
                 input_delimiter: Union[str, bytes],
-                write_stdout: Optional[bool],
-                output_path: Optional[str]
+                write_stdout: Optional[bool] = None,
+                output_path: Optional[str] = None
             ):
         self.read_stdin = read_stdin
         self.input_delimiter = input_delimiter \

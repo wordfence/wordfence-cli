@@ -13,6 +13,7 @@ VALID_SUBCOMMANDS = {
         'malware-scan',
         'vuln-scan',
         'remediate',
+        'count-sites',
         'help',
         'version',
         'terms'
