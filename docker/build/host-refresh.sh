@@ -15,7 +15,7 @@ elif [ "$2" != "amd64" ] && [ "$2" != "arm64" ]; then
 elif [ -z ${3:+x} ]; then
     echo "You must provide the package type as the third argument"
     exit 1
-elif [ "$3" != "deb" ] && [ "$3" != "standalone" ]; then
+elif [ "$3" != "deb" ] && [ "$3" != "rpm" ] && [ "$3" != "standalone" ]; then
     echo "Invalid package type (must be deb or standalone)"
     exit 1
 fi

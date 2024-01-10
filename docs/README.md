@@ -7,6 +7,7 @@ Wordfence CLI is a high performance, multi-process, command-line malware scanner
 - [Installation](Installation.md)
 	- [Installation with `pip`](Installation.md#installation-with-pip)
 	- [Install the Debian package](Installation.md#install-the-debian-package)
+	- [Install the RPM package](Installation.md#install-the-rpm-package)
 	- [Binaries](Installation.md#binaries)
 	- [Docker](Installation.md#docker)
 	- [Manual Installation](Installation.md#manual-installation)

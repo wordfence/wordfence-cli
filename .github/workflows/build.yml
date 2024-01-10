@@ -50,6 +50,21 @@ jobs:
         with:
           name: wordfence_cli_deb
           path: ${{ github.workspace }}/docker/build/volumes/output/wordfence.deb
+  rpm_build:
+    name: RPM build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Docker build
+        run: ./docker/build/host-refresh.sh "$GITHUB_WORKSPACE" amd64 rpm
+      - name: Docker run
+        run: ./docker/build/host-build.sh "$GITHUB_WORKSPACE" amd64 rpm
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wordfence_cli_rpm_el9
+          path: ${{ github.workspace }}/docker/build/volumes/output/wordfence-el9.rpm
   python_build:
     name: Python build
     runs-on: ubuntu-20.04
@@ -81,6 +96,7 @@ jobs:
     needs:
       - linux_standalone_build
       - deb_build
+      - rpm_build
       - python_build
     steps:
       - name: Download artifacts

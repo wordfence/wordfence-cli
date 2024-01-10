@@ -3,9 +3,7 @@ set -e
 
 cd /root/wordfence-cli
 
-ARCHITECTURE=$(dpkg --print-architecture)
-
-if [ "$PACKAGE_TYPE" = 'deb' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
+if [ "$PACKAGE_TYPE" = 'deb' ]; then
 
   # build deb package
 
@@ -37,10 +35,39 @@ if [ "$PACKAGE_TYPE" = 'deb' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
 
 fi
 
-if [ "$PACKAGE_TYPE" = 'standalone' ] || [ "$PACKAGE_TYPE" = 'all' ]; then
+if [ "$PACKAGE_TYPE" = 'rpm' ]; then
+
+  # build RPM package
+
+  VERSION=$(python3 -c 'from wordfence import version; print(version.__version__)')
+  SPECFILE="wordfence.spec"
+
+  export PATH="${PATH}:/usr/local/bin"
+
+  # setup directories for rpmbuild
+  rpmdev-setuptree
+
+  # create source archive for rpmbuild
+  tar -C /root -czvf "/root/v${VERSION}.tar.gz" wordfence-cli
+  cp "/root/v${VERSION}.tar.gz" /root/rpmbuild/SOURCES/
+  cp "$SPECFILE" /root/rpmbuild/SPECS/
+
+  # build RPM
+  rpmbuild -bb \
+    -D "wordfence_version ${VERSION}" \
+    "/root/rpmbuild/SPECS/${SPECFILE}"
+
+  # copy to output volume
+  pushd /root/rpmbuild/RPMS/noarch/
+  RPM_FILENAME="python3.11-wordfence-${VERSION}-1.el9.noarch"
+  cp "${RPM_FILENAME}.rpm" /root/output/wordfence-el9.rpm
+fi
+
+if [ "$PACKAGE_TYPE" = 'standalone' ]; then
 
   # build standalone executable
   
+  ARCHITECTURE=$(dpkg --print-architecture)
   VERSION=$(python3.8 -c 'from wordfence import version; print(version.__version__)')
 
   # install build requirements
