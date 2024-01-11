@@ -97,6 +97,7 @@ jobs:
             wordfence_cli_amd64/*.tar.gz
             wordfence_cli_arm64/*.tar.gz
             wordfence_cli_deb/*.deb
+            wordfence_cli_rpm_el9/*.rpm
             wordfence_cli_python/*.whl
             wordfence_cli_python/*.tar.gz
             wordfence_cli_checksums/checksums.txt

@@ -108,6 +108,7 @@ jobs:
             wordfence_cli_amd64 \
             wordfence_cli_arm64 \
             wordfence_cli_deb \
+            wordfence_cli_rpm_el9 \
             wordfence_cli_python
           do
             pushd "$artifact"
