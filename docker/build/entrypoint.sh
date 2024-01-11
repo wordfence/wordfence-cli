@@ -93,6 +93,8 @@ if [ "$PACKAGE_TYPE" = 'standalone' ]; then
     --hidden-import wordfence.cli.terms.definition \
     --hidden-import wordfence.cli.remediate.remediate \
     --hidden-import wordfence.cli.remediate.definition \
+    --hidden-import wordfence.cli.countsites.countsites \
+    --hidden-import wordfence.cli.countsites.definition \
     main.py
 
   # compress and copy to output volume
