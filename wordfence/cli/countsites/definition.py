@@ -1,4 +1,4 @@
-from ..subcommands import SubcommandDefinition
+from ..subcommands import SubcommandDefinition, UsageExample
 from ..config.typing import ConfigDefinitions
 
 config_definitions: ConfigDefinitions = {
@@ -30,6 +30,13 @@ config_definitions: ConfigDefinitions = {
     },
 }
 
+examples = [
+    UsageExample(
+        'Count the number of WordPress installations under /var/www/',
+        'wordfence count-sites /var/www/'
+    )
+]
+
 definition = SubcommandDefinition(
     name='count-sites',
     usage='[OPTIONS] [PATH]...',
@@ -38,4 +45,5 @@ definition = SubcommandDefinition(
     config_definitions=config_definitions,
     config_section='COUNT_SITES',
     cacheable_types=set(),
+    examples=examples
 )
