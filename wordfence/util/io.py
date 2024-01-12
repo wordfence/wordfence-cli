@@ -4,6 +4,7 @@ from typing import Optional, IO, TextIO, Generator, Iterable, List, Union, \
     Callable, Set
 from enum import Enum, IntEnum
 from pathlib import Path
+from collections import deque
 
 
 SYMLINK_IO_ERRORS = {
@@ -194,6 +195,14 @@ def get_all_parents(path: str) -> List[str]:
     return parents
 
 
+def split_path(path: str) -> Iterable[str]:
+    components = deque()
+    while len(path) > 1:
+        components.appendleft(os.path.basename(path))
+        path = os.path.dirname(path)
+    return components
+
+
 def populate_parents(
             path: Union[str, os.PathLike],
             parents: Optional[Set[str]] = None
@@ -227,3 +236,39 @@ def iterate_files(
             yield from iterate_files(item.path, parents, loop_callback)
         else:
             yield item.path
+
+
+# A memory-optimized tree-set implementation for paths
+class PathSet:
+
+    def __init__(self):
+        self.children = {}
+
+    def _get_components(self, path: str) -> Iterable[str]:
+        return split_path(path)
+
+    def add(self, path: str) -> None:
+        components = self._get_components(path)
+        node = self.children
+        for component in components:
+            try:
+                node = node[component]
+            except KeyError:
+                child = {}
+                node[component] = child
+                node = child
+
+    def contains(self, path: str) -> bool:
+        components = self._get_components(path)
+        node = self.children
+        for component in components:
+            try:
+                node = node[component]
+            except KeyError:
+                return False
+        return True
+
+    def __contains__(self, path) -> bool:
+        if not isinstance(path, str):
+            return False
+        return self.contains(path)
