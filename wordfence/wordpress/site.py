@@ -106,7 +106,6 @@ class WordpressLocator(PathResolver):
     def _search_for_core_directory(self) -> Generator[str, None, None]:
         paths = [self.path]
         processed = set()
-        core_found = False
         while len(paths) > 0:
             directories = set()
             for path in paths:
@@ -128,12 +127,9 @@ class WordpressLocator(PathResolver):
             for directory in directories:
                 processed.add(directory)
                 if self._is_core_directory(directory):
-                    core_found = True
                     yield directory
                 else:
                     paths.add(directory)
-            if core_found:
-                break
 
     def locate_core_paths(self) -> str:
         if self._is_core_directory(self.path):
