@@ -32,7 +32,7 @@ config_definitions: ConfigDefinitions = {
         "description": "When enabled (the default), WordPress installations "
                        "nested below other installations will be included in "
                        "the count.",
-        "context": "CLI",
+        "context": "ALL",
         "argument_type": "FLAG",
         "default": True
     }

@@ -150,7 +150,7 @@ config_definitions: ConfigDefinitions = {
         "description": "When enabled (the default), WordPress installations "
                        "nested below other installations will also be "
                        "scanned for vulnerabilities.",
-        "context": "CLI",
+        "context": "ALL",
         "argument_type": "FLAG",
         "default": True
     }
