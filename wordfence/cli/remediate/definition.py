@@ -54,12 +54,12 @@ examples = [
 definition = SubcommandDefinition(
     name='remediate',
     usage='[OPTIONS] [PATH]...',
-    description='Remediate malware by restoring the content of known files\n\n'
-                'Known files will be overwritten with their original '
-                'content from the WordPress.org repo. Any intentional '
-                'modifications will be lost if files are remediated. '
-                'Performing a backup of existing files prior to '
-                'remediation is recommended.',
+    description='Remediate malware by restoring the content of known files',
+    long_description='Known files will be overwritten with their original '
+                     'content from the WordPress.org repo. Any intentional '
+                     'modifications will be lost if files are remediated. '
+                     'Performing a backup of existing files prior to '
+                     'remediation is recommended.',
     config_definitions=config_definitions,
     config_section='REMEDIATE',
     cacheable_types=set(),
