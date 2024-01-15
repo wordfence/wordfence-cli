@@ -7,7 +7,7 @@ from pathlib import Path
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
 from ..logging import log
-from ..util.io import is_symlink_loop, is_symlink_error
+from ..util.io import is_symlink_loop, is_symlink_error, PathSet
 from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
@@ -53,6 +53,10 @@ class PathResolver:
 
 
 class WordpressLocator(PathResolver):
+
+    def __init__(self, path: str, allow_nested: bool = True):
+        super().__init__(path)
+        self.allow_nested = allow_nested
 
     def _is_core_directory(self, path: str, quiet: bool = False) -> bool:
         missing_files = EXPECTED_CORE_FILES.copy()
@@ -103,7 +107,10 @@ class WordpressLocator(PathResolver):
                 directories.append(os.path.realpath(file.path))
         return directories
 
-    def _search_for_core_directory(self) -> Generator[str, None, None]:
+    def _search_for_core_directory(
+                self,
+                located: PathSet
+            ) -> Generator[str, None, None]:
         paths = [self.path]
         processed = set()
         while len(paths) > 0:
@@ -127,17 +134,24 @@ class WordpressLocator(PathResolver):
             for directory in directories:
                 processed.add(directory)
                 if self._is_core_directory(directory):
-                    yield directory
+                    if directory not in located:
+                        yield directory
+                        if self.allow_nested:
+                            paths.add(directory)
+                        located.add(directory)
                 else:
                     paths.add(directory)
 
     def locate_core_paths(self) -> str:
+        located = PathSet()
         if self._is_core_directory(self.path):
             yield self.path
-            return
+            if not self.allow_nested:
+                return
+            located.add(self.path)
         path = self._extract_core_path_from_index()
         if path is None:
-            yield from self._search_for_core_directory()
+            yield from self._search_for_core_directory(located)
         else:
             yield path
 

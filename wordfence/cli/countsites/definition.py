@@ -28,6 +28,14 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTIONAL_FLAG",
         "default": None
     },
+    "allow-nested": {
+        "description": "When enabled (the default), WordPress installations "
+                       "nested below other installations will be included in "
+                       "the count.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": True
+    }
 }
 
 examples = [
