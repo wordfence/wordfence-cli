@@ -1,5 +1,6 @@
 import fcntl
 import os
+import errno
 from typing import Optional, IO, TextIO, Generator, Iterable, List, Union, \
     Callable, Set
 from enum import Enum, IntEnum
@@ -8,8 +9,8 @@ from collections import deque
 
 
 SYMLINK_IO_ERRORS = {
-        2,  # File not found
-        40  # Too many levels of symbolic links
+        errno.ENOENT,  # File not found
+        errno.ELOOP  # Too many levels of symbolic links
     }
 
 
@@ -163,9 +164,9 @@ def is_symlink_loop(
         if is_same_file(path, realpath):
             return True
     except OSError as error:
-        if error.errno == 2:
+        if error.errno == errno.ENOENT:
             return False
-        if error.errno == 40:
+        if error.errno == errno.ELOOP:
             return True
         raise
     if parents is not None:
