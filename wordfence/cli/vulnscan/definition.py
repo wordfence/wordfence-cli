@@ -145,6 +145,14 @@ config_definitions: ConfigDefinitions = {
         "context": "CLI",
         "argument_type": "OPTIONAL_FLAG",
         "default": None
+    },
+    "allow-nested": {
+        "description": "When enabled (the default), WordPress installations "
+                       "nested below other installations will also be "
+                       "scanned for vulnerabilities.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": True
     }
 }
 

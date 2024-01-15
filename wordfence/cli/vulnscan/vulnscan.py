@@ -166,7 +166,7 @@ class VulnScanSubcommand(Subcommand):
                 structure_options: WordpressStructureOptions = None
             ) -> None:
         log.info(f'Searching for WordPress installations under {path}...')
-        locator = WordpressLocator(path)
+        locator = WordpressLocator(path, self.config.allow_nested)
         site_found = False
         for core_path in locator.locate_core_paths():
             site_found = True
