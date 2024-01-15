@@ -101,10 +101,22 @@ class WordpressLocator(PathResolver):
             ) -> List[str]:
         directories = []
         for file in os.scandir(path):
-            if file.is_dir():
-                if file.is_symlink() and is_symlink_loop(file.path, processed):
-                    continue
-                directories.append(os.path.realpath(file.path))
+            try:
+                if file.is_dir():
+                    if file.is_symlink() and \
+                            is_symlink_loop(file.path, processed):
+                        continue
+                    directories.append(os.path.realpath(file.path))
+            except OSError as error:
+                if is_symlink_error(error):
+                    log.warning(
+                            f'Ignoring file at {file.path} as its type could '
+                            'not be determined due to a symlink error'
+                        )
+                else:
+                    raise WordpressException(
+                            f'Unable to determine type of file at {file.path}'
+                        )
         return directories
 
     def _search_for_core_directory(
