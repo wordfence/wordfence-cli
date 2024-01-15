@@ -22,7 +22,7 @@ Extract the binary:
 
 Verify the binary works correctly on your system:
 
-	./wordfence --version
+	./wordfence version
 
 You should see output similar to this:
 

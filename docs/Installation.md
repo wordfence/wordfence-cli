@@ -16,7 +16,7 @@ If run as root, the executable path should be:
 
 Verify the executable works correctly on your system:
 
-	./wordfence --version
+	./wordfence version
 
 You should see output similar to this:
 
@@ -63,7 +63,7 @@ You should now be able to install the RPM package:
 
 Verify the executable works correctly on your system:
 
-	wordfence --version
+	wordfence version
 
 You should see output similar to this:
 
@@ -87,7 +87,7 @@ Extract the binary:
 
 Verify the binary works correctly on your system:
 
-	./wordfence --version
+	./wordfence version
 
 You should see output similar to this:
 
@@ -105,7 +105,7 @@ To install Wordfence CLI using Docker, you can clone the GitHub repo to your loc
 
 Once the Docker image is built, you can start the docker container with the volumes you wish to scan:
 
-	docker run -v /var/www:/var/www wordfence-cli:latest scan --version
+	docker run -v /var/www:/var/www wordfence-cli:latest version
 
 You should see output similar to this:
 
@@ -120,7 +120,7 @@ To install Wordfence CLI manually, you can clone the GitHub repo to your local e
 	git clone git@github.com:wordfence/wordfence-cli.git
 	cd ./wordfence-cli
 	pip install .
-	python main.py scan --version
+	python main.py version
 
 You can additionally build the wheel archive and generate an executable:
 	
