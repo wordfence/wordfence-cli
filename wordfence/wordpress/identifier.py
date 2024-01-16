@@ -88,17 +88,20 @@ class KnownPath:
     def is_root(self) -> bool:
         return self.path is None
 
-    def find_identity(self, path: Path) -> type:
+    def find_identity(self, path: Path) -> Optional[FileIdentity]:
         node = self
         path = pathlib_resolve(path)
+        identity = None
         for component in path.parts:
-            if node.identity is not None and node.identity.is_final():
-                break
+            if node.identity is not None:
+                identity = node.identity
+                if node.identity.is_final():
+                    break
             try:
                 node = node.children[component]
             except KeyError:
                 break
-        return node.identity
+        return identity
 
     def set_identity(self, path: Path, identity: FileIdentity) -> None:
         node = self
@@ -108,6 +111,15 @@ class KnownPath:
                 node.children[component] = KnownPath()
             node = node.children[component]
         node.identity = identity
+
+    def __str__(self) -> str:
+        return f'{self.path} - {self.identity}'
+
+    def debug(self, indent: str = '') -> None:
+        print(indent + str(self))
+        for path, child in self.children.items():
+            print(indent + f' {path}')
+            child.debug(indent + '\t')
 
 
 class FileIdentifier:

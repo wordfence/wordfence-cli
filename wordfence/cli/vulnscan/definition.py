@@ -145,6 +145,23 @@ config_definitions: ConfigDefinitions = {
         "context": "CLI",
         "argument_type": "OPTIONAL_FLAG",
         "default": None
+    },
+    "allow-nested": {
+        "description": "When enabled (the default), WordPress installations "
+                       "nested below other installations will also be "
+                       "scanned for vulnerabilities.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
+    },
+    "allow-io-errors": {
+        "description": "Allow scanning to continue if IO errors are "
+                       "encountered. Sites that cannot be processed "
+                       "due to IO errors will be skipped and a warning will "
+                       "be logged. This is the default behavior.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
     }
 }
 

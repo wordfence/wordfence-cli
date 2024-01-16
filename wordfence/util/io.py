@@ -1,14 +1,16 @@
 import fcntl
 import os
+import errno
 from typing import Optional, IO, TextIO, Generator, Iterable, List, Union, \
     Callable, Set
 from enum import Enum, IntEnum
 from pathlib import Path
+from collections import deque
 
 
 SYMLINK_IO_ERRORS = {
-        2,  # File not found
-        40  # Too many levels of symbolic links
+        errno.ENOENT,  # File not found
+        errno.ELOOP  # Too many levels of symbolic links
     }
 
 
@@ -80,6 +82,42 @@ def resolve_path(path: str) -> str:
 
 def pathlib_resolve(path: str) -> Path:
     return Path(path).expanduser().resolve()
+
+
+# A memory-optimized tree-set implementation for paths
+class PathSet:
+
+    def __init__(self):
+        self.children = {}
+
+    def _get_components(self, path: str) -> Iterable[str]:
+        return split_path(path)
+
+    def add(self, path: str) -> None:
+        components = self._get_components(path)
+        node = self.children
+        for component in components:
+            try:
+                node = node[component]
+            except KeyError:
+                child = {}
+                node[component] = child
+                node = child
+
+    def contains(self, path: str) -> bool:
+        components = self._get_components(path)
+        node = self.children
+        for component in components:
+            try:
+                node = node[component]
+            except KeyError:
+                return False
+        return True
+
+    def __contains__(self, path) -> bool:
+        if not isinstance(path, str):
+            return False
+        return self.contains(path)
 
 
 DEFAULT_CREATE_MODE = 0o700
@@ -155,28 +193,32 @@ def is_symlink_error(error: OSError) -> bool:
 
 def is_symlink_loop(
             path: str,
-            parents: Optional[Iterable[str]] = None
+            parents: Optional[Union[Iterable[str], PathSet]] = None
         ) -> bool:
     realpath = os.path.realpath(path)
     try:
         if is_same_file(path, realpath):
             return True
     except OSError as error:
-        if error.errno == 2:
+        if error.errno == errno.ENOENT:
             return False
-        if error.errno == 40:
+        if error.errno == errno.ELOOP:
             return True
         raise
     if parents is not None:
-        for parent in parents:
-            if realpath == parent:
+        if isinstance(parents, PathSet):
+            if realpath in parents:
                 return True
+        else:
+            for parent in parents:
+                if realpath == parent:
+                    return True
     return False
 
 
 def is_symlink_and_loop(
             path: str,
-            parents: Optional[Iterable[str]] = None
+            parents: Optional[Union[Iterable[str], PathSet]] = None
         ) -> bool:
     try:
         if not os.path.islink(path):
@@ -192,6 +234,14 @@ def get_all_parents(path: str) -> List[str]:
         path = os.path.dirname(path)
         parents.append(path)
     return parents
+
+
+def split_path(path: str) -> Iterable[str]:
+    components = deque()
+    while len(path) > 1:
+        components.appendleft(os.path.basename(path))
+        path = os.path.dirname(path)
+    return components
 
 
 def populate_parents(

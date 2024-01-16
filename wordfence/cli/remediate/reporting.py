@@ -118,7 +118,8 @@ class RemediationReport(Report):
                 columns: List[ReportColumn],
                 email_addresses: List[str],
                 mailer: Optional[Mailer],
-                write_headers: bool = False
+                write_headers: bool = False,
+                only_unremediated: bool = False
             ):
         super().__init__(
                 format,
@@ -127,9 +128,12 @@ class RemediationReport(Report):
                 mailer,
                 write_headers
             )
+        self.only_unremediated = only_unremediated
         self.counts = RemediationCounts()
 
     def add_result(self, result: RemediationResult):
+        if self.only_unremediated and result.remediated:
+            return
         self.write_record(
                 RemediationReportRecord(
                     result
@@ -182,6 +186,7 @@ class RemediationReportManager(ReportManager):
                 read_stdin=context.config.read_stdin,
                 input_delimiter=context.config.path_separator
             )
+        self.only_unremediated = context.config.output_unremediated
 
     def _instantiate_report(
                 self,
@@ -196,7 +201,8 @@ class RemediationReportManager(ReportManager):
                 columns,
                 email_addresses,
                 mailer,
-                write_headers
+                write_headers,
+                self.only_unremediated
             )
 
 

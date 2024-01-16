@@ -82,7 +82,8 @@ class SubcommandDefinition:
                 examples: List[UsageExample] = None,
                 uses_license: bool = False,
                 accepts_files: bool = False,
-                accepts_directories: bool = False
+                accepts_directories: bool = False,
+                long_description: Optional[str] = None
             ):
         self.name = name
         self.usage = usage
@@ -98,6 +99,7 @@ class SubcommandDefinition:
         self.uses_license = uses_license
         self.accepts_files = accepts_files
         self.accepts_directories = accepts_directories
+        self.long_description = long_description
 
     def get_config_map(self) -> Dict[str, ConfigItemDefinition]:
         if self.config_map is None:

@@ -1,4 +1,4 @@
-from ..subcommands import SubcommandDefinition
+from ..subcommands import SubcommandDefinition, UsageExample
 from ..config.typing import ConfigDefinitions
 
 config_definitions: ConfigDefinitions = {
@@ -28,7 +28,31 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTIONAL_FLAG",
         "default": None
     },
+    "allow-nested": {
+        "description": "When enabled (the default), WordPress installations "
+                       "nested below other installations will be included in "
+                       "the count.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
+    },
+    "allow-io-errors": {
+        "description": "Allow counting to continue if IO errors are "
+                       "encountered. Sites that cannot be identified due to "
+                       "IO errors will be omitted from the count. This is the "
+                       "default behavior.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
+    }
 }
+
+examples = [
+    UsageExample(
+        'Count the number of WordPress installations under /var/www/',
+        'wordfence count-sites /var/www/'
+    )
+]
 
 definition = SubcommandDefinition(
     name='count-sites',
@@ -38,4 +62,5 @@ definition = SubcommandDefinition(
     config_definitions=config_definitions,
     config_section='COUNT_SITES',
     cacheable_types=set(),
+    examples=examples
 )

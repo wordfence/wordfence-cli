@@ -14,7 +14,7 @@ from .matching import Matcher, RegexMatcher
 from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader, is_symlink_loop, is_symlink_and_loop, \
-    get_all_parents
+    get_all_parents, PathSet
 from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
 from ..util.units import scale_byte_unit
 from ..intel.signatures import SignatureSet
@@ -129,12 +129,15 @@ class FileLocator:
                 path: str,
                 queue: Queue,
                 file_filter: FileFilter,
-                allow_io_errors: bool = False
+                allow_io_errors: bool = False,
+                scanned_paths: Optional[PathSet] = None
             ):
         self.path = path
         self.queue = queue
         self.file_filter = file_filter
         self.allow_io_errors = allow_io_errors
+        self.scanned_paths = scanned_paths if scanned_paths is not None \
+            else PathSet()
         self.located_count = 0
         self.skipped_count = 0
 
@@ -160,37 +163,54 @@ class FileLocator:
         try:
             if parents is None:
                 parents = get_all_parents(path)
+                self.scanned_paths.add(path)
             contents = os.scandir(path)
         except OSError as os_error:
             self._handle_io_error(os_error, path)
             return
         for item in contents:
+            item_path = item.path
             try:
-                if item.is_symlink() and self._is_loop(item.path, parents):
-                    continue
+                if item.is_symlink():
+                    item_path = os.path.realpath(item.path)
+                    if item_path in self.scanned_paths:
+                        continue
+                    # This intentionally uses the unresolved path
+                    if self._is_loop(item.path, parents):
+                        continue
                 if item.is_dir():
+                    self.scanned_paths.add(item_path)
                     yield from self.search_directory(
-                            item.path,
-                            parents + get_all_parents(item.path)
+                            item_path,
+                            parents + get_all_parents(item_path)
                         )
                 elif item.is_file():
-                    if not self.file_filter.filter(item.path):
+                    if not self.file_filter.filter(item_path):
                         self.skipped_count += 1
                         continue
                     self.located_count += 1
-                    yield item.path
+                    yield item_path
             except OSError as os_error:
-                self._handle_io_error(os_error, item.path)
+                self._handle_io_error(os_error, item_path)
+
+    def _push_file(self, path: str) -> None:
+        if path in self.scanned_paths:
+            log.warning(
+                    f'Skipping already queued path: {path}'
+                )
+        else:
+            log.log(VERBOSE, f'File added to scan queue: {path}')
+            self.queue.put(path)
+            self.scanned_paths.add(path)
 
     def locate(self):
         real_path = os.path.realpath(self.path)
         if os.path.isdir(real_path):
             for path in self.search_directory(real_path):
-                log.log(VERBOSE, f'File added to scan queue: {path}')
-                self.queue.put(path)
+                self._push_file(path)
         else:
             if not is_symlink_and_loop(self.path):
-                self.queue.put(real_path)
+                self._push_file(real_path)
 
 
 class FileLocatorProcess(Process):
@@ -245,12 +265,14 @@ class FileLocatorProcess(Process):
                 )
         try:
             skipped_count = 0
+            scanned_paths = PathSet()
             while (path := self._input_queue.get()) is not None:
                 locator = FileLocator(
                         path=path,
                         file_filter=self.file_filter,
                         queue=self.output_queue,
-                        allow_io_errors=self.allow_io_errors
+                        allow_io_errors=self.allow_io_errors,
+                        scanned_paths=scanned_paths
                     )
                 locator.locate()
                 skipped_count += locator.skipped_count

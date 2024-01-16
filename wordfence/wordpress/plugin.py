@@ -27,10 +27,12 @@ class Plugin(Extension):
 
 class PluginLoader(ExtensionLoader):
 
-    def __init__(self, directory: str):
+    def __init__(self, directory: str, allow_io_errors: bool = False):
         super().__init__(
+                'plugin',
                 directory=directory,
-                header_fields=PLUGIN_HEADER_FIELDS
+                header_fields=PLUGIN_HEADER_FIELDS,
+                allow_io_errors=allow_io_errors
             )
 
     def _initialize_extension(

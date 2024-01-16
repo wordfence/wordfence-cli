@@ -9,7 +9,11 @@ class CountSitesSubcommand(Subcommand):
 
     def count_sites(self, path: str) -> int:
         count = 0
-        locator = WordpressLocator(path)
+        locator = WordpressLocator(
+                    path=path,
+                    allow_nested=self.config.allow_nested,
+                    allow_io_errors=self.config.allow_io_errors
+                )
         for core in locator.locate_core_paths():
             log.debug(f'Located WordPress site at {core}')
             count += 1

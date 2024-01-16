@@ -169,7 +169,7 @@ def main():
     try:
         cli = WordfenceCli(exception_handler)
         return cli.invoke()
-    except BaseException as exception:
+    except BaseException as exception:  # noqa: B036
         return exception_handler.process_exception(exception)
     except KeyboardInterrupt:
         return 130

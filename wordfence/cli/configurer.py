@@ -76,7 +76,7 @@ class ConfigFileManager:
         try:
             if not self._read:
                 self.parser.read_file(file)
-        except BaseException:
+        except BaseException:  # noqa: B036
             log.warning(
                     'Failed to read existing config file at '
                     f'{ini_path}. existing data will be truncated.'

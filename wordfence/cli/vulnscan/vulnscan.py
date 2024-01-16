@@ -7,7 +7,7 @@ from ...intel.vulnerabilities import VulnerabilityIndex, Vulnerability, \
 from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.caching import Cacheable, DURATION_ONE_DAY
 from ...wordpress.site import WordpressSite, WordpressStructureOptions, \
-        WordpressLocator
+        WordpressLocator, WordpressException
 from ...wordpress.plugin import PluginLoader, Plugin
 from ...wordpress.theme import ThemeLoader, Theme
 from ...logging import log
@@ -51,7 +51,10 @@ class VulnScanSubcommand(Subcommand):
                 directory: str,
                 scanner: VulnerabilityScanner,
             ) -> Dict[str, Vulnerability]:
-        loader = PluginLoader(directory)
+        loader = PluginLoader(
+                directory,
+                allow_io_errors=self.config.allow_io_errors
+            )
         plugins = loader.load_all()
         return self._scan_plugins(plugins, scanner, directory)
 
@@ -73,7 +76,10 @@ class VulnScanSubcommand(Subcommand):
                 directory: str,
                 scanner: VulnerabilityScanner
             ) -> Dict[str, Vulnerability]:
-        loader = ThemeLoader(directory)
+        loader = ThemeLoader(
+                directory,
+                allow_io_errors=self.config.allow_io_errors
+            )
         themes = loader.load_all()
         return self._scan_themes(themes, scanner, directory)
 
@@ -84,12 +90,19 @@ class VulnScanSubcommand(Subcommand):
                 check_extensions: bool = False,
                 structure_options: WordpressStructureOptions = None,
                 scan_path: Optional[str] = None
-            ) -> Dict[str, Vulnerability]:
+            ) -> None:
         scanner.add_scan_path(path)
-        site = WordpressSite(
-                path=path,
-                structure_options=structure_options
-            )
+        try:
+            site = WordpressSite(
+                    path=path,
+                    structure_options=structure_options
+                )
+        except WordpressException:
+            if self.config.allow_io_errors:
+                log.warning(f'Unable to scan site at {path}')
+                return
+            else:
+                raise
         log.debug(f'Located WordPress files at {site.core_path}')
         version = site.get_version()
         log.debug(f'WordPress Core Version: {version}')
@@ -98,9 +111,17 @@ class VulnScanSubcommand(Subcommand):
         scanner.scan_core(version, scan_path)
         if check_extensions:
             self._scan_plugins(
-                    site.get_all_plugins(), scanner, scan_path, True
+                    site.get_all_plugins(self.config.allow_io_errors),
+                    scanner,
+                    scan_path,
+                    True
                 )
-            self._scan_themes(site.get_themes(), scanner, scan_path, True)
+            self._scan_themes(
+                    site.get_themes(self.config.allow_io_errors),
+                    scanner,
+                    scan_path,
+                    True
+                )
 
     def _get_vulnerability_label(self, count: int) -> str:
         if count == 1:
@@ -166,7 +187,11 @@ class VulnScanSubcommand(Subcommand):
                 structure_options: WordpressStructureOptions = None
             ) -> None:
         log.info(f'Searching for WordPress installations under {path}...')
-        locator = WordpressLocator(path)
+        locator = WordpressLocator(
+                path=path,
+                allow_nested=self.config.allow_nested,
+                allow_io_errors=self.config.allow_io_errors
+            )
         site_found = False
         for core_path in locator.locate_core_paths():
             site_found = True

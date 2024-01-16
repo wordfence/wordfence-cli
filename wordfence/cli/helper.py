@@ -313,7 +313,15 @@ class SubcommandHelpGenerator(HelpGenerator):
         return {**self.base_config_map, **self.definition.get_config_map()}
 
     def generate_description(self) -> str:
-        return self.definition.description
+        lines = [
+                self.line_formatter.join_lines([self.definition.description])
+            ]
+        if self.definition.long_description is not None:
+            lines.append(self.line_formatter.join_lines(
+                        [self.definition.long_description]
+                    )
+                )
+        return self.line_formatter.join_chunks(lines)
 
     def generate_examples(self) -> List[str]:
         lines = []
