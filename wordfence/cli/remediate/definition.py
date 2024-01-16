@@ -21,6 +21,14 @@ config_definitions: ConfigDefinitions = {
         "default_type": "base64"
     },
     **REMEDIATION_REPORT_CONFIG_OPTIONS,
+    "output-unremediated": {
+        "short_name": "u",
+        "description": "Only include unremediated paths in the output.",
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": False,
+        "category": "Output Control"
+    },
     "require-path": {
         "description": "When enabled, invoking the remediate command without "
                        "specifying at least one path will trigger an error. "
