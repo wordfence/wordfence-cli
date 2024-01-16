@@ -153,6 +153,15 @@ config_definitions: ConfigDefinitions = {
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True
+    },
+    "allow-io-errors": {
+        "description": "Allow scanning to continue if IO errors are "
+                       "encountered. Sites that cannot be processed "
+                       "due to IO errors will be skipped and a warning will "
+                       "be logged. This is the default behavior.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
     }
 }
 

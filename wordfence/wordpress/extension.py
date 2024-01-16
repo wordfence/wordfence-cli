@@ -3,6 +3,7 @@ import os
 from typing import Optional, Dict, List
 from pathlib import Path
 
+from ..logging import log
 from ..util.io import SYMLINK_IO_ERRORS
 from .exceptions import ExtensionException
 
@@ -40,11 +41,15 @@ class ExtensionLoader:
 
     def __init__(
                 self,
+                extension_type: str,
                 directory: str,
-                header_fields: Dict[str, str]
+                header_fields: Dict[str, str],
+                allow_io_errors: bool = False,
             ):
+        self.extension_type = extension_type
         self.directory = directory
         self.header_fields = header_fields
+        self.allow_io_errors = allow_io_errors
 
     def _clean_up_header_value(self, value: str) -> str:
         return HEADER_CLEANUP_PATTERN.sub('', value).strip()
@@ -56,7 +61,7 @@ class ExtensionLoader:
                 return data
         except OSError as error:
             raise ExtensionException(
-                    f'Unable to read extension header from {path}'
+                    f'Unable to read {self.extension_type} header from {path}'
                 ) from error
 
     def _parse_header(
@@ -121,11 +126,21 @@ class ExtensionLoader:
                 except OSError as error:
                     if error.errno in SYMLINK_IO_ERRORS:
                         continue
-                    raise
+                    if self.allow_io_errors:
+                        log.warning(
+                                f'Unable to load {self.extension_type} from '
+                                f'{entry.path}'
+                            )
+                    else:
+                        raise
         except OSError as error:
             if error.errno not in SYMLINK_IO_ERRORS:
-                raise ExtensionException(
-                        'Unable to scan extension directory at '
+                message = (
+                        f'Unable to scan {self.extension_type} directory at '
                         f'{self.directory}'
-                    ) from error
+                    )
+                if self.allow_io_errors:
+                    log.warning(message)
+                else:
+                    raise ExtensionException(message) from error
         return extensions

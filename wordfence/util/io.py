@@ -84,6 +84,42 @@ def pathlib_resolve(path: str) -> Path:
     return Path(path).expanduser().resolve()
 
 
+# A memory-optimized tree-set implementation for paths
+class PathSet:
+
+    def __init__(self):
+        self.children = {}
+
+    def _get_components(self, path: str) -> Iterable[str]:
+        return split_path(path)
+
+    def add(self, path: str) -> None:
+        components = self._get_components(path)
+        node = self.children
+        for component in components:
+            try:
+                node = node[component]
+            except KeyError:
+                child = {}
+                node[component] = child
+                node = child
+
+    def contains(self, path: str) -> bool:
+        components = self._get_components(path)
+        node = self.children
+        for component in components:
+            try:
+                node = node[component]
+            except KeyError:
+                return False
+        return True
+
+    def __contains__(self, path) -> bool:
+        if not isinstance(path, str):
+            return False
+        return self.contains(path)
+
+
 DEFAULT_CREATE_MODE = 0o700
 
 
@@ -157,7 +193,7 @@ def is_symlink_error(error: OSError) -> bool:
 
 def is_symlink_loop(
             path: str,
-            parents: Optional[Iterable[str]] = None
+            parents: Optional[Union[Iterable[str], PathSet]] = None
         ) -> bool:
     realpath = os.path.realpath(path)
     try:
@@ -170,15 +206,19 @@ def is_symlink_loop(
             return True
         raise
     if parents is not None:
-        for parent in parents:
-            if realpath == parent:
+        if isinstance(parents, PathSet):
+            if realpath in parents:
                 return True
+        else:
+            for parent in parents:
+                if realpath == parent:
+                    return True
     return False
 
 
 def is_symlink_and_loop(
             path: str,
-            parents: Optional[Iterable[str]] = None
+            parents: Optional[Union[Iterable[str], PathSet]] = None
         ) -> bool:
     try:
         if not os.path.islink(path):
@@ -237,39 +277,3 @@ def iterate_files(
             yield from iterate_files(item.path, parents, loop_callback)
         else:
             yield item.path
-
-
-# A memory-optimized tree-set implementation for paths
-class PathSet:
-
-    def __init__(self):
-        self.children = {}
-
-    def _get_components(self, path: str) -> Iterable[str]:
-        return split_path(path)
-
-    def add(self, path: str) -> None:
-        components = self._get_components(path)
-        node = self.children
-        for component in components:
-            try:
-                node = node[component]
-            except KeyError:
-                child = {}
-                node[component] = child
-                node = child
-
-    def contains(self, path: str) -> bool:
-        components = self._get_components(path)
-        node = self.children
-        for component in components:
-            try:
-                node = node[component]
-            except KeyError:
-                return False
-        return True
-
-    def __contains__(self, path) -> bool:
-        if not isinstance(path, str):
-            return False
-        return self.contains(path)

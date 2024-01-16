@@ -35,6 +35,15 @@ config_definitions: ConfigDefinitions = {
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True
+    },
+    "allow-io-errors": {
+        "description": "Allow counting to continue if IO errors are "
+                       "encountered. Sites that cannot be identified due to "
+                       "IO errors will be omitted from the count. This is the "
+                       "default behavior.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
     }
 }
 

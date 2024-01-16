@@ -28,10 +28,12 @@ class Theme(Extension):
 
 class ThemeLoader(ExtensionLoader):
 
-    def __init__(self, directory: str):
+    def __init__(self, directory: str, allow_io_errors: bool = False):
         super().__init__(
+                'theme',
                 directory=directory,
-                header_fields=THEME_HEADER_FIELDS
+                header_fields=THEME_HEADER_FIELDS,
+                allow_io_errors=allow_io_errors
             )
 
     def _initialize_extension(

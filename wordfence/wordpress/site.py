@@ -1,13 +1,13 @@
 import os
 import os.path
 from dataclasses import dataclass, field
-from typing import Optional, List, Generator, Set
+from typing import Optional, List, Generator
 from pathlib import Path
 
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
 from ..logging import log
-from ..util.io import is_symlink_loop, is_symlink_error, PathSet
+from ..util.io import is_symlink_loop, PathSet
 from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
@@ -54,9 +54,15 @@ class PathResolver:
 
 class WordpressLocator(PathResolver):
 
-    def __init__(self, path: str, allow_nested: bool = True):
+    def __init__(
+                self,
+                path: str,
+                allow_nested: bool = True,
+                allow_io_errors: bool = False
+            ):
         super().__init__(path)
         self.allow_nested = allow_nested
+        self.allow_io_errors = allow_io_errors
 
     def _is_core_directory(self, path: str, quiet: bool = False) -> bool:
         missing_files = EXPECTED_CORE_FILES.copy()
@@ -73,7 +79,7 @@ class WordpressLocator(PathResolver):
                 return False
             return True
         except OSError as error:
-            if is_symlink_error(error):
+            if self.allow_io_errors:
                 return False
             else:
                 raise WordpressException(
@@ -97,7 +103,7 @@ class WordpressLocator(PathResolver):
     def _get_child_directories(
                 self,
                 path: str,
-                processed: Set[str]
+                processed: PathSet
             ) -> List[str]:
         directories = []
         for file in os.scandir(path):
@@ -107,11 +113,11 @@ class WordpressLocator(PathResolver):
                             is_symlink_loop(file.path, processed):
                         continue
                     directories.append(os.path.realpath(file.path))
-            except OSError as error:
-                if is_symlink_error(error):
+            except OSError:
+                if self.allow_io_errors:
                     log.warning(
                             f'Ignoring file at {file.path} as its type could '
-                            'not be determined due to a symlink error'
+                            'not be determined'
                         )
                 else:
                     raise WordpressException(
@@ -121,10 +127,10 @@ class WordpressLocator(PathResolver):
 
     def _search_for_core_directory(
                 self,
-                located: PathSet
+                located: PathSet,
+                processed: PathSet
             ) -> Generator[str, None, None]:
         paths = [self.path]
-        processed = set()
         while len(paths) > 0:
             directories = set()
             for path in paths:
@@ -133,15 +139,14 @@ class WordpressLocator(PathResolver):
                             self._get_child_directories(path, processed)
                         )
                 except OSError as error:
-                    if is_symlink_error(error):
-                        log.warning(
-                                f'Unable to search child directory at {path}'
-                                ' due to symlink error'
-                            )
+                    message = (
+                            f'Unable to search child directory at {path}'
+                            ' due to IO error'
+                        )
+                    if self.allow_io_errors:
+                        log.warning(message)
                     else:
-                        raise WordpressException(
-                                f'Unable to search child directory at {path}'
-                            ) from error
+                        raise WordpressException(message) from error
             paths = set()
             for directory in directories:
                 processed.add(directory)
@@ -163,7 +168,9 @@ class WordpressLocator(PathResolver):
             located.add(self.path)
         path = self._extract_core_path_from_index()
         if path is None:
-            yield from self._search_for_core_directory(located)
+            processed = PathSet()
+            processed.add(self.path)
+            yield from self._search_for_core_directory(located, processed)
         else:
             yield path
 
@@ -341,11 +348,15 @@ class WordpressSite(PathResolver):
                 'mu-plugins' if mu else 'plugins'
             )
 
-    def get_plugins(self, mu: bool = False) -> List[Plugin]:
+    def get_plugins(
+                self,
+                mu: bool = False,
+                allow_io_errors: bool = False
+            ) -> List[Plugin]:
         log_plugins = 'must-use plugins' if mu else 'plugins'
         for path in self._generate_possible_plugins_paths(mu):
             log.debug(f'Checking potential {log_plugins} path: {path}')
-            loader = PluginLoader(path)
+            loader = PluginLoader(path, allow_io_errors)
             try:
                 plugins = loader.load_all()
                 log.debug(f'Located {log_plugins} directory at {path}')
@@ -363,14 +374,14 @@ class WordpressSite(PathResolver):
                 f'{self.path}'
             )
 
-    def get_all_plugins(self) -> List[Plugin]:
-        plugins = self.get_plugins(mu=True)
-        plugins += self.get_plugins(mu=False)
+    def get_all_plugins(self, allow_io_errors: bool = False) -> List[Plugin]:
+        plugins = self.get_plugins(mu=True, allow_io_errors=allow_io_errors)
+        plugins += self.get_plugins(mu=False, allow_io_errors=allow_io_errors)
         return plugins
 
     def get_theme_directory(self) -> str:
         return self.resolve_content_path('themes')
 
-    def get_themes(self) -> List[Theme]:
-        loader = ThemeLoader(self.get_theme_directory())
+    def get_themes(self, allow_io_errors: bool = False) -> List[Theme]:
+        loader = ThemeLoader(self.get_theme_directory(), allow_io_errors)
         return loader.load_all()
