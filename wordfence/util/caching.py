@@ -158,7 +158,7 @@ class CacheDirectory(Cache):
     def purge(self) -> None:
         try:
             shutil.rmtree(self.path)
-        except BaseException as e:
+        except BaseException as e:  # noqa: B036
             raise CacheException('Failed to delete cache directory') from e
         self._initialize_directory()
 

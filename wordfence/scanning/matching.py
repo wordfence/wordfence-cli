@@ -178,7 +178,7 @@ class RegexSignature:
         try:
             rule = self.signature.rule
             self.pattern = PcrePattern(rule, self.pcre_options)
-        except BaseException as error:
+        except BaseException as error:  # noqa: B036
             log.error('Regex compilation for signature ' +
                       str(self.signature.identifier) +
                       ' failed: ' +
