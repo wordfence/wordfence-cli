@@ -69,17 +69,31 @@ class WordpressLocator(PathResolver):
         missing_directories = EXPECTED_CORE_DIRECTORIES.copy()
         try:
             for file in os.scandir(path):
-                if file.is_file():
-                    if file.name in missing_files:
-                        missing_files.remove(file.name)
-                elif file.is_dir():
-                    if file.name in missing_directories:
-                        missing_directories.remove(file.name)
+                try:
+                    if file.is_file():
+                        if file.name in missing_files:
+                            missing_files.remove(file.name)
+                    elif file.is_dir():
+                        if file.name in missing_directories:
+                            missing_directories.remove(file.name)
+                except OSError as error:
+                    if self.allow_io_errors:
+                        log.warning(
+                                f'Unable to determine if {file.path} is an '
+                                'expected WordPress file as its type could '
+                                f'not be determined: {error}'
+                            )
+                        continue
+                    else:
+                        raise
             if len(missing_files) > 0 or len(missing_directories) > 0:
                 return False
             return True
         except OSError as error:
             if self.allow_io_errors:
+                log.warning(
+                        f'Unable to scan directory at {path}: {error}'
+                    )
                 return False
             else:
                 raise WordpressException(
@@ -113,11 +127,11 @@ class WordpressLocator(PathResolver):
                             is_symlink_loop(file.path, processed):
                         continue
                     directories.append(os.path.realpath(file.path))
-            except OSError:
+            except OSError as error:
                 if self.allow_io_errors:
                     log.warning(
-                            f'Ignoring file at {file.path} as its type could '
-                            'not be determined'
+                            f'Ignoring child entry at {file.path} as its type '
+                            f'could not be determined: {error}'
                         )
                 else:
                     raise WordpressException(
@@ -144,7 +158,7 @@ class WordpressLocator(PathResolver):
                             ' due to IO error'
                         )
                     if self.allow_io_errors:
-                        log.warning(message)
+                        log.warning(message + f': {error}')
                     else:
                         raise WordpressException(message) from error
             paths = set()
@@ -189,8 +203,12 @@ class WordpressLocator(PathResolver):
         return None
 
 
-def locate_core_path(path: str, up: bool = False) -> str:
-    locator = WordpressLocator(path)
+def locate_core_path(
+            path: str,
+            up: bool = False,
+            allow_io_errors: bool = False
+        ) -> str:
+    locator = WordpressLocator(path, allow_io_errors=allow_io_errors)
     if up:
         core_path = locator.locate_parent_installation()
         if core_path is None:
@@ -211,10 +229,11 @@ class WordpressSite(PathResolver):
                 path: str,
                 structure_options: Optional[WordpressStructureOptions] = None,
                 core_path: str = None,
-                is_child_path: bool = False
+                is_child_path: bool = False,
+                allow_io_errors: bool = False
             ):
         super().__init__(path)
-        self.core_path = locate_core_path(path, is_child_path)
+        self.core_path = locate_core_path(path, is_child_path, allow_io_errors)
         self.structure_options = structure_options \
             if structure_options is not None else WordpressStructureOptions()
         self._version = None
@@ -335,7 +354,8 @@ class WordpressSite(PathResolver):
 
     def _generate_possible_plugins_paths(
                 self,
-                mu: bool = False
+                mu: bool = False,
+                allow_io_errors: bool = False
             ) -> Generator[str, None, None]:
         configured = self.get_configured_plugins_directory(mu)
         if configured is not None:
@@ -344,9 +364,13 @@ class WordpressSite(PathResolver):
             if mu else self.structure_options.relative_plugins_paths
         for path in relative_paths:
             yield self.resolve_core_path(path)
-        yield self.resolve_content_path(
-                'mu-plugins' if mu else 'plugins'
-            )
+        try:
+            yield self.resolve_content_path(
+                    'mu-plugins' if mu else 'plugins'
+                )
+        except WordpressException:
+            if not allow_io_errors:
+                raise
 
     def get_plugins(
                 self,
@@ -354,7 +378,7 @@ class WordpressSite(PathResolver):
                 allow_io_errors: bool = False
             ) -> List[Plugin]:
         log_plugins = 'must-use plugins' if mu else 'plugins'
-        for path in self._generate_possible_plugins_paths(mu):
+        for path in self._generate_possible_plugins_paths(mu, allow_io_errors):
             log.debug(f'Checking potential {log_plugins} path: {path}')
             loader = PluginLoader(path, allow_io_errors)
             try:
@@ -368,6 +392,8 @@ class WordpressSite(PathResolver):
             log.warning(
                     f'No mu-plugins directory found for site at {self.path}'
                 )
+            return []
+        if allow_io_errors:
             return []
         raise WordpressException(
                 f'Unable to locate {log_plugins} directory for site at '
@@ -383,5 +409,12 @@ class WordpressSite(PathResolver):
         return self.resolve_content_path('themes')
 
     def get_themes(self, allow_io_errors: bool = False) -> List[Theme]:
-        loader = ThemeLoader(self.get_theme_directory(), allow_io_errors)
+        try:
+            directory = self.get_theme_directory()
+        except WordpressException:
+            if allow_io_errors:
+                return []
+            else:
+                raise
+        loader = ThemeLoader(directory, allow_io_errors)
         return loader.load_all()

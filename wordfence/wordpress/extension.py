@@ -129,7 +129,7 @@ class ExtensionLoader:
                     if self.allow_io_errors:
                         log.warning(
                                 f'Unable to load {self.extension_type} from '
-                                f'{entry.path}'
+                                f'{entry.path}: {error}'
                             )
                     else:
                         raise
