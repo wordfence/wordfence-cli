@@ -132,6 +132,7 @@ class RemediationReport(Report):
         self.counts = RemediationCounts()
 
     def add_result(self, result: RemediationResult):
+        self.counts.add(result)
         if self.only_unremediated and result.remediated:
             return
         self.write_record(
@@ -139,7 +140,6 @@ class RemediationReport(Report):
                     result
                 )
             )
-        self.counts.add(result)
 
     def generate_email(
                 self,
