@@ -95,11 +95,12 @@ class VulnScanSubcommand(Subcommand):
         try:
             site = WordpressSite(
                     path=path,
-                    structure_options=structure_options
+                    structure_options=structure_options,
+                    allow_io_errors=self.config.allow_io_errors
                 )
-        except WordpressException:
+        except WordpressException as error:
             if self.config.allow_io_errors:
-                log.warning(f'Unable to scan site at {path}')
+                log.warning(f'Unable to scan site at {path}: {error}')
                 return
             else:
                 raise
