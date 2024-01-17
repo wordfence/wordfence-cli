@@ -354,7 +354,8 @@ class WordpressSite(PathResolver):
 
     def _generate_possible_plugins_paths(
                 self,
-                mu: bool = False
+                mu: bool = False,
+                allow_io_errors: bool = False
             ) -> Generator[str, None, None]:
         configured = self.get_configured_plugins_directory(mu)
         if configured is not None:
@@ -363,9 +364,13 @@ class WordpressSite(PathResolver):
             if mu else self.structure_options.relative_plugins_paths
         for path in relative_paths:
             yield self.resolve_core_path(path)
-        yield self.resolve_content_path(
-                'mu-plugins' if mu else 'plugins'
-            )
+        try:
+            yield self.resolve_content_path(
+                    'mu-plugins' if mu else 'plugins'
+                )
+        except WordpressException:
+            if not allow_io_errors:
+                raise
 
     def get_plugins(
                 self,
@@ -373,7 +378,7 @@ class WordpressSite(PathResolver):
                 allow_io_errors: bool = False
             ) -> List[Plugin]:
         log_plugins = 'must-use plugins' if mu else 'plugins'
-        for path in self._generate_possible_plugins_paths(mu):
+        for path in self._generate_possible_plugins_paths(mu, allow_io_errors):
             log.debug(f'Checking potential {log_plugins} path: {path}')
             loader = PluginLoader(path, allow_io_errors)
             try:
@@ -387,6 +392,8 @@ class WordpressSite(PathResolver):
             log.warning(
                     f'No mu-plugins directory found for site at {self.path}'
                 )
+            return []
+        if allow_io_errors:
             return []
         raise WordpressException(
                 f'Unable to locate {log_plugins} directory for site at '
@@ -402,5 +409,12 @@ class WordpressSite(PathResolver):
         return self.resolve_content_path('themes')
 
     def get_themes(self, allow_io_errors: bool = False) -> List[Theme]:
-        loader = ThemeLoader(self.get_theme_directory(), allow_io_errors)
+        try:
+            directory = self.get_theme_directory()
+        except WordpressException:
+            if allow_io_errors:
+                return []
+            else:
+                raise
+        loader = ThemeLoader(directory, allow_io_errors)
         return loader.load_all()
