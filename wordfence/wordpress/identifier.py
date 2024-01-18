@@ -78,10 +78,8 @@ class KnownPath:
 
     def __init__(
                 self,
-                path: Optional[str] = None,
                 identity: Optional[FileIdentity] = None
             ):
-        self.path = path
         self.identity = identity
         self.children = {}
 
@@ -101,11 +99,19 @@ class KnownPath:
                 node = node.children[component]
             except KeyError:
                 break
+        if node.identity is not None:
+            return node.identity
         return identity
 
-    def set_identity(self, path: Path, identity: FileIdentity) -> None:
+    def set_identity(
+                self,
+                path: Path,
+                identity: FileIdentity,
+                resolve: bool = True
+            ) -> None:
         node = self
-        path = pathlib_resolve(path)
+        if resolve:
+            path = pathlib_resolve(path)
         for component in path.parts:
             if component not in node.children:
                 node.children[component] = KnownPath()
@@ -113,7 +119,11 @@ class KnownPath:
         node.identity = identity
 
     def __str__(self) -> str:
-        return f'{self.path} - {self.identity}'
+        if self.identity is None:
+            return 'Unknown Path'
+        else:
+            final = self.identity.is_final()
+            return f'Known Path: {self.identity.type}, {final}'
 
     def debug(self, indent: str = '') -> None:
         print(indent + str(self))
@@ -129,7 +139,11 @@ class FileIdentifier:
 
     def _identify_new_path(self, path: Path):
         try:
-            site = WordpressSite(str(path), is_child_path=True)
+            site = WordpressSite(
+                        str(path),
+                        is_child_path=True,
+                        allow_io_errors=True
+                    )
             core_path = Path(site.core_path)
             self.known_paths.set_identity(
                     core_path,
@@ -148,7 +162,8 @@ class FileIdentifier:
                             site=site,
                             extension=plugin,
                             final=True
-                        )
+                        ),
+                        resolve=False
                     )
             for theme in site.get_themes():
                 self.known_paths.set_identity(
@@ -159,7 +174,8 @@ class FileIdentifier:
                             site=site,
                             extension=theme,
                             final=True
-                        )
+                        ),
+                        resolve=False
                     )
         except WordpressException:
             self.known_paths.set_identity(
