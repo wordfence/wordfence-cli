@@ -7,7 +7,7 @@ from pathlib import Path
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
 from ..logging import log
-from ..util.io import is_symlink_loop, PathSet
+from ..util.io import is_symlink_loop, PathSet, resolve_path
 from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
@@ -179,7 +179,7 @@ class WordpressLocator(PathResolver):
             yield self.path
             if not self.allow_nested:
                 return
-            located.add(self.path)
+            located.add(resolve_path(self.path))
         path = self._extract_core_path_from_index()
         if path is None:
             processed = PathSet()
