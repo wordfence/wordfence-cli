@@ -240,10 +240,14 @@ class FileLocatorProcess(Process):
         self._skipped_count = Value('i', 0)
         super().__init__(name='file-locator')
 
-    def add_path(self, path: str):
-        self._path_count += 1
-        log.info(f'Scanning path: {path}')
-        self._input_queue.put(path)
+    def add_path(self, path: str) -> bool:
+        try:
+            self._input_queue.put(path, block=False)
+            self._path_count += 1
+            log.info(f'Scanning path: {path}')
+            return True
+        except queue.Full:
+            return False
 
     def finalize_paths(self):
         self._input_queue.put(None)
@@ -383,7 +387,7 @@ class ScanWorker(Process):
         if data is None:
             data = {}
         self._event_queue.put(
-                ScanEvent(event_type, data, worker_index=self.index)
+                ScanEvent(event_type, data, worker_index=self.index),
             )
 
     def _put_io_error(self, error) -> None:
@@ -605,6 +609,7 @@ class ScanWorkerPool:
         self._allow_io_errors = allow_io_errors
         self._debug = debug
         self._logging_initializer = logging_initializer
+        self._completed = False
 
     def __enter__(self):
         self.start()
@@ -697,16 +702,23 @@ class ScanWorkerPool:
     def await_results(
                 self,
                 result_processor: ScanResultCallback,
+                final: bool = True
             ):
+        if self._completed:
+            return True
         self._assert_started()
         while True:
-            event = self._event_queue.get()
+            try:
+                event = self._event_queue.get(block=final)
+            except queue.Empty:
+                return False
             if event is None:
                 log.debug('All workers have completed and all results have '
                           'been processed.')
                 self._status.value = Status.COMPLETE
                 self._send_progress_update()
-                return
+                self._completed = True
+                return True
             elif event.type == ScanEventType.COMPLETED:
                 if event.worker_index != FILE_LOCATOR_WORKER_INDEX:
                     log.debug(f'Worker {event.worker_index} completed')
@@ -753,6 +765,7 @@ class ScanWorkerPool:
             elif event.type == ScanEventType.LOG_MESSAGE:
                 message: str = event.data['message']
                 log.log(event.data['level'], message)
+        return False
 
     def is_failed(self) -> bool:
         return self._status.value == Status.FAILED
@@ -789,8 +802,6 @@ class Scanner:
             )
         file_locator_process.start()
         self.active.append(file_locator_process)
-        for path in self.options.paths:
-            file_locator_process.add_path(path)
         worker_count = self.options.workers
         if worker_count < 1:
             raise ScanConfigurationException(
@@ -819,14 +830,19 @@ class Scanner:
                     debug=self.options.debug,
                     logging_initializer=self.options.logging_initializer
                 ) as worker_pool:
+            def add_path(path: str):
+                while not file_locator_process.add_path(path):
+                    worker_pool.await_results(result_processor, final=False)
             self.active.append(worker_pool)
+            for path in self.options.paths:
+                add_path(path)
             if self.options.path_source is not None:
                 log.debug('Reading input paths...')
                 while True:
                     path = self.options.path_source.read_entry()
                     if path is None:
                         break
-                    file_locator_process.add_path(path)
+                    add_path(path)
             file_locator_process.finalize_paths()
             log.debug('Awaiting results...')
             worker_pool.await_results(result_processor)
