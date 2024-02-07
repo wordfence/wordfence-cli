@@ -35,7 +35,10 @@ class StreamReader:
                 self._buffer = self._buffer[index + 1:]
                 return entry
             elif not self._end_of_stream:
-                read = self.stream.read(self.chunk_size)
+                read = os.read(
+                        self.stream.fileno(),
+                        self.chunk_size
+                    ).decode(self.stream.encoding)
                 if read == '':
                     self._end_of_stream = True
                 self._buffer += read
