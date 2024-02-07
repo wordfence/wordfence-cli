@@ -106,7 +106,9 @@ def show_welcome_banner():
 
 
 def should_show_welcome_banner(banner_enabled):
-    return banner_enabled and sys.stdout.isatty()
+    return banner_enabled \
+            and sys.stdout.isatty() \
+            and sys.stdout.encoding == 'utf-8'
 
 
 def show_welcome_banner_if_enabled(config) -> None:

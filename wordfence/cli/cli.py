@@ -102,7 +102,7 @@ class WordfenceCli:
     def display_help(self) -> None:
         self.helper.display_help(self.config.subcommand)
 
-    def configure_stdio(self) -> None:
+    def configure_stdio(self) -> bool:
         original_encoding = sys.stdout.encoding
         sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
         if original_encoding != 'utf-8':
@@ -110,6 +110,9 @@ class WordfenceCli:
                     f'Encoding for stdout is {sys.stdout.encoding} instead of '
                     'utf-8'
                 )
+            return True
+        else:
+            return False
 
     def invoke(self) -> int:
         with CliContext(
@@ -119,12 +122,13 @@ class WordfenceCli:
                     self.allows_color
                 ) as context:
             context.initialize_logging()
-            self.configure_stdio()
+            stdio_changed = self.configure_stdio()
 
             if self.config.purge_cache:
                 context.cache.purge()
 
-            show_welcome_banner_if_enabled(self.config)
+            if not stdio_changed:
+                show_welcome_banner_if_enabled(self.config)
 
             if self.config.help:
                 self.display_help()
