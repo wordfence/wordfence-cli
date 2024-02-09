@@ -71,7 +71,7 @@ class KnownFileIdentity(FileIdentity):
         else:
             software = self.extension.get_name()
             version = self.extension.version
-        return f'{self.local_path} of {self.type} {software} ({version})'
+        return f'{self.local_path} of {self.type.value} {software} ({version})'
 
 
 class KnownPath:
