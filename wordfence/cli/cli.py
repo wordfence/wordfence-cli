@@ -107,7 +107,7 @@ class WordfenceCli:
         sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
         if original_encoding != 'utf-8':
             log.warning(
-                    f'Encoding for stdout is {sys.stdout.encoding} instead of '
+                    f'Encoding for stdout is {original_encoding} instead of '
                     'utf-8'
                 )
             return True
