@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ...intel.signatures import CommonString, Signature, SignatureSet
+from ...intel.signatures import SignatureSet
 from ...logging import log
 from ...util import vectorscan
 
@@ -12,8 +12,8 @@ if not vectorscan.AVAILABLE:
     raise RuntimeError('Vectorscan is not available')
 
 
-from ...util.vectorscan import VectorscanDatabase, VectorscanScanner, \
-    VectorscanMatch, VectorscanFlags, vectorscan_compile
+from ...util.vectorscan import VectorscanScanner, VectorscanMatch, \
+        VectorscanFlags, vectorscan_compile
 
 
 class VectorscanMatcherContext(BaseMatcherContext):
@@ -59,20 +59,6 @@ class VectorscanMatcher(Matcher):
                 signature.identifier: signature.rule
                 for signature in self.signature_set.signatures.values()
             }
-        #patterns_limited = {}
-        #for key, value in patterns.items():
-        #    if b'\x00' in value.encode('utf-8'):
-        #        print('Null byte in pattern')
-        #    patterns_limited[key] = value
-        #    last = (key, value)
-        #    if (len(patterns_limited) >= 100):
-        #        break
-        #print("Last: " + repr(last))
-        #import json
-        #print(json.dumps(last[1]))
-        #patterns = patterns_limited
-        ##patterns = {135: last[1]}
-        #print(repr(patterns))
         pattern_count = len(patterns)
         log.debug(f'Compiling {pattern_count} pattern(s)...')
         flags = (

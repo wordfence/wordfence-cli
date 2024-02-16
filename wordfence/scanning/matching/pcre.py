@@ -157,12 +157,14 @@ class PcreMatcherContext(BaseMatcherContext):
             ) -> bool:
         possible_signatures = self._check_common_strings(chunk)
         for signature in self.matcher.signatures_without_common_strings:
-            if self._match_signature(signature, chunk, start, workspace.jit_stack) and \
-                    not self.matcher.match_all:
+            if self._match_signature(
+                        signature, chunk, start, workspace.jit_stack
+                    ) and not self.matcher.match_all:
                 return True
         for signature in possible_signatures:
-            if self._match_signature(signature, chunk, start, workspace.jit_stack) and \
-                    not self.matcher.match_all:
+            if self._match_signature(
+                        signature, chunk, start, workspace.jit_stack
+                    ) and not self.matcher.match_all:
                 return True
         return False
 
