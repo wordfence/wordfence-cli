@@ -3,6 +3,7 @@ from typing import Optional, Any, Callable, Set, Union
 
 from ..version import __version__, __version_name__
 from ..util import pcre
+from ..util.library import OptionalUtility
 from ..api import noc1, intelligence
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         InvalidCachedValueException, CacheException
@@ -37,6 +38,7 @@ class CliContext:
         self._mailer = None
         self.configurer = None
         self._log_settings = None
+        self._vectorscan = None
 
     def get_log_level(self) -> LogLevel:
         if self.config.log_level is not None:
@@ -156,6 +158,14 @@ class CliContext:
             self._mailer = Mailer(self.config)
         return self._mailer
 
+    def get_vectorscan(self) -> OptionalUtility:
+        if self._vectorscan is None:
+            self._vectorscan = OptionalUtility('vectorscan')
+        return self._vectorscan
+
+    def has_vectorscan(self) -> bool:
+        return self.get_vectorscan().is_available()
+
     def display_version(self) -> None:
         if __version_name__ is None:
             name_suffix = ''
@@ -167,6 +177,13 @@ class CliContext:
                 f"PCRE Version: {pcre.VERSION} - "
                 f"JIT Supported: {jit_support_text}"
             )
+        vectorscan = self.get_vectorscan()
+        vectorscan_supported = vectorscan.is_available()
+        vectorscan_support_text = 'Yes' if vectorscan_supported else 'No'
+        if vectorscan_supported:
+            vectorscan_support_text += \
+                f' - Version: {vectorscan.module.VERSION}'
+        print(f'Vectorscan Supported: {vectorscan_support_text}')
 
     def has_terminal_output(self) -> bool:
         return has_terminal_output()

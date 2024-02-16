@@ -10,12 +10,12 @@ from typing import Set, Optional, Callable, Dict, NamedTuple, Tuple, List
 from logging import Handler
 
 from .exceptions import ScanningException, ScanningIoException
-from .matching import Matcher, RegexMatcher
+from .matching import MatchEngine, MatchEngineOptions, Matcher, MatchWorkspace
 from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader, is_symlink_loop, is_symlink_and_loop, \
     get_all_parents, PathSet
-from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
+from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS
 from ..util.units import scale_byte_unit
 from ..intel.signatures import SignatureSet
 from ..logging import log, remove_initial_handler, VERBOSE
@@ -112,7 +112,8 @@ class Options:
     pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
     allow_io_errors: bool = False,
     debug: bool = False,
-    logging_initializer: Callable[[], None] = None
+    logging_initializer: Callable[[], None] = None,
+    match_engine: MatchEngine = MatchEngine.get_default()
 
 
 class Status(IntEnum):
@@ -359,7 +360,7 @@ class ScanWorker(Process):
         self._working = True
         self._matcher.prepare()
         log.debug(f'Worker {self.index} started, PID:' + str(os.getpid()))
-        with PcreJitStack() as jit_stack:
+        with self._matcher.create_workspace() as workspace:
             while self._working:
                 try:
                     item = self._work_queue.get(timeout=QUEUE_READ_TIMEOUT)
@@ -376,9 +377,11 @@ class ScanWorker(Process):
                                 )
                     else:
                         try:
-                            self._process_file(item, jit_stack)
+                            self._process_file(item, workspace)
                         except OSError as error:
                             self._put_io_error(ExceptionContainer(error))
+                        except Exception as error:
+                            self._put_error(ExceptionContainer(error))
                 except queue.Empty:
                     if self._status.value == Status.PROCESSING_FILES:
                         self._complete()
@@ -390,13 +393,16 @@ class ScanWorker(Process):
                 ScanEvent(event_type, data, worker_index=self.index),
             )
 
-    def _put_io_error(self, error) -> None:
-        event_type = ScanEventType.EXCEPTION if self._allow_io_errors \
-                else ScanEventType.FATAL_EXCEPTION
+    def _put_error(self, error, fatal: bool = True) -> None:
+        event_type = ScanEventType.FATAL_EXCEPTION if fatal \
+                else ScanEventType.EXCEPTION
         self._put_event(
                 event_type,
                 {'exception': error}
             )
+
+    def _put_io_error(self, error) -> None:
+        self._put_error(error, not self._allow_io_errors)
 
     def _complete(self):
         self._working = False
@@ -414,7 +420,7 @@ class ScanWorker(Process):
         else:
             return min(self._scanned_content_limit - length, self._chunk_size)
 
-    def _process_file(self, path: str, jit_stack: PcreJitStack):
+    def _process_file(self, path: str, workspace: Optional[MatchWorkspace]):
         log.log(VERBOSE, f'Processing file: {path}')
         with open(path, mode='rb') as file, \
                 self._matcher.create_context() as context:
@@ -425,7 +431,11 @@ class ScanWorker(Process):
                     break
                 first = length == 0
                 length += len(chunk)
-                if context.process_chunk(chunk, first, jit_stack):
+                if context.process_chunk(
+                            chunk,
+                            start=first,
+                            workspace=workspace
+                        ):
                     break
             self._put_event(
                     ScanEventType.FILE_PROCESSED,
@@ -782,6 +792,16 @@ class Scanner:
         self.failed += 1
         raise error
 
+    def _initialize_matcher(self) -> Matcher:
+        engine = self.options.match_engine
+        options = MatchEngineOptions(
+                signature_set=self.options.signatures,
+                match_all=self.options.match_all,
+                lazy=not USES_FORK,
+                pcre_options=self.options.pcre_options
+            )
+        return engine.create_matcher(options)
+
     def scan(
                 self,
                 result_processor: ScanResultCallback,
@@ -808,12 +828,7 @@ class Scanner:
                     'Scans require at least one worker'
                 )
         log.debug("Using " + str(worker_count) + " worker(s)...")
-        matcher = RegexMatcher(
-                    self.options.signatures,
-                    match_all=self.options.match_all,
-                    pcre_options=self.options.pcre_options,
-                    lazy=not USES_FORK
-                )
+        matcher = self._initialize_matcher()
         metrics = ScanMetrics(worker_count)
         with ScanWorkerPool(
                     size=worker_count,

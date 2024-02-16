@@ -1,159 +1,28 @@
 import signal
+from typing import Optional
 
-from ..intel.signatures import CommonString, Signature, SignatureSet
-from ..logging import log
-from ..util.pcre import PcrePattern, PcreException, PcreJitStack, \
+from ...intel.signatures import CommonString, Signature, SignatureSet
+from ...logging import log
+from ...util import pcre
+from ...util.pcre import PcrePattern, PcreException, PcreJitStack, \
         PcreOptions, PCRE_DEFAULT_OPTIONS
 
-
-DEFAULT_TIMEOUT = 1  # Seconds
-
-
-class TimeoutException(Exception):
-    pass
+from .matching import Matcher, BaseMatcherContext, TimeoutException, \
+        MatchWorkspace, MatchEngineOptions, DEFAULT_TIMEOUT
 
 
-class MatchResult:
-
-    def __init__(self, matches: list):
-        self.matches = matches
-
-    def matches(self) -> bool:
-        return len(self.matches) > 0
+if not pcre.AVAILABLE:
+    raise RuntimeError('PCRE is not available')
 
 
-class Matcher:
-
-    def __init__(
-                self,
-                signature_set: SignatureSet,
-                timeout: int = DEFAULT_TIMEOUT,
-                match_all: bool = False
-            ):
-        self.signature_set = signature_set
-        self.timeout = timeout
-        self.match_all = match_all
-
-    def prepare():
-        pass
-
-
-class MatcherContext:
-    pass
-
-
-class RegexMatcherContext(MatcherContext):
-
-    def __init__(self, matcher):
-        self.matcher = matcher
-        self.common_string_states = self._initialize_common_string_states()
-        self.matches = {}
-        self.timeouts = set()
-
-    def _initialize_common_string_states(self) -> list:
-        states = []
-        for _common_string in self.matcher.common_strings:
-            states.append(False)
-        return states
-
-    def _check_common_strings(self, chunk: bytes) -> list:
-        common_string_counts = {}
-        for index, common_string in enumerate(self.matcher.common_strings):
-            if not self.common_string_states[index]:
-                try:
-                    match = common_string.pattern.match(chunk)
-                    if match is not None:
-                        self.common_string_states[index] = True
-                except PcreException as e:
-                    log.debug(
-                            'Common string matching failed for '
-                            f'{common_string.common_string.string} with error:'
-                            f' {e}'
-                        )
-            if self.common_string_states[index]:
-                for identifier in common_string.common_string.signature_ids:
-                    if identifier in self.matches:
-                        continue
-                    if identifier in common_string_counts:
-                        common_string_counts[identifier] += 1
-                    else:
-                        common_string_counts[identifier] = 1
-        possible_signatures = []
-        for identifier, count in common_string_counts.items():
-            signature = self.matcher.signatures[identifier]
-            if count == signature.signature.get_common_string_count():
-                possible_signatures.append(signature)
-        return possible_signatures
-
-    def _match_signature(
-                self,
-                signature: Signature,
-                chunk: bytes,
-                start: bool = False
-            ) -> bool:
-        if not signature.is_valid():
-            print('Signature is not valid')
-            return False
-        if signature.anchored_to_start and not start:
-            return False
-        try:
-            signal.setitimer(signal.ITIMER_VIRTUAL, self.matcher.timeout)
-            match = signature.get_pattern().match(chunk)
-            signal.setitimer(signal.ITIMER_VIRTUAL, 0)  # Clear timeout
-            if match is not None:
-                self.matches[signature.signature.identifier] = \
-                        match.matched_string
-                return True
-        except PcreException as e:
-            log.debug(
-                    'Signature matching failed for '
-                    f'{signature.signature.identifier}, {e}'
-                )
-        except TimeoutException:
-            self.timeouts.add(signature.signature.identifier)
-        return False
-
-    def process_chunk(
-                self,
-                chunk: bytes,
-                jit_stack: PcreJitStack,
-                start: bool = False,
-            ) -> bool:
-        possible_signatures = self._check_common_strings(chunk)
-        for signature in self.matcher.signatures_without_common_strings:
-            if self._match_signature(signature, chunk, start) and \
-                    not self.matcher.match_all:
-                return True
-        for signature in possible_signatures:
-            if self._match_signature(signature, chunk, start) and \
-                    not self.matcher.match_all:
-                return True
-        return False
-
-    def __enter__(self):
-        def handle_timeout(signum, frame):
-            raise TimeoutException()
-
-        self._previous_alarm_handler = signal.signal(
-                signal.SIGVTALRM,
-                handle_timeout
-            )
-        if self._previous_alarm_handler is None:
-            self._previous_alarm_handler = signal.SIG_DFL
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        signal.signal(signal.SIGVTALRM, self._previous_alarm_handler)
-
-
-class RegexCommonString:
+class PcreCommonString:
 
     def __init__(self, common_string: CommonString, pcre_options: PcreOptions):
         self.common_string = common_string
         self.pattern = PcrePattern(common_string.string, pcre_options)
 
 
-class RegexSignature:
+class PcreSignature:
 
     def __init__(self, signature: Signature, pcre_options: PcreOptions):
         self.signature = signature
@@ -195,7 +64,125 @@ class RegexSignature:
         return self.pattern
 
 
-class RegexMatcher(Matcher):
+class PcreMatchWorkspace(MatchWorkspace):
+
+    def __init__(self):
+        self.jit_stack = None
+
+    def __enter__(self):
+        self.jit_stack = PcreJitStack()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.jit_stack.__exit__(exc_type, exc_value, traceback)
+
+
+class PcreMatcherContext(BaseMatcherContext):
+
+    def __init__(self, matcher: Matcher):
+        super().__init__(matcher)
+        self.common_string_states = self._initialize_common_string_states()
+
+    def _initialize_common_string_states(self) -> list:
+        states = []
+        for _common_string in self.matcher.common_strings:
+            states.append(False)
+        return states
+
+    def _check_common_strings(self, chunk: bytes) -> list:
+        common_string_counts = {}
+        for index, common_string in enumerate(self.matcher.common_strings):
+            if not self.common_string_states[index]:
+                try:
+                    match = common_string.pattern.match(chunk)
+                    if match is not None:
+                        self.common_string_states[index] = True
+                except PcreException as e:
+                    log.debug(
+                            'Common string matching failed for '
+                            f'{common_string.common_string.string} with error:'
+                            f' {e}'
+                        )
+            if self.common_string_states[index]:
+                for identifier in common_string.common_string.signature_ids:
+                    if identifier in self.matches:
+                        continue
+                    if identifier in common_string_counts:
+                        common_string_counts[identifier] += 1
+                    else:
+                        common_string_counts[identifier] = 1
+        possible_signatures = []
+        for identifier, count in common_string_counts.items():
+            signature = self.matcher.signatures[identifier]
+            if count == signature.signature.get_common_string_count():
+                possible_signatures.append(signature)
+        return possible_signatures
+
+    def _match_signature(
+                self,
+                signature: Signature,
+                chunk: bytes,
+                start: bool = False,
+                jit_stack: Optional[PcreJitStack] = None
+            ) -> bool:
+        if not signature.is_valid():
+            print('Signature is not valid')
+            return False
+        if signature.anchored_to_start and not start:
+            return False
+        try:
+            signal.setitimer(signal.ITIMER_VIRTUAL, self.matcher.timeout)
+            match = signature.get_pattern().match(chunk, jit_stack)
+            signal.setitimer(signal.ITIMER_VIRTUAL, 0)  # Clear timeout
+            if match is not None:
+                self._record_match(
+                        identifier=signature.signature.identifier,
+                        matched=match.matched_string
+                    )
+                return True
+        except PcreException as e:
+            log.debug(
+                    'Signature matching failed for '
+                    f'{signature.signature.identifier}, {e}'
+                )
+        except TimeoutException:
+            self.timeouts.add(signature.signature.identifier)
+        return False
+
+    def process_chunk(
+                self,
+                chunk: bytes,
+                start: bool = False,
+                workspace: Optional[MatchWorkspace] = None
+            ) -> bool:
+        possible_signatures = self._check_common_strings(chunk)
+        for signature in self.matcher.signatures_without_common_strings:
+            if self._match_signature(signature, chunk, start, workspace.jit_stack) and \
+                    not self.matcher.match_all:
+                return True
+        for signature in possible_signatures:
+            if self._match_signature(signature, chunk, start, workspace.jit_stack) and \
+                    not self.matcher.match_all:
+                return True
+        return False
+
+    def __enter__(self):
+        def handle_timeout(signum, frame):
+            raise TimeoutException()
+
+        self._previous_alarm_handler = signal.signal(
+                signal.SIGVTALRM,
+                handle_timeout
+            )
+        if self._previous_alarm_handler is None:
+            self._previous_alarm_handler = signal.SIG_DFL
+        return super().__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        signal.signal(signal.SIGVTALRM, self._previous_alarm_handler)
+
+
+class PcreMatcher(Matcher):
 
     def __init__(
                 self,
@@ -205,10 +192,8 @@ class RegexMatcher(Matcher):
                 pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS,
                 lazy: bool = False
             ):
-        super().__init__(signature_set, timeout, match_all)
         self.pcre_options = pcre_options
-        if not lazy:
-            self.prepare()
+        super().__init__(signature_set, timeout, match_all, lazy)
 
     def _extract_signatures_without_common_strings(self) -> list:
         signatures = []
@@ -219,14 +204,14 @@ class RegexMatcher(Matcher):
 
     def _compile_common_strings(self) -> None:
         self.common_strings = [
-                RegexCommonString(common_string, self.pcre_options)
+                PcreCommonString(common_string, self.pcre_options)
                 for common_string in self.signature_set.common_strings
             ]
 
     def _compile_signatures(self) -> None:
         self.signatures = {}
         for identifier, signature in self.signature_set.signatures.items():
-            self.signatures[identifier] = RegexSignature(
+            self.signatures[identifier] = PcreSignature(
                     signature,
                     self.pcre_options
                 )
@@ -240,5 +225,17 @@ class RegexMatcher(Matcher):
     def prepare(self) -> None:
         self._compile_regexes()
 
-    def create_context(self) -> RegexMatcherContext:
-        return RegexMatcherContext(self)
+    def create_context(self) -> PcreMatcherContext:
+        return PcreMatcherContext(self)
+
+    def create_workspace(self) -> PcreMatchWorkspace:
+        return PcreMatchWorkspace()
+
+
+def create_matcher(options: MatchEngineOptions) -> PcreMatcher:
+    return PcreMatcher(
+            options.signature_set,
+            match_all=options.match_all,
+            pcre_options=options.pcre_options,
+            lazy=options.lazy
+        )
