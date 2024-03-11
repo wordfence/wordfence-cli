@@ -1,5 +1,5 @@
 from ctypes import Structure, POINTER, c_char_p, c_int, \
-    c_void_p, c_uint, c_ulonglong, byref, CFUNCTYPE
+    c_void_p, c_uint, c_ulonglong, c_size_t, byref, string_at, CFUNCTYPE
 from enum import IntFlag, IntEnum
 from typing import Dict, Optional, Callable, Union, Any
 
@@ -65,6 +65,23 @@ _hs_compile_multi.restype = _hs_error
 _hs_free_database = hs.hs_free_database
 _hs_free_database.argtypes = [_hs_database_p]
 _hs_free_database.restype = None
+
+
+_hs_serialize_database = hs.hs_serialize_database
+_hs_serialize_database.argtypes = [
+        _hs_database_p,
+        POINTER(c_char_p),
+        POINTER(c_size_t)
+    ]
+_hs_serialize_database.restype = _hs_error
+
+
+_hs_deserialize_database = hs.hs_deserialize_database
+_hs_deserialize_database.argtypes = [
+        c_char_p,
+        c_size_t,
+        POINTER(_hs_database_p)
+    ]
 
 
 class _StructHsScratch(Structure):
@@ -150,6 +167,12 @@ class VectorscanError(VectorscanException):
         self.error = error
 
 
+class VectorscanScanTerminated(VectorscanError):
+
+    def __init__(self):
+        super().__init__(VectorscanErrorType.SCAN_TERMINATED)
+
+
 def _assert_success(error: Union[int, _hs_error]):
     try:
         if isinstance(error, _hs_error):
@@ -158,6 +181,8 @@ def _assert_success(error: Union[int, _hs_error]):
     except ValueError:
         error = VectorscanErrorType.UNKNOWN_ERROR
     if error is not VectorscanErrorType.SUCCESS:
+        if error is VectorscanErrorType.SCAN_TERMINATED:
+            raise VectorscanScanTerminated()
         raise VectorscanError(error)
 
 
@@ -191,6 +216,17 @@ class VectorscanDatabase:
         if self._database is not None:
             _hs_free_database(self._database)
             self._database = None
+
+    def serialize(self) -> bytes:
+        data = c_char_p()
+        length = c_size_t()
+        error = _hs_serialize_database(
+                self._database,
+                byref(data),
+                byref(length)
+            )
+        _assert_success(error)
+        return string_at(data, length.value)
 
 
 class VectorscanScratch:
@@ -307,6 +343,17 @@ def vectorscan_compile(
     return VectorscanDatabase(database)
 
 
+def vectorscan_deserialize(data: bytes) -> VectorscanDatabase:
+    _database = _hs_database_p()
+    error = _hs_deserialize_database(
+            c_char_p(data),
+            c_size_t(len(data)),
+            byref(_database)
+        )
+    _assert_success(error)
+    return VectorscanDatabase(_database)
+
+
 def vectorscan_test(patterns=None):
     if patterns is None:
         patterns = {
@@ -333,3 +380,5 @@ def vectorscan_test(patterns=None):
     scanner.scan('Test', callback)
     print('Scan 2')
     scanner.scan('no match', callback)
+
+    return database

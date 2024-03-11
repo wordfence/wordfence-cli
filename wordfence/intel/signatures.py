@@ -1,3 +1,6 @@
+from hashlib import sha256
+from typing import Union
+
 from ..api.licensing import License, LicenseSpecific
 
 
@@ -60,3 +63,33 @@ class SignatureSet(LicenseSpecific):
         if identifier in self.signatures:
             return self.signatures[identifier]
         raise ValueError(f'Invalid signature identifier: {identifier}')
+
+    def get_hash(self) -> str:
+        hash = sha256()
+        delimiter = ';'
+        for signature in self.signatures.values():
+            hash.update(delimiter.join([
+                    str(signature.identifier),
+                    signature.rule,
+                    delimiter.join(
+                            [self.common_strings[index].string for index
+                                in signature.common_strings]
+                        )
+                ]).encode('utf-8'))
+        return hash.digest()
+
+
+class PrecompiledSignatureSet(LicenseSpecific):
+
+    def __init__(
+                self,
+                signature_set: Union[bytes, SignatureSet],
+                data: bytes,
+                license: License = None
+            ):
+        super().__init__(license)
+        self.signature_hash = (
+                signature_set if isinstance(signature_set, bytes)
+                else signature_set.get_hash()
+            )
+        self.data = data

@@ -5,7 +5,8 @@ from importlib import import_module
 from contextlib import AbstractContextManager
 
 from ...intel.signatures import SignatureSet
-from ...util.pcre import PcreOptions
+from ...util.caching import Cacheable
+from ...util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS
 
 DEFAULT_TIMEOUT = 1  # Seconds
 
@@ -68,8 +69,12 @@ class Matcher:
         self.signature_set = signature_set
         self.timeout = timeout
         self.match_all = match_all
-        self.lazy = lazy
         self.prepared = False
+        if not lazy:
+            self.prepare()
+
+    def get_cacheable(self) -> Optional[Cacheable]:
+        return None
 
     def prepare(self) -> None:
         if self.prepared:
@@ -97,9 +102,16 @@ class BaseMatcherContext(MatcherContext):
 @dataclass
 class MatchEngineOptions:
     signature_set: SignatureSet
-    match_all: bool
-    lazy: bool
-    pcre_options: PcreOptions
+    match_all: bool = False
+    lazy: bool = False
+    pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
+    database_source: Optional[bytes] = None
+
+
+class Compiler:
+
+    def compile_serializable(self, signatures: SignatureSet) -> bytes:
+        raise NotImplementedError()
 
 
 class MatchEngine(Enum):
@@ -109,6 +121,7 @@ class MatchEngine(Enum):
     def __init__(self, option: str, module: Optional[str] = None):
         self.option = option
         self.module = option if module is None else module
+        self._loaded_module = None
 
     @classmethod
     def get_options(cls) -> List:
@@ -129,9 +142,21 @@ class MatchEngine(Enum):
     def get_default_option(cls):
         return cls.get_default().option
 
-    def create_matcher(self, options: MatchEngineOptions) -> Matcher:
-        module = import_module(
+    def _load_module(self):
+        return import_module(
                 f'.{self.module}',
                 'wordfence.scanning.matching'
             )
+
+    def _get_loaded_module(self):
+        if self._loaded_module is None:
+            self._loaded_module = self._load_module()
+        return self._loaded_module
+
+    def get_compiler(self, options: MatchEngineOptions) -> Optional[Compiler]:
+        module = self._get_loaded_module()
+        return module.create_compiler(options)
+
+    def create_matcher(self, options: MatchEngineOptions) -> Matcher:
+        module = self._get_loaded_module()
         return module.create_matcher(options)

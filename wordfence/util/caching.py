@@ -3,7 +3,7 @@ import pickle
 import base64
 import time
 import shutil
-from typing import Any, Callable, Optional, Set
+from typing import Any, Callable, Optional, Set, Iterable
 
 from .io import FileLock, LockType
 from .serialization import limited_deserialize
@@ -23,6 +23,9 @@ class NoCachedValueException(CacheException):
 
 class InvalidCachedValueException(CacheException):
     pass
+
+
+CacheFilter = Callable[[Any], Any]
 
 
 class Cache:
@@ -45,9 +48,15 @@ class Cache:
     def put(self, key: str, value) -> None:
         self._save(key, self._serialize_value(value))
 
-    def get(self, key: str, max_age: Optional[int] = None) -> Any:
+    def get(
+                self,
+                key: str,
+                max_age: Optional[int] = None,
+                additional_filters: Optional[Iterable[CacheFilter]] = None
+            ) -> Any:
         return self.filter_value(
-                self._deserialize_value(self._load(key, max_age))
+                self._deserialize_value(self._load(key, max_age)),
+                additional_filters
             )
 
     def remove(self, key: str) -> None:
@@ -56,12 +65,19 @@ class Cache:
     def purge(self) -> None:
         pass
 
-    def add_filter(self, filter: Callable[[Any], Any]) -> None:
+    def add_filter(self, filter: CacheFilter) -> None:
         self.filters.append(filter)
 
-    def filter_value(self, value: Any) -> Any:
+    def filter_value(
+                self,
+                value: Any,
+                additional_filters: Optional[Iterable[CacheFilter]] = None
+            ) -> Any:
         for filter in self.filters:
             value = filter(value)
+        if additional_filters is not None:
+            for filter in additional_filters:
+                value = filter(value)
         return value
 
 
@@ -169,18 +185,20 @@ class Cacheable:
                 self,
                 key: str,
                 initializer: Callable[[], Any],
-                max_age: Optional[int] = None
+                max_age: Optional[int] = None,
+                filters: Optional[Iterable[CacheFilter]] = None
             ):
         self.key = key
         self._initializer = initializer
         self.max_age = max_age
+        self.filters = filters
 
     def _initialize_value(self) -> Any:
         return self._initializer()
 
     def get(self, cache: Cache) -> Any:
         try:
-            value = cache.get(self.key, self.max_age)
+            value = cache.get(self.key, self.max_age, self.filters)
         except (
                 NoCachedValueException,
                 InvalidCachedValueException
@@ -188,3 +206,6 @@ class Cacheable:
             value = self._initialize_value()
             cache.put(self.key, value)
         return value
+
+    def delete(self, cache: Cache) -> Any:
+        cache.remove(self.key)

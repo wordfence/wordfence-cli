@@ -2,6 +2,7 @@ import os
 import queue
 import time
 import traceback
+import dataclasses
 from ctypes import c_bool, c_uint
 from enum import IntEnum
 from multiprocessing import Queue, Process, Value, get_start_method
@@ -15,9 +16,7 @@ from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader, is_symlink_loop, is_symlink_and_loop, \
     get_all_parents, PathSet
-from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS
 from ..util.units import scale_byte_unit
-from ..intel.signatures import SignatureSet
 from ..logging import log, remove_initial_handler, VERBOSE
 
 MAX_PENDING_FILES = 1000  # Arbitrary limit
@@ -102,17 +101,15 @@ def use_event_queue_log_handler(event_queue: Queue, worker_index: int) -> None:
 @dataclass
 class Options:
     paths: Set[str]
-    signatures: SignatureSet
+    match_engine_options: MatchEngineOptions
     workers: int = 1
     chunk_size: int = DEFAULT_CHUNK_SIZE
     path_source: Optional[StreamReader] = None
     scanned_content_limit: Optional[int] = None
     file_filter: Optional[FileFilter] = None
-    match_all: bool = False
-    pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
-    allow_io_errors: bool = False,
-    debug: bool = False,
-    logging_initializer: Callable[[], None] = None,
+    allow_io_errors: bool = False
+    debug: bool = False
+    logging_initializer: Callable[[], None] = None
     match_engine: MatchEngine = MatchEngine.get_default()
 
 
@@ -794,12 +791,8 @@ class Scanner:
 
     def _initialize_matcher(self) -> Matcher:
         engine = self.options.match_engine
-        options = MatchEngineOptions(
-                signature_set=self.options.signatures,
-                match_all=self.options.match_all,
-                lazy=not USES_FORK,
-                pcre_options=self.options.pcre_options
-            )
+        options = dataclasses.replace(self.options.match_engine_options)
+        options.lazy = not USES_FORK
         return engine.create_matcher(options)
 
     def scan(

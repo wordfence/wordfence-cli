@@ -234,6 +234,10 @@ class PcreMatcher(Matcher):
         return PcreMatchWorkspace()
 
 
+def create_compiler(options: MatchEngineOptions) -> None:
+    return None
+
+
 def create_matcher(options: MatchEngineOptions) -> PcreMatcher:
     return PcreMatcher(
             options.signature_set,
