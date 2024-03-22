@@ -354,34 +354,37 @@ class ScanWorker(Process):
         return 'worker-' + str(self.index)
 
     def work(self):
-        self._working = True
-        self._matcher.prepare()
-        log.debug(f'Worker {self.index} started, PID:' + str(os.getpid()))
-        with self._matcher.create_workspace() as workspace:
-            while self._working:
-                try:
-                    item = self._work_queue.get(timeout=QUEUE_READ_TIMEOUT)
-                    if item is None:
-                        self._put_event(ScanEventType.FILE_QUEUE_EMPTIED)
-                        self._complete()
-                    elif isinstance(item, ExceptionContainer):
-                        if isinstance(item.exception, ScanningIoException):
-                            self._put_io_error(item)
+        try:
+            self._working = True
+            self._matcher.prepare(thread=True)
+            log.debug(f'Worker {self.index} started, PID:' + str(os.getpid()))
+            with self._matcher.create_workspace() as workspace:
+                while self._working:
+                    try:
+                        item = self._work_queue.get(timeout=QUEUE_READ_TIMEOUT)
+                        if item is None:
+                            self._put_event(ScanEventType.FILE_QUEUE_EMPTIED)
+                            self._complete()
+                        elif isinstance(item, ExceptionContainer):
+                            if isinstance(item.exception, ScanningIoException):
+                                self._put_io_error(item)
+                            else:
+                                self._put_event(
+                                        ScanEventType.FATAL_EXCEPTION,
+                                        {'exception': item}
+                                    )
                         else:
-                            self._put_event(
-                                    ScanEventType.FATAL_EXCEPTION,
-                                    {'exception': item}
-                                )
-                    else:
-                        try:
-                            self._process_file(item, workspace)
-                        except OSError as error:
-                            self._put_io_error(ExceptionContainer(error))
-                        except Exception as error:
-                            self._put_error(ExceptionContainer(error))
-                except queue.Empty:
-                    if self._status.value == Status.PROCESSING_FILES:
-                        self._complete()
+                            try:
+                                self._process_file(item, workspace)
+                            except OSError as error:
+                                self._put_io_error(ExceptionContainer(error))
+                            except Exception as error:
+                                self._put_error(ExceptionContainer(error))
+                    except queue.Empty:
+                        if self._status.value == Status.PROCESSING_FILES:
+                            self._complete()
+        except Exception as error:
+            self._put_error(ExceptionContainer(error))
 
     def _put_event(self, event_type: ScanEventType, data: dict = None) -> None:
         if data is None:

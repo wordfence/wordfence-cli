@@ -124,6 +124,56 @@ _hs_scan.argtypes = [
 _hs_scan.restype = _hs_error
 
 
+class _StructHsStream(Structure):
+    pass
+
+
+_hs_stream_p = POINTER(_StructHsStream)
+
+
+_hs_open_stream = hs.hs_open_stream
+_hs_open_stream.argtypes = [
+        _hs_database_p,
+        c_uint,
+        POINTER(_hs_stream_p)
+    ]
+_hs_open_stream.restype = _hs_error
+
+
+_hs_scan_stream = hs.hs_scan_stream
+_hs_scan_stream.argtypes = [
+        _hs_stream_p,
+        c_char_p,
+        c_uint,
+        c_uint,
+        _hs_scratch_p,
+        _match_event_handler,
+        c_void_p
+    ]
+_hs_scan_stream.restype = _hs_error
+
+
+_hs_reset_stream = hs.hs_reset_stream
+_hs_reset_stream.argtypes = [
+        _hs_stream_p,
+        c_uint,
+        _hs_scratch_p,
+        _match_event_handler,
+        c_void_p
+    ]
+_hs_reset_stream.restype = _hs_error
+
+
+_hs_close_stream = hs.hs_close_stream
+_hs_close_stream.argtypes = [
+        _hs_stream_p,
+        _hs_scratch_p,
+        _match_event_handler,
+        c_void_p
+    ]
+_hs_close_stream.restype = _hs_error
+
+
 class VectorscanFlags(IntFlag):
     NONE = 0
     CASELESS = 1
@@ -152,7 +202,8 @@ class VectorscanErrorType(IntEnum):
     SCAN_TERMINATED = -3
     COMPILER_ERROR = -4
     DB_VERSION_ERROR = -5
-    DB_MODE_ERROR = -6
+    DB_PLATFORM_ERROR = -6
+    DB_MODE_ERROR = -7
     BAD_ALIGN = -8
     BAD_ALLOC = -9
     SCRATCH_IN_USE = -10
@@ -173,6 +224,17 @@ class VectorscanScanTerminated(VectorscanError):
         super().__init__(VectorscanErrorType.SCAN_TERMINATED)
 
 
+class VectorscanDatabaseIncompatible(VectorscanError):
+    pass
+
+
+DATABASE_COMPATIBILITY_ERRORS = [
+        VectorscanErrorType.DB_VERSION_ERROR,
+        VectorscanErrorType.DB_PLATFORM_ERROR,
+        VectorscanErrorType.DB_MODE_ERROR
+    ]
+
+
 def _assert_success(error: Union[int, _hs_error]):
     try:
         if isinstance(error, _hs_error):
@@ -183,6 +245,8 @@ def _assert_success(error: Union[int, _hs_error]):
     if error is not VectorscanErrorType.SUCCESS:
         if error is VectorscanErrorType.SCAN_TERMINATED:
             raise VectorscanScanTerminated()
+        if error in DATABASE_COMPATIBILITY_ERRORS:
+            raise VectorscanDatabaseIncompatible(error)
         raise VectorscanError(error)
 
 
@@ -259,13 +323,17 @@ class VectorscanMatch:
 VectorscanMatchCallback = Callable[[VectorscanMatch], bool]
 
 
-def _wrap_match_callback(callback: VectorscanMatchCallback):
+def _default_match_callback(match: VectorscanMatch) -> bool:
+    return False
+
+
+def _wrap_match_callback(callback: VectorscanMatchCallback, context: Any):
     def wrapped_callback(
                 identifier: int,
                 start: int,
                 end: int,
                 _flags: int,
-                context
+                c_context
             ) -> int:
         match = VectorscanMatch(
                 identifier,
@@ -289,16 +357,30 @@ class VectorscanScanner:
         self.scratch = scratch if scratch is not None \
             else VectorscanScratch(database)
 
+    def _encode_data(self, data: Union[bytes, str]) -> bytes:
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        return data
+
+
+class VectorscanBlockScanner(VectorscanScanner):
+
+    def __init__(
+                self,
+                database: VectorscanDatabase,
+                scratch: Optional[VectorscanScratch] = None
+            ):
+        super().__init__(database, scratch)
+
     def scan(
                 self,
                 data: Union[bytes, str],
                 callback: VectorscanMatchCallback,
                 context: Optional[Any] = None
             ):
-        if isinstance(data, str):
-            data = data.encode('utf-8')
+        data = self._encode_data(data)
 
-        callback = _wrap_match_callback(callback)
+        callback = _wrap_match_callback(callback, context)
 
         error = _hs_scan(
                 self.database._database,
@@ -310,6 +392,82 @@ class VectorscanScanner:
                 c_void_p()
             )
         _assert_success(error)
+
+
+class VectorscanStreamScanner(VectorscanScanner):
+
+    def __init__(
+                self,
+                database: VectorscanDatabase,
+                callback: VectorscanMatchCallback = _default_match_callback,
+                context: Optional[Any] = None,
+                scratch: Optional[VectorscanScratch] = None
+            ):
+        super().__init__(database, scratch)
+        self._stream = None
+        self.set_callback(callback, context)
+        self._open_stream()
+
+    def set_callback(
+                self,
+                callback: VectorscanMatchCallback,
+                context: Optional[Any] = None
+            ) -> None:
+        self._callback = _match_event_handler(
+                _wrap_match_callback(callback, context)
+            )
+
+    def _open_stream(self) -> None:
+        stream = _hs_stream_p()
+        error = _hs_open_stream(
+                self.database._database,
+                c_uint(0),
+                byref(stream)
+            )
+        _assert_success(error)
+        self._stream = stream
+
+    def _close_stream(self) -> None:
+        if self._stream is None:
+            return
+        error = _hs_close_stream(
+                self._stream,
+                self.scratch._scratch,
+                self._callback,
+                c_void_p()
+            )
+        _assert_success(error)
+
+    def scan(
+                self,
+                data: Union[bytes, str]
+            ) -> None:
+        data = self._encode_data(data)
+        error = _hs_scan_stream(
+                self._stream,
+                c_char_p(data),
+                c_uint(len(data)),
+                c_uint(0),
+                self.scratch._scratch,
+                self._callback,
+                c_void_p()
+            )
+        _assert_success(error)
+
+    def reset(self) -> None:
+        if self._stream is None:
+            self._open_stream()
+        error = _hs_reset_stream(
+                self._stream,
+                c_uint(0),
+                self.scratch._scratch,
+                self._callback,
+                c_void_p()
+            )
+        _assert_success(error)
+
+    def __del__(self) -> None:
+        self._close_stream()
 
 
 def vectorscan_compile(
@@ -354,7 +512,7 @@ def vectorscan_deserialize(data: bytes) -> VectorscanDatabase:
     return VectorscanDatabase(_database)
 
 
-def vectorscan_test(patterns=None):
+def vectorscan_block_test(patterns=None):
     if patterns is None:
         patterns = {
                 1: 'Test'
@@ -369,7 +527,7 @@ def vectorscan_test(patterns=None):
             VectorscanMode.BLOCK,
             flags=flags
         )
-    scanner = VectorscanScanner(
+    scanner = VectorscanBlockScanner(
             database
         )
 
@@ -380,5 +538,36 @@ def vectorscan_test(patterns=None):
     scanner.scan('Test', callback)
     print('Scan 2')
     scanner.scan('no match', callback)
+
+    return database
+
+
+def vectorscan_streaming_test():
+    patterns = {
+            1: 'Test'
+        }
+    flags = (
+            VectorscanFlags.CASELESS |
+            VectorscanFlags.SINGLEMATCH |
+            VectorscanFlags.ALLOWEMPTY
+        )
+    database = vectorscan_compile(
+            patterns,
+            VectorscanMode.STREAM,
+            flags=flags
+        )
+
+    def callback(match: VectorscanMatch) -> bool:
+        print(vars(match))
+
+    scanner = VectorscanStreamScanner(
+            database,
+            callback
+        )
+
+    print('Chunk 1')
+    scanner.scan('Te')
+    print('Chunk 2')
+    scanner.scan('st')
 
     return database

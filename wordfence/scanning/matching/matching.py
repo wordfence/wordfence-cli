@@ -70,20 +70,31 @@ class Matcher:
         self.timeout = timeout
         self.match_all = match_all
         self.prepared = False
+        self.prepared_thread = False
         if not lazy:
             self.prepare()
 
     def get_cacheable(self) -> Optional[Cacheable]:
         return None
 
-    def prepare(self) -> None:
-        if self.prepared:
-            return
-        self._prepare()
-        self.prepared = True
+    def prepare(self, thread: bool = False) -> None:
+        if not self.prepared:
+            self._prepare()
+            self.prepared = True
+        if thread:
+            self.prepare_thread()
 
     def _prepare(self) -> None:
-        raise NotImplementedError()
+        pass
+
+    def prepare_thread(self) -> None:
+        if self.prepared_thread:
+            return
+        self._prepare_thread()
+        self.prepared_thread = True
+
+    def _prepare_thread(self) -> None:
+        pass
 
     def create_workspace(self) -> Optional[MatchWorkspace]:
         return MatchWorkspace()

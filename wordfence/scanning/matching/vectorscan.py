@@ -12,9 +12,9 @@ if not vectorscan.AVAILABLE:
     raise RuntimeError('Vectorscan is not available')
 
 
-from ...util.vectorscan import VectorscanScanner, VectorscanMatch, \
+from ...util.vectorscan import VectorscanStreamScanner, VectorscanMatch, \
         VectorscanFlags, VectorscanDatabase, VectorscanScanTerminated, \
-        vectorscan_compile, vectorscan_deserialize
+        VectorscanMode, vectorscan_compile, vectorscan_deserialize
 
 
 class VectorscanMatcherContext(BaseMatcherContext):
@@ -39,14 +39,17 @@ class VectorscanMatcherContext(BaseMatcherContext):
             ) -> bool:
         self.matched = False
         try:
-            self.matcher.scanner.scan(
-                    chunk,
-                    self._match_callback,
-                    context=chunk
-                )
+            self.matcher.scanner.scan(chunk)
         except VectorscanScanTerminated:
             return True
         return self.matched
+
+    def __enter__(self):
+        self.matcher.scanner.set_callback(self._match_callback)
+        return super().__enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.matcher.scanner.reset()
 
 
 class VectorscanCompiler(Compiler):
@@ -66,7 +69,11 @@ class VectorscanCompiler(Compiler):
                 VectorscanFlags.SINGLEMATCH |
                 VectorscanFlags.ALLOWEMPTY
             )
-        database = vectorscan_compile(patterns, flags=flags)
+        database = vectorscan_compile(
+                patterns,
+                mode=VectorscanMode.STREAM,
+                flags=flags
+            )
         log.debug('Successfully compiled vectorscan database')
         return database
 
@@ -112,8 +119,12 @@ class VectorscanMatcher(Matcher):
     def _prepare(self) -> None:
         log.debug('Preparing vectorscan matcher...')
         self.database = self._initialize_database()
-        self.scanner = VectorscanScanner(self.database)
         log.debug('Successfully prepared vectorscan matcher')
+
+    def _prepare_thread(self) -> None:
+        log.debug('Preparding thread-specific vectorscan scanner...')
+        self.scanner = VectorscanStreamScanner(self.database)
+        log.debug('Successfully prepared vectorscan scanner')
 
     def create_context(self) -> VectorscanMatcherContext:
         return VectorscanMatcherContext(
