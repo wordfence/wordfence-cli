@@ -224,7 +224,7 @@ class PcreMatcher(Matcher):
         self.signatures_without_common_strings = \
             self._extract_signatures_without_common_strings()
 
-    def prepare(self) -> None:
+    def _prepare(self) -> None:
         self._compile_regexes()
 
     def create_context(self) -> PcreMatcherContext:
