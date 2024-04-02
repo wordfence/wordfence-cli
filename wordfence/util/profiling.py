@@ -1,7 +1,7 @@
 import time
 
 from enum import Enum, auto
-from typing import Dict, Optional
+from typing import Dict, Optional, TextIO
 
 from ..logging import log
 
@@ -168,6 +168,63 @@ class EventGroup:
             aggregate.add(duration)
 
 
+class ProfileWriter:
+
+    def write(entry: str):
+        raise NotImplementedError()
+
+
+class DebugProfileWriter(ProfileWriter):
+
+    def __init__(self):
+        self.write('=== PROFILING RESULTS ===')
+
+    def write(self, entry: str):
+        log.debug(entry)
+
+
+class FileProfileWriter(ProfileWriter):
+
+    def __init__(self, file: TextIO):
+        self.file = file
+
+    def write(self, entry: str):
+        self.file.write(entry)
+        self.file.write('\n')
+
+
+class ProfileWriterFactory:
+
+    def __enter__(self) -> ProfileWriter:
+        raise NotImplementedError()
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        raise NotImplementedError()
+
+
+class DebugProfileWriterFactory(ProfileWriterFactory):
+
+    def __enter__(self) -> ProfileWriter:
+        return DebugProfileWriter()
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        return
+
+
+class FileProfileWriterFactory(ProfileWriterFactory):
+
+    def __init__(self, path: str):
+        self.path = path
+        self.file = None
+
+    def __enter__(self) -> ProfileWriter:
+        self.file = open(self.path, 'w')
+        return FileProfileWriter(self.file)
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.file.close()
+
+
 class Profiler:
 
     def __init__(self):
@@ -188,14 +245,13 @@ class Profiler:
         if event.is_global:
             self.global_events.add(event)
 
-    def _output_group(self, group: EventGroup) -> None:
+    def _output_group(self, group: EventGroup, writer: ProfileWriter) -> None:
         for time_type, aggregate in group.aggregates.items():
-            log.debug(f'\t{time_type.name}: {aggregate}')
+            writer.write(f'\t{time_type.name}: {aggregate}')
 
-    def output_results(self) -> None:
-        log.debug('=== PROFILING RESULTS ===')
+    def output_results(self, writer: ProfileWriter) -> None:
         for name, group in self.event_groups.items():
-            log.debug(f'{name}:')
-            self._output_group(group)
-        log.debug('global:')
-        self._output_group(self.global_events)
+            writer.write(f'{name}:')
+            self._output_group(group, writer)
+        writer.write('global:')
+        self._output_group(self.global_events, writer)

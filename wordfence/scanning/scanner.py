@@ -19,7 +19,8 @@ from ..util.io import StreamReader, is_symlink_loop, is_symlink_and_loop, \
     get_all_parents, PathSet
 from ..util.units import scale_byte_unit
 from ..logging import log, remove_initial_handler, VERBOSE
-from ..util.profiling import Profiler, ProfileEvent, EventTimer
+from ..util.profiling import Profiler, ProfileEvent, EventTimer, \
+    DebugProfileWriterFactory, FileProfileWriterFactory
 
 MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
@@ -161,7 +162,8 @@ class Options:
     debug: bool = False
     logging_initializer: Callable[[], None] = None
     match_engine: MatchEngine = MatchEngine.get_default()
-    profile: bool = False
+    profile: bool = False,
+    profile_path: Optional[str] = None
 
 
 class Status(IntEnum):
@@ -653,7 +655,6 @@ def get_scan_finished_messages(
 def default_scan_finished_handler(
             metrics: ScanMetrics,
             timer: timing.Timer,
-            profiler: Optional[Profiler]
         ) -> None:
     """Used as the default ScanFinishedCallback"""
     messages = get_scan_finished_messages(metrics, timer)
@@ -662,8 +663,6 @@ def default_scan_finished_handler(
     if messages.skipped:
         log.warning(messages.skipped)
     log.info(messages.results)
-    if profiler is not None:
-        profiler.output_results()
     return messages
 
 
@@ -952,8 +951,17 @@ class Scanner:
         scan_finished_handler = scan_finished_handler if scan_finished_handler\
             else default_scan_finished_handler
         metrics.skipped_files = file_locator_process.get_skipped_count()
-        profiler.complete()
-        scan_finished_handler(metrics, timer, profiler)
+        if profiler is not None:
+            profiler.complete()
+            if self.options.profile_path is None:
+                writer_factory = DebugProfileWriterFactory()
+            else:
+                writer_factory = FileProfileWriterFactory(
+                        self.options.profile_path
+                    )
+            with writer_factory as writer:
+                profiler.output_results(writer)
+        scan_finished_handler(metrics, timer)
         return (metrics, timer)
 
     def terminate(self) -> None:
