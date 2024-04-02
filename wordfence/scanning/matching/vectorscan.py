@@ -88,7 +88,8 @@ class VectorscanMatcher(Matcher):
                 self,
                 signature_set: SignatureSet,
                 match_all: bool = False,
-                database_source: Optional[bytes] = None
+                database_source: Optional[bytes] = None,
+                lazy: bool = False
             ):
         self.signature_set = signature_set
         self.match_all = match_all
@@ -98,6 +99,7 @@ class VectorscanMatcher(Matcher):
         super().__init__(
                 signature_set=signature_set,
                 match_all=match_all,
+                lazy=lazy
             )
 
     def _compile_database(self) -> VectorscanDatabase:
@@ -140,5 +142,6 @@ def create_matcher(options: MatchEngineOptions) -> VectorscanMatcher:
     return VectorscanMatcher(
             options.signature_set,
             match_all=options.match_all,
-            database_source=options.database_source
+            database_source=options.database_source,
+            lazy=options.lazy
         )
