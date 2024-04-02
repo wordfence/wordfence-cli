@@ -302,12 +302,16 @@ class FileLocatorProcess(Process):
         except queue.Full:
             return False
 
-    def finalize_paths(self):
-        self._input_queue.put(None)
+    def finalize_paths(self) -> bool:
+        try:
+            self._input_queue.put(None, block=False)
+        except queue.Full:
+            return False
         if self._path_count < 1:
             raise ScanConfigurationException(
                     'At least one scan path must be specified'
                 )
+        return True
 
     def get_next_file(self):
         return self.output_queue.get()
@@ -944,7 +948,8 @@ class Scanner:
                     if path is None:
                         break
                     add_path(path)
-            file_locator_process.finalize_paths()
+            while not file_locator_process.finalize_paths():
+                worker_pool.await_results(result_processor, final=False)
             log.debug('Awaiting results...')
             worker_pool.await_results(result_processor)
         timer.stop()
