@@ -2,8 +2,8 @@ import sys
 from typing import Optional, Any, Callable, Set, Union
 
 from ..version import __version__, __version_name__
-from ..util import pcre
-from ..util.library import OptionalUtility
+from ..util import pcre, vectorscan
+from ..util.text import yes_no
 from ..api import noc1, intelligence
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
         InvalidCachedValueException, CacheException
@@ -38,7 +38,6 @@ class CliContext:
         self._mailer = None
         self.configurer = None
         self._log_settings = None
-        self._vectorscan = None
 
     def get_log_level(self) -> LogLevel:
         if self.config.log_level is not None:
@@ -158,13 +157,11 @@ class CliContext:
             self._mailer = Mailer(self.config)
         return self._mailer
 
-    def get_vectorscan(self) -> OptionalUtility:
-        if self._vectorscan is None:
-            self._vectorscan = OptionalUtility('vectorscan')
-        return self._vectorscan
+    def has_pcre(self) -> bool:
+        return pcre.AVAILABLE
 
     def has_vectorscan(self) -> bool:
-        return self.get_vectorscan().is_available()
+        return vectorscan.AVAILABLE
 
     def display_version(self) -> None:
         if __version_name__ is None:
@@ -172,17 +169,20 @@ class CliContext:
         else:
             name_suffix = f' "{__version_name__}"'
         print(f"Wordfence CLI {__version__}{name_suffix}")
-        jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
-        print(
-                f"PCRE Version: {pcre.VERSION} - "
-                f"JIT Supported: {jit_support_text}"
-            )
-        vectorscan = self.get_vectorscan()
-        vectorscan_supported = vectorscan.is_available()
-        vectorscan_support_text = 'Yes' if vectorscan_supported else 'No'
-        if vectorscan_supported:
+        has_pcre = self.has_pcre()
+        pcre_support_text = yes_no(has_pcre)
+        if has_pcre:
+            jit_support_text = yes_no(pcre.HAS_JIT_SUPPORT)
+            pcre_support_text += (
+                    f" - PCRE Version: {pcre.VERSION}"
+                    f" (JIT Supported: {jit_support_text})"
+                )
+        print(f'PCRE Supported: {pcre_support_text}')
+        has_vectorscan = self.has_vectorscan()
+        vectorscan_support_text = yes_no(has_vectorscan)
+        if has_vectorscan:
             vectorscan_support_text += \
-                f' - Version: {vectorscan.module.VERSION}'
+                f' - Version: {vectorscan.VERSION}'
         print(f'Vectorscan Supported: {vectorscan_support_text}')
 
     def has_terminal_output(self) -> bool:
