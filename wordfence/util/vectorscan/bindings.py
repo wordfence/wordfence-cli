@@ -4,6 +4,7 @@ from enum import IntFlag, IntEnum
 from typing import Dict, Optional, Callable, Union, Any
 
 from ..library import load_library, LibraryNotAvailableException
+from .. import signals
 
 from .vectorscan import VectorscanException, \
     VectorscanLibraryNotAvailableException
@@ -487,6 +488,7 @@ def vectorscan_compile(
     c_flags = (c_uint * len(ids))()
     for i in range(0, len(ids)):
         c_flags[i] = c_uint(flags)
+    signals.reset()
     error = _hs_compile_multi(
             expressions,
             c_flags,
@@ -497,6 +499,7 @@ def vectorscan_compile(
             byref(database),
             byref(compiler_error)
         )
+    signals.restore()
     _assert_compilation_success(error, compiler_error)
     return VectorscanDatabase(database)
 
