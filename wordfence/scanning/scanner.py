@@ -956,6 +956,7 @@ class Scanner:
         scan_finished_handler = scan_finished_handler if scan_finished_handler\
             else default_scan_finished_handler
         metrics.skipped_files = file_locator_process.get_skipped_count()
+        scan_finished_handler(metrics, timer)
         if profiler is not None:
             profiler.complete()
             if self.options.profile_path is None:
@@ -966,7 +967,6 @@ class Scanner:
                     )
             with writer_factory as writer:
                 profiler.output_results(writer)
-        scan_finished_handler(metrics, timer)
         return (metrics, timer)
 
     def terminate(self) -> None:
