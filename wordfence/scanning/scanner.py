@@ -8,7 +8,7 @@ from enum import IntEnum
 from multiprocessing import Queue, Process, Value, get_start_method
 from dataclasses import dataclass
 from typing import Set, Optional, Callable, Dict, NamedTuple, Tuple, List, \
-    Union
+    Union, BinaryIO
 from logging import Handler
 
 from .exceptions import ScanningException, ScanningIoException
@@ -17,6 +17,7 @@ from .filtering import FileFilter, filter_any
 from ..util import timing
 from ..util.io import StreamReader, is_symlink_loop, is_symlink_and_loop, \
     get_all_parents, PathSet
+from ..util.direct_io import DirectIoBuffer, DirectIoReader
 from ..util.units import scale_byte_unit
 from ..logging import log, remove_initial_handler, VERBOSE
 from ..util.profiling import Profiler, ProfileEvent, EventTimer, \
@@ -163,7 +164,8 @@ class Options:
     logging_initializer: Callable[[], None] = None
     match_engine: MatchEngine = MatchEngine.get_default()
     profile: bool = False,
-    profile_path: Optional[str] = None
+    profile_path: Optional[str] = None,
+    direct_io: bool = False
 
 
 class Status(IntEnum):
@@ -390,7 +392,8 @@ class ScanWorker(Process):
                 use_log_events: bool = False,
                 allow_io_errors: bool = False,
                 logging_initializer: Callable[[], None] = None,
-                profile: bool = False
+                profile: bool = False,
+                direct_io: bool = False
             ):
         self.index = index
         self._status = status
@@ -404,12 +407,21 @@ class ScanWorker(Process):
         self._allow_io_errors = allow_io_errors
         self._logging_initializer = logging_initializer
         self._profile = profile
+        self._opener = self._open_direct if direct_io else self._open
+        if direct_io:
+            self._direct_io_buffer = DirectIoBuffer(self._chunk_size)
         self.complete = Value(c_bool, False)
         self._timer = None
         super().__init__(name=self._generate_name())
 
     def _generate_name(self) -> str:
         return 'worker-' + str(self.index)
+
+    def _open(self, path: str) -> BinaryIO:
+        return open(path, 'rb')
+
+    def _open_direct(self, path: str) -> DirectIoReader:
+        return DirectIoReader(path, self._direct_io_buffer)
 
     def work(self):
         self._timer = _event_timer(
@@ -496,7 +508,7 @@ class ScanWorker(Process):
     def _process_file(self, path: str, workspace: Optional[MatchWorkspace]):
         log.log(VERBOSE, f'Processing file: {path}')
         open_timer = _event_timer(self._profile, 'open_file')
-        with open(path, mode='rb') as file, \
+        with self._opener(path) as file, \
                 self._matcher.create_context() as context:
             self._put_profile_event(open_timer)
             length = 0
@@ -687,7 +699,8 @@ class ScanWorkerPool:
                 allow_io_errors: bool = False,
                 debug: bool = False,
                 logging_initializer: Callable[[], None] = False,
-                profiler: Optional[Profiler] = None
+                profiler: Optional[Profiler] = None,
+                direct_io: bool = False
             ):
         self.size = size
         self._matcher = matcher
@@ -704,6 +717,7 @@ class ScanWorkerPool:
         self._debug = debug
         self._logging_initializer = logging_initializer
         self._profiler = profiler
+        self._direct_io = direct_io
         self._completed = False
 
     def __enter__(self):
@@ -764,7 +778,8 @@ class ScanWorkerPool:
                     self._use_log_events,
                     self._allow_io_errors,
                     self._logging_initializer,
-                    self._profiler is not None
+                    self._profiler is not None,
+                    self._direct_io
                 )
             worker.start()
             self._workers.append(worker)
@@ -933,7 +948,8 @@ class Scanner:
                     allow_io_errors=self.options.allow_io_errors,
                     debug=self.options.debug,
                     logging_initializer=self.options.logging_initializer,
-                    profiler=profiler
+                    profiler=profiler,
+                    direct_io=self.options.direct_io
                 ) as worker_pool:
             def add_path(path: str):
                 while not file_locator_process.add_path(path):
