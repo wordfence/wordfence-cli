@@ -174,13 +174,13 @@ class ProfileWriter:
         raise NotImplementedError()
 
 
-class DebugProfileWriter(ProfileWriter):
+class LogProfileWriter(ProfileWriter):
 
     def __init__(self):
         self.write('=== PROFILING RESULTS ===')
 
     def write(self, entry: str):
-        log.debug(entry)
+        log.info(entry)
 
 
 class FileProfileWriter(ProfileWriter):
@@ -202,10 +202,10 @@ class ProfileWriterFactory:
         raise NotImplementedError()
 
 
-class DebugProfileWriterFactory(ProfileWriterFactory):
+class LogProfileWriterFactory(ProfileWriterFactory):
 
     def __enter__(self) -> ProfileWriter:
-        return DebugProfileWriter()
+        return LogProfileWriter()
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         return

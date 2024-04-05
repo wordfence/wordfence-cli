@@ -21,7 +21,7 @@ from ..util.direct_io import DirectIoBuffer, DirectIoReader
 from ..util.units import scale_byte_unit
 from ..logging import log, remove_initial_handler, VERBOSE
 from ..util.profiling import Profiler, ProfileEvent, EventTimer, \
-    DebugProfileWriterFactory, FileProfileWriterFactory
+    LogProfileWriterFactory, FileProfileWriterFactory
 
 MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
@@ -976,7 +976,7 @@ class Scanner:
         if profiler is not None:
             profiler.complete()
             if self.options.profile_path is None:
-                writer_factory = DebugProfileWriterFactory()
+                writer_factory = LogProfileWriterFactory()
             else:
                 writer_factory = FileProfileWriterFactory(
                         self.options.profile_path
