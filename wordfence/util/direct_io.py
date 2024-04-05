@@ -31,7 +31,7 @@ class DirectIoReader:
         self.offset = 0
 
     def read(self, limit: Optional[int] = None) -> bytes:
-        read_offset = math.floor(self.offset / mmap.PAGESIZE)
+        read_offset = math.floor(self.offset / mmap.PAGESIZE) * mmap.PAGESIZE
         skip = self.offset % mmap.PAGESIZE
         read_length = os.preadv(self.fd, self.buffer.buffers, read_offset)
         read_length -= skip

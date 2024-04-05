@@ -408,8 +408,7 @@ class ScanWorker(Process):
         self._logging_initializer = logging_initializer
         self._profile = profile
         self._opener = self._open_direct if direct_io else self._open
-        if direct_io:
-            self._direct_io_buffer = DirectIoBuffer(self._chunk_size)
+        self._direct_io = direct_io
         self.complete = Value(c_bool, False)
         self._timer = None
         super().__init__(name=self._generate_name())
@@ -429,6 +428,8 @@ class ScanWorker(Process):
                 'scan_worker',
                 is_global=True
             )
+        if self._direct_io:
+            self._direct_io_buffer = DirectIoBuffer(self._chunk_size)
         try:
             self._working = True
             self._matcher.prepare(thread=True)
