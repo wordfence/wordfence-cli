@@ -20,6 +20,7 @@ _hs_version = hs.hs_version
 _hs_version.argtypes = []
 _hs_version.restype = c_char_p
 VERSION = _hs_version().decode('ascii')
+API_VERSION = ''.join(VERSION.split()[:1])
 
 
 class _StructHsDatabase(Structure):
@@ -43,7 +44,12 @@ _hs_compile_error_p = POINTER(_StructHsCompileError)
 
 
 class _StructHsPlatformInfo(Structure):
-    pass
+    _fields_ = [
+            ('tune', c_uint),
+            ('cpu_features', c_ulonglong),
+            ('reserved1', c_ulonglong),
+            ('reserved2', c_ulonglong)
+        ]
 
 
 _hs_platform_info_p = POINTER(_StructHsPlatformInfo)
@@ -471,10 +477,45 @@ class VectorscanStreamScanner(VectorscanScanner):
         self._close_stream()
 
 
+class VectorscanCpuFeatures(IntFlag):
+    NONE = 0
+    AVX2 = 4
+    AVX512 = 8
+    AVX512VBMI = 16
+
+
+class VectorscanTuneFamily(IntEnum):
+    GENERIC = 0
+    SNB = 1
+    IVB = 2
+    HSW = 3
+    SLM = 4
+    BDW = 5
+    SKL = 6
+    SKX = 7
+    GLM = 8
+    ICL = 9
+    ICX = 10
+
+
+class VectorscanPlatformInfo:
+
+    def __init__(
+                self,
+                cpu_features: VectorscanCpuFeatures,
+                tune_family: VectorscanTuneFamily
+            ):
+        self._platform_info = _StructHsPlatformInfo(
+                c_uint(tune_family.value),
+                c_ulonglong(cpu_features.value)
+            )
+
+
 def vectorscan_compile(
             patterns: Dict[int, str],
             mode: VectorscanMode = VectorscanMode.BLOCK,
             flags: VectorscanFlags = VectorscanFlags.NONE,
+            platform_info: Optional[VectorscanPlatformInfo] = None
         ) -> VectorscanDatabase:
     database = _hs_database_p()
     compiler_error = _hs_compile_error_p()
@@ -489,13 +530,15 @@ def vectorscan_compile(
     for i in range(0, len(ids)):
         c_flags[i] = c_uint(flags)
     signals.reset()
+    platform_info_p = _hs_platform_info_p() if platform_info is None \
+        else byref(platform_info._platform_info)
     error = _hs_compile_multi(
             expressions,
             c_flags,
             ids,
             c_int(len(patterns)),
             c_int(mode),
-            _hs_platform_info_p(),
+            platform_info_p,
             byref(database),
             byref(compiler_error)
         )

@@ -111,6 +111,11 @@ class BaseMatcherContext(MatcherContext):
 
 
 @dataclass
+class MatchEngineCompilerOptions:
+    generic: bool = False
+
+
+@dataclass
 class MatchEngineOptions:
     signature_set: SignatureSet
     match_all: bool = False
@@ -164,9 +169,16 @@ class MatchEngine(Enum):
             self._loaded_module = self._load_module()
         return self._loaded_module
 
-    def get_compiler(self, options: MatchEngineOptions) -> Optional[Compiler]:
+    def get_compiler(
+                self,
+                options: MatchEngineCompilerOptions
+            ) -> Optional[Compiler]:
         module = self._get_loaded_module()
         return module.create_compiler(options)
+
+    def supports_pre_compilation(self) -> bool:
+        compiler = self.get_compiler(MatchEngineCompilerOptions())
+        return compiler is not None
 
     def create_matcher(self, options: MatchEngineOptions) -> Matcher:
         module = self._get_loaded_module()

@@ -5,7 +5,7 @@ from ...logging import log
 from ...util import vectorscan
 
 from .matching import MatchEngineOptions, Matcher, BaseMatcherContext, \
-        MatchWorkspace, Compiler
+        MatchWorkspace, MatchEngineCompilerOptions, Compiler
 
 
 if not vectorscan.AVAILABLE:
@@ -14,7 +14,8 @@ if not vectorscan.AVAILABLE:
 
 from ...util.vectorscan import VectorscanStreamScanner, VectorscanMatch, \
         VectorscanFlags, VectorscanDatabase, VectorscanScanTerminated, \
-        VectorscanMode, vectorscan_compile, vectorscan_deserialize
+        VectorscanMode, vectorscan_compile, vectorscan_deserialize, \
+        VectorscanPlatformInfo, VectorscanCpuFeatures, VectorscanTuneFamily
 
 
 class VectorscanMatcherContext(BaseMatcherContext):
@@ -54,6 +55,9 @@ class VectorscanMatcherContext(BaseMatcherContext):
 
 class VectorscanCompiler(Compiler):
 
+    def __init__(self, generic: bool = False):
+        self.generic = generic
+
     def compile(self, signature_set: SignatureSet) -> bytes:
         patterns = {
                 signature.identifier: signature.rule
@@ -69,10 +73,15 @@ class VectorscanCompiler(Compiler):
                 VectorscanFlags.SINGLEMATCH |
                 VectorscanFlags.ALLOWEMPTY
             )
+        platform_info = VectorscanPlatformInfo(
+                VectorscanCpuFeatures.NONE,
+                VectorscanTuneFamily.GENERIC
+            ) if self.generic else None
         database = vectorscan_compile(
                 patterns,
                 mode=VectorscanMode.STREAM,
-                flags=flags
+                flags=flags,
+                platform_info=platform_info
             )
         log.debug('Successfully compiled vectorscan database')
         return database
@@ -134,8 +143,8 @@ class VectorscanMatcher(Matcher):
             )
 
 
-def create_compiler(options: MatchEngineOptions):
-    return VectorscanCompiler()
+def create_compiler(options: MatchEngineCompilerOptions):
+    return VectorscanCompiler(generic=options.generic)
 
 
 def create_matcher(options: MatchEngineOptions) -> VectorscanMatcher:

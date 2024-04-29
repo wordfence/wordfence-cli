@@ -1,13 +1,18 @@
 import json
 import re
+import base64
 from typing import Callable, Optional
 
 from .noc_client import NocClient
 from .exceptions import ApiException
 from .licensing import License
 
-from ..intel.signatures import CommonString, Signature, SignatureSet
-from ..util.validation import DictionaryValidator, ListValidator, Validator
+from ..intel.signatures import CommonString, Signature, SignatureSet, \
+    PrecompiledSignatureSet
+from ..util.validation import DictionaryValidator, ListValidator, Validator, \
+    OptionalValueValidator
+from ..util.platform import Platform
+from ..util.serialization import limited_deserialize
 
 NOC1_BASE_URL = 'https://noc1.wordfence.com/v2.27/'
 
@@ -136,6 +141,58 @@ class Client(NocClient):
                             'association'
                         ) from index_error
         return SignatureSet(common_strings, signatures, self.license)
+
+    def get_precompiled_patterns(
+                self,
+                platform: str,
+                library_version: str,
+                library_type: Optional[str] = None,
+                database_version: int = PrecompiledSignatureSet.VERSION
+            ) -> dict:
+        parameters = {
+                'platform': platform,
+                'library_version': library_version,
+                'database_version': database_version
+            }
+        if library_type is not None:
+            parameters['library_type'] = library_type
+        response = self.request('get_precompiled_patterns', parameters)
+        validator = DictionaryValidator({
+                'data': OptionalValueValidator(str)
+            })
+        self.validate_response(response, validator)
+        return response
+
+    def get_precompiled_malware_signatures(
+                self,
+                platform: Platform,
+                library_version: str,
+                library_type: Optional[str] = None,
+                database_version: int = PrecompiledSignatureSet.VERSION
+            ) -> Optional[PrecompiledSignatureSet]:
+        response = self.get_precompiled_patterns(
+                platform.key,
+                library_version,
+                library_type,
+                database_version
+            )
+        data = response['data']
+        if data is None:
+            return None
+        data = base64.b64decode(data)
+        signature_set = limited_deserialize(
+                response.data,
+                {
+                    'wordfence.intel.signatures.PrecompiledSignatureSet',
+                    'wordfence.intel.signatures.SignatureSet',
+                    'wordfence.intel.signatures.Signature'
+                }
+            )
+        if isinstance(signature_set, PrecompiledSignatureSet):
+            return signature_set
+        raise ApiException(
+                'Malformed signature set data received from Wordfence API'
+            )
 
     def ping_api_key(self) -> bool:
         return self.process_simple_request('ping_api_key')

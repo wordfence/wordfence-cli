@@ -8,7 +8,8 @@ from ...util.pcre import PcrePattern, PcreException, PcreJitStack, \
         PcreOptions, PCRE_DEFAULT_OPTIONS
 
 from .matching import Matcher, BaseMatcherContext, TimeoutException, \
-        MatchWorkspace, MatchEngineOptions, DEFAULT_TIMEOUT
+        MatchWorkspace, MatchEngineCompilerOptions, MatchEngineOptions, \
+        DEFAULT_TIMEOUT
 
 
 if not pcre.AVAILABLE:
@@ -234,7 +235,7 @@ class PcreMatcher(Matcher):
         return PcreMatchWorkspace()
 
 
-def create_compiler(options: MatchEngineOptions) -> None:
+def create_compiler(options: MatchEngineCompilerOptions) -> None:
     return None
 
 

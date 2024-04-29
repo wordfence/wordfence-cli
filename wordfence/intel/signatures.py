@@ -1,5 +1,5 @@
 from hashlib import sha256
-from typing import Union
+from typing import Optional
 
 from ..api.licensing import License, LicenseSpecific
 
@@ -81,15 +81,23 @@ class SignatureSet(LicenseSpecific):
 
 class PrecompiledSignatureSet(LicenseSpecific):
 
+    VERSION = 1
+
     def __init__(
                 self,
-                signature_set: Union[bytes, SignatureSet],
+                signature_set: SignatureSet,
+                signature_hash: Optional[bytes],
                 data: bytes,
                 license: License = None
             ):
         super().__init__(license)
+        self.signature_set = SignatureSet
         self.signature_hash = (
                 signature_set if isinstance(signature_set, bytes)
                 else signature_set.get_hash()
             )
         self.data = data
+        self.version = self.VERSION
+
+    def is_supported_version(self) -> bool:
+        return hasattr(self, 'version') and self.version == self.VERSION

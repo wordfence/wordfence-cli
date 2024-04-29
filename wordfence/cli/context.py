@@ -181,8 +181,10 @@ class CliContext:
         has_vectorscan = self.has_vectorscan()
         vectorscan_support_text = yes_no(has_vectorscan)
         if has_vectorscan:
-            vectorscan_support_text += \
-                f' - Version: {vectorscan.VERSION}'
+            vectorscan_support_text += (
+                    f' - Version: {vectorscan.VERSION} (API Version: '
+                    f'{vectorscan.API_VERSION})'
+                )
         print(f'Vectorscan Supported: {vectorscan_support_text}')
 
     def has_terminal_output(self) -> bool:
