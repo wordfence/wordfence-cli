@@ -181,13 +181,14 @@ class Client(NocClient):
             return None
         data = base64.b64decode(data)
         signature_set = limited_deserialize(
-                response.data,
+                data,
                 {
                     'wordfence.intel.signatures.PrecompiledSignatureSet',
                     'wordfence.intel.signatures.SignatureSet',
                     'wordfence.intel.signatures.Signature'
                 }
             )
+        signature_set.assign_license(self.license)
         if isinstance(signature_set, PrecompiledSignatureSet):
             return signature_set
         raise ApiException(

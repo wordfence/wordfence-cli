@@ -5,8 +5,8 @@ from typing import Optional, Set
 
 class Platform(Enum):
 
-    AMD64 = ('amd64', {'amd64'})
-    ARM64 = ('arm64', {'x86_64'})
+    AMD64 = ('amd64', {'amd64', 'x86_64'})
+    ARM64 = ('arm64', {'arm64'})
 
     def __init__(self, key: str, machine_names: Set[str]):
         self.key = key

@@ -21,8 +21,6 @@ class NocClient:
         self.base_url = base_url \
             if base_url is not None \
             else self.get_default_base_url()
-        from wordfence.logging import log
-        log.debug(f'NOC1 Base URL: {self.base_url}')
         self.timeout = timeout
 
     def get_default_base_url(self) -> str:

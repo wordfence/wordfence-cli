@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 
 from .exceptions import ApiException
 
@@ -36,8 +36,14 @@ class LicenseRequiredException(ApiException):
 
 class LicenseSpecific:
 
-    def __init__(self, license: License):
+    def __init__(self, license: Optional[License]):
         self.license = license
 
     def is_compatible_with_license(self, license: License):
-        return self.license == license
+        return self.license is None or self.license == license
+
+    def assign_license(self, license: Optional[License]):
+        self.license = license
+
+    def clear_license(self):
+        self.assign_license(None)
