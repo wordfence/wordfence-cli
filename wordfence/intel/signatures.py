@@ -60,10 +60,17 @@ class SignatureSet(LicenseSpecific):
         del self.signatures[identifier]
         return True
 
-    def get_signature(self, identifier: int) -> None:
+    def get_signature(self, identifier: int) -> Signature:
         if identifier in self.signatures:
             return self.signatures[identifier]
         raise ValueError(f'Invalid signature identifier: {identifier}')
+
+    def has_signature(self, identifier: int) -> bool:
+        try:
+            self.get_signature(identifier)
+            return True
+        except ValueError:
+            return False
 
     def get_hash(self) -> str:
         hash = sha256()
@@ -103,9 +110,6 @@ class PrecompiledSignatureSet(LicenseSpecific):
     def is_supported_version(self) -> bool:
         return hasattr(self, 'version') and self.version == self.VERSION
 
-    def get_signature(self, identifier: int) -> bool:
-        return self.signature_set.get_signature(identifier)
-
     def assign_license(self, license: Optional[License]):
         super().assign_license(license)
         self.signature_set.assign_license(license)
@@ -117,7 +121,8 @@ def deserialize_precompiled_signature_set(data):
             {
                 'wordfence.intel.signatures.PrecompiledSignatureSet',
                 'wordfence.intel.signatures.SignatureSet',
-                'wordfence.intel.signatures.Signature'
+                'wordfence.intel.signatures.Signature',
+                'wordfence.intel.signatures.CommonString'
             },
             PrecompiledSignatureSet
         )

@@ -25,6 +25,8 @@ class VectorscanMatcherContext(BaseMatcherContext):
         self.matched = None
 
     def _match_callback(self, match: VectorscanMatch) -> bool:
+        if not self.matcher.signature_set.has_signature(match.identifier):
+            return False
         self._record_match(
                 identifier=match.identifier,
                 matched=''
