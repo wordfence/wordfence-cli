@@ -45,7 +45,7 @@ class SignatureSet(LicenseSpecific):
                 self,
                 common_strings: list,
                 signatures: dict,
-                license: License = None
+                license: Optional[License] = None
             ):
         super().__init__(license)
         self.common_strings = common_strings
@@ -89,7 +89,7 @@ class PrecompiledSignatureSet(LicenseSpecific):
                 signature_set: SignatureSet,
                 signature_hash: Optional[bytes],
                 data: bytes,
-                license: License = None
+                license: Optional[License] = None
             ):
         super().__init__(license)
         self.signature_set = signature_set
@@ -105,6 +105,10 @@ class PrecompiledSignatureSet(LicenseSpecific):
 
     def get_signature(self, identifier: int) -> bool:
         return self.signature_set.get_signature(identifier)
+
+    def assign_license(self, license: Optional[License]):
+        super().assign_license(license)
+        self.signature_set.assign_license(license)
 
 
 def deserialize_precompiled_signature_set(data):
