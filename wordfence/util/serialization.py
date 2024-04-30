@@ -3,7 +3,15 @@ from io import BytesIO
 from typing import Any, Set, Optional
 
 
-class ProhibitedTypeException(BaseException):
+class SerializationException(Exception):
+    pass
+
+
+class ProhibitedTypeException(SerializationException):
+    pass
+
+
+class UnexpectedTypeException(SerializationException):
     pass
 
 
@@ -23,8 +31,12 @@ class LimitedDeserializer(pickle.Unpickler):
 
 def limited_deserialize(
             data: bytes,
-            allowed: Optional[Set[str]] = None
+            allowed: Optional[Set[str]] = None,
+            expected: Any = None
         ) -> Any:
     if allowed is None:
         allowed = set()
-    return LimitedDeserializer(data, allowed).load()
+    result = LimitedDeserializer(data, allowed).load()
+    if expected is not None and not isinstance(result, expected):
+        raise UnexpectedTypeException('Unexpected type: ' + type(expected))
+    return result

@@ -2,6 +2,7 @@ from hashlib import sha256
 from typing import Optional
 
 from ..api.licensing import License, LicenseSpecific
+from ..util.serialization import limited_deserialize
 
 
 class CommonString:
@@ -91,7 +92,7 @@ class PrecompiledSignatureSet(LicenseSpecific):
                 license: License = None
             ):
         super().__init__(license)
-        self.signature_set = SignatureSet
+        self.signature_set = signature_set
         self.signature_hash = (
                 signature_set if isinstance(signature_set, bytes)
                 else signature_set.get_hash()
@@ -101,3 +102,19 @@ class PrecompiledSignatureSet(LicenseSpecific):
 
     def is_supported_version(self) -> bool:
         return hasattr(self, 'version') and self.version == self.VERSION
+
+    def get_signature(self, identifier: int) -> bool:
+        return self.signature_set.get_signature(identifier)
+
+
+def deserialize_precompiled_signature_set(data):
+    signature_set = limited_deserialize(
+            data,
+            {
+                'wordfence.intel.signatures.PrecompiledSignatureSet',
+                'wordfence.intel.signatures.SignatureSet',
+                'wordfence.intel.signatures.Signature'
+            },
+            PrecompiledSignatureSet
+        )
+    return signature_set

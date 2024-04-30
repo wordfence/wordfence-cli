@@ -8,11 +8,10 @@ from .exceptions import ApiException
 from .licensing import License
 
 from ..intel.signatures import CommonString, Signature, SignatureSet, \
-    PrecompiledSignatureSet
+    PrecompiledSignatureSet, deserialize_precompiled_signature_set
 from ..util.validation import DictionaryValidator, ListValidator, Validator, \
     OptionalValueValidator
 from ..util.platform import Platform
-from ..util.serialization import limited_deserialize
 
 NOC1_BASE_URL = 'https://noc1.wordfence.com/v2.27/'
 
@@ -180,14 +179,7 @@ class Client(NocClient):
         if data is None:
             return None
         data = base64.b64decode(data)
-        signature_set = limited_deserialize(
-                data,
-                {
-                    'wordfence.intel.signatures.PrecompiledSignatureSet',
-                    'wordfence.intel.signatures.SignatureSet',
-                    'wordfence.intel.signatures.Signature'
-                }
-            )
+        signature_set = deserialize_precompiled_signature_set(data)
         signature_set.assign_license(self.license)
         if isinstance(signature_set, PrecompiledSignatureSet):
             return signature_set
