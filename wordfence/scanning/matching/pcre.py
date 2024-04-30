@@ -239,6 +239,10 @@ def create_compiler(options: MatchEngineCompilerOptions) -> None:
     return None
 
 
+def validate_pre_compiled_data(source: bytes) -> bool:
+    return False  # Pre-compilation is not supported
+
+
 def create_matcher(options: MatchEngineOptions) -> PcreMatcher:
     return PcreMatcher(
             options.signature_set,

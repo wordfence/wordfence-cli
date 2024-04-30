@@ -180,6 +180,12 @@ class MatchEngine(Enum):
         compiler = self.get_compiler(MatchEngineCompilerOptions())
         return compiler is not None
 
+    def validate_database_source(self, source: Optional[bytes]) -> bool:
+        if source is None:
+            return True
+        module = self._get_loaded_module()
+        return module.validate_database_source(source)
+
     def create_matcher(self, options: MatchEngineOptions) -> Matcher:
         module = self._get_loaded_module()
         return module.create_matcher(options)

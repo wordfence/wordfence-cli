@@ -94,8 +94,8 @@ class PrecompiledSignatureSet(LicenseSpecific):
     def __init__(
                 self,
                 signature_set: SignatureSet,
-                signature_hash: Optional[bytes],
                 data: bytes,
+                signature_hash: Optional[bytes] = None,
                 license: Optional[License] = None
             ):
         super().__init__(license)

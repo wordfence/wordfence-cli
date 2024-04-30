@@ -204,8 +204,11 @@ class Cacheable:
                 InvalidCachedValueException
                 ):
             value = self._initialize_value()
-            cache.put(self.key, value)
+            self.set(cache, value)
         return value
+
+    def set(self, cache: Cache, value: Any) -> None:
+        cache.put(self.key, value)
 
     def delete(self, cache: Cache) -> Any:
         cache.remove(self.key)

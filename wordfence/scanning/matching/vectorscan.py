@@ -1,8 +1,9 @@
 from typing import Optional
 
-from ...intel.signatures import SignatureSet
+from ...intel.signatures import SignatureSet, PrecompiledSignatureSet
 from ...logging import log
 from ...util import vectorscan
+from ...util.caching import Cache, Cacheable
 
 from .matching import MatchEngineOptions, Matcher, BaseMatcherContext, \
         MatchWorkspace, MatchEngineCompilerOptions, Compiler
@@ -15,7 +16,8 @@ if not vectorscan.AVAILABLE:
 from ...util.vectorscan import VectorscanStreamScanner, VectorscanMatch, \
         VectorscanFlags, VectorscanDatabase, VectorscanScanTerminated, \
         VectorscanMode, vectorscan_compile, vectorscan_deserialize, \
-        VectorscanPlatformInfo, VectorscanCpuFeatures, VectorscanTuneFamily
+        VectorscanPlatformInfo, VectorscanCpuFeatures, VectorscanTuneFamily, \
+        VectorscanDatabaseIncompatible
 
 
 class VectorscanMatcherContext(BaseMatcherContext):
@@ -100,7 +102,7 @@ class VectorscanMatcher(Matcher):
                 signature_set: SignatureSet,
                 match_all: bool = False,
                 database_source: Optional[bytes] = None,
-                lazy: bool = False
+                lazy: bool = False,
             ):
         self.signature_set = signature_set
         self.match_all = match_all
@@ -145,8 +147,17 @@ class VectorscanMatcher(Matcher):
             )
 
 
-def create_compiler(options: MatchEngineCompilerOptions):
+def create_compiler(options: MatchEngineCompilerOptions) -> VectorscanCompiler:
     return VectorscanCompiler(generic=options.generic)
+
+
+def validate_database_source(source: bytes) -> bool:
+    try:
+        vectorscan_deserialize(source)
+        return True
+    except VectorscanDatabaseIncompatible as e:
+        log.exception(e)
+        return False
 
 
 def create_matcher(options: MatchEngineOptions) -> VectorscanMatcher:
@@ -154,5 +165,5 @@ def create_matcher(options: MatchEngineOptions) -> VectorscanMatcher:
             options.signature_set,
             match_all=options.match_all,
             database_source=options.database_source,
-            lazy=options.lazy
+            lazy=options.lazy,
         )
