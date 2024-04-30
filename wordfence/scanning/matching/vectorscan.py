@@ -1,9 +1,8 @@
 from typing import Optional
 
-from ...intel.signatures import SignatureSet, PrecompiledSignatureSet
+from ...intel.signatures import SignatureSet
 from ...logging import log
 from ...util import vectorscan
-from ...util.caching import Cache, Cacheable
 
 from .matching import MatchEngineOptions, Matcher, BaseMatcherContext, \
         MatchWorkspace, MatchEngineCompilerOptions, Compiler
