@@ -26,6 +26,7 @@ from ..util.profiling import Profiler, ProfileEvent, EventTimer, \
 MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
 QUEUE_READ_TIMEOUT = 0
+RESULT_QUEUE_READ_TIMEOUT = 5
 PROGRESS_UPDATE_INTERVAL = 100
 DEFAULT_CHUNK_SIZE = 1024 * 1024
 FILE_LOCATOR_WORKER_INDEX = 0
@@ -811,6 +812,13 @@ class ScanWorkerPool:
                 return False
         return True
 
+    def check_workers(self) -> None:
+        for worker in self._workers:
+            if worker.exitcode is not None and worker.exitcode != 0:
+                raise Exception(
+                        f'Worker exited abnormally (code: {worker.exitcode})'
+                    )
+
     def await_results(
                 self,
                 result_processor: ScanResultCallback,
@@ -821,8 +829,14 @@ class ScanWorkerPool:
         self._assert_started()
         while True:
             try:
-                event = self._event_queue.get(block=final)
+                self.check_workers()
+                event = self._event_queue.get(
+                        block=final,
+                        timeout=RESULT_QUEUE_READ_TIMEOUT
+                    )
             except queue.Empty:
+                if final:
+                    continue
                 return False
             if event is None:
                 log.debug('All workers have completed and all results have '
