@@ -59,9 +59,9 @@ _hs_compile_multi = hs.hs_compile_multi
 _hs_compile_multi.argtypes = [
         POINTER(c_char_p),
         POINTER(c_uint),
-        POINTER(c_int),
-        c_int,
-        c_int,
+        POINTER(c_uint),
+        c_uint,
+        c_uint,
         _hs_platform_info_p,
         POINTER(_hs_database_p),
         POINTER(_hs_compile_error_p)
@@ -519,8 +519,8 @@ def vectorscan_compile(
         ) -> VectorscanDatabase:
     database = _hs_database_p()
     compiler_error = _hs_compile_error_p()
-    ids = [c_int(id) for id in patterns.keys()]
-    ids = (c_int * len(ids))(*ids)
+    ids = [c_uint(id) for id in patterns.keys()]
+    ids = (c_uint * len(ids))(*ids)
     expressions = [
             c_char_p(expression.encode('utf-8')) for expression
             in patterns.values()
@@ -536,8 +536,8 @@ def vectorscan_compile(
             expressions,
             c_flags,
             ids,
-            c_int(len(patterns)),
-            c_int(mode),
+            c_uint(len(patterns)),
+            c_uint(mode),
             platform_info_p,
             byref(database),
             byref(compiler_error)
@@ -556,64 +556,3 @@ def vectorscan_deserialize(data: bytes) -> VectorscanDatabase:
         )
     _assert_success(error)
     return VectorscanDatabase(_database)
-
-
-def vectorscan_block_test(patterns=None):
-    if patterns is None:
-        patterns = {
-                1: 'Test'
-            }
-    flags = (
-            VectorscanFlags.CASELESS |
-            VectorscanFlags.SINGLEMATCH |
-            VectorscanFlags.ALLOWEMPTY
-        )
-    database = vectorscan_compile(
-            patterns,
-            VectorscanMode.BLOCK,
-            flags=flags
-        )
-    scanner = VectorscanBlockScanner(
-            database
-        )
-
-    def callback(match: VectorscanMatch) -> bool:
-        print(vars(match))
-
-    print('Scan 1')
-    scanner.scan('Test', callback)
-    print('Scan 2')
-    scanner.scan('no match', callback)
-
-    return database
-
-
-def vectorscan_streaming_test():
-    patterns = {
-            1: 'Test'
-        }
-    flags = (
-            VectorscanFlags.CASELESS |
-            VectorscanFlags.SINGLEMATCH |
-            VectorscanFlags.ALLOWEMPTY
-        )
-    database = vectorscan_compile(
-            patterns,
-            VectorscanMode.STREAM,
-            flags=flags
-        )
-
-    def callback(match: VectorscanMatch) -> bool:
-        print(vars(match))
-
-    scanner = VectorscanStreamScanner(
-            database,
-            callback
-        )
-
-    print('Chunk 1')
-    scanner.scan('Te')
-    print('Chunk 2')
-    scanner.scan('st')
-
-    return database
