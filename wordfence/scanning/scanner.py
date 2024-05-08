@@ -3,9 +3,9 @@ import queue
 import time
 import traceback
 import dataclasses
-from ctypes import c_bool, c_uint
+from ctypes import c_bool, c_uint, c_char
 from enum import IntEnum
-from multiprocessing import Queue, Process, Value, get_start_method
+from multiprocessing import Queue, Process, Value, Array, get_start_method
 from dataclasses import dataclass
 from typing import Set, Optional, Callable, Dict, NamedTuple, Tuple, List, \
     Union, BinaryIO
@@ -26,8 +26,10 @@ from ..util.profiling import Profiler, ProfileEvent, EventTimer, \
 MAX_PENDING_FILES = 1000  # Arbitrary limit
 MAX_PENDING_RESULTS = 100
 QUEUE_READ_TIMEOUT = 0
+RESULT_QUEUE_READ_TIMEOUT = 1
 PROGRESS_UPDATE_INTERVAL = 100
 DEFAULT_CHUNK_SIZE = 1024 * 1024
+PATH_NAME_LIMIT = 4096
 FILE_LOCATOR_WORKER_INDEX = 0
 """Used by the file locator process when sending events"""
 
@@ -409,7 +411,8 @@ class ScanWorker(Process):
         self._profile = profile
         self._opener = self._open_direct if direct_io else self._open
         self._direct_io = direct_io
-        self.complete = Value(c_bool, False)
+        self.complete = Value(c_bool, lock=False)
+        self.last_file = Array(c_char, PATH_NAME_LIMIT + 1, lock=False)
         self._timer = None
         super().__init__(name=self._generate_name())
 
@@ -507,7 +510,11 @@ class ScanWorker(Process):
             return min(self._scanned_content_limit - length, self._chunk_size)
 
     def _process_file(self, path: str, workspace: Optional[MatchWorkspace]):
+        self.last_file.value = path.encode('ascii')[:PATH_NAME_LIMIT] + b'\0'
         log.log(VERBOSE, f'Processing file: {path}')
+        if 'malware-demo' in path:
+            import sys
+            sys.exit(1)
         open_timer = _event_timer(self._profile, 'open_file')
         with self._opener(path) as file, \
                 self._matcher.create_context() as context:
@@ -531,6 +538,7 @@ class ScanWorker(Process):
                         break
                 finally:
                     self._put_profile_event(match_timer)
+            context.finalize_content()
             self._put_event(
                     ScanEventType.FILE_PROCESSED,
                     {
@@ -580,6 +588,7 @@ class ScanMetrics:
         self.matches = self._initialize_int_metric(worker_count)
         self.timeouts = self._initialize_int_metric(worker_count)
         self.skipped_files = 0
+        self.failed_files = 0
 
     def _initialize_int_metric(self, worker_count: int):
         return [0] * worker_count
@@ -635,6 +644,7 @@ class ScanFinishedMessages(NamedTuple):
     results: str
     timeouts: Optional[str]
     skipped: Optional[str]
+    failed: Optional[str]
 
 
 def get_scan_finished_messages(
@@ -662,10 +672,18 @@ def get_scan_finished_messages(
     else:
         skipped_message = None
 
+    if metrics.failed_files > 0:
+        failed_message = (
+                f'Processing of {metrics.failed_files} file(s) failed'
+            )
+    else:
+        failed_message = None
+
     return ScanFinishedMessages(
             results_message,
             timeouts_message,
-            skipped_message
+            skipped_message,
+            failed_message
         )
 
 
@@ -679,6 +697,8 @@ def default_scan_finished_handler(
         log.warning(messages.timeouts)
     if messages.skipped:
         log.warning(messages.skipped)
+    if messages.failed:
+        log.error(messages.failed)
     log.info(messages.results)
     return messages
 
@@ -751,6 +771,24 @@ class ScanWorkerPool:
             )
         return elapsed >= PROGRESS_UPDATE_INTERVAL
 
+    def _initialize_worker(self, index: int) -> ScanWorker:
+        worker = ScanWorker(
+                index,
+                self._status,
+                self._work_queue,
+                self._event_queue,
+                self._matcher,
+                self._chunk_size,
+                self._scanned_content_limit,
+                self._use_log_events,
+                self._allow_io_errors,
+                self._logging_initializer,
+                self._profiler is not None,
+                self._direct_io
+            )
+        worker.start()
+        return worker
+
     def start(self):
         if self._started:
             raise ScanningException('Worker pool has already been started')
@@ -768,21 +806,7 @@ class ScanWorkerPool:
             self._progress_timer = None
             self._monitor = None
         for i in range(self.size):
-            worker = ScanWorker(
-                    i,
-                    self._status,
-                    self._work_queue,
-                    self._event_queue,
-                    self._matcher,
-                    self._chunk_size,
-                    self._scanned_content_limit,
-                    self._use_log_events,
-                    self._allow_io_errors,
-                    self._logging_initializer,
-                    self._profiler is not None,
-                    self._direct_io
-                )
-            worker.start()
+            worker = self._initialize_worker(i)
             self._workers.append(worker)
         self._started = True
 
@@ -811,6 +835,25 @@ class ScanWorkerPool:
                 return False
         return True
 
+    def check_workers(self) -> None:
+        for worker in self._workers:
+            if worker.exitcode is not None and worker.exitcode != 0:
+                last_file = worker.last_file.value.decode('ascii')
+                if len(worker.last_file.value) == 0:
+                    raise Exception(
+                            'Worker exited abnormally (code: '
+                            f'{worker.exitcode}) before processing any file'
+                        )
+                else:
+                    log.warning(
+                            f'Worker exited abnormally (code: '
+                            f'{worker.exitcode})  while processing {last_file}'
+                        )
+                    log.info(f'Restarting worker {worker.index}...')
+                    self._workers[worker.index] = \
+                        self._initialize_worker(worker.index)
+                    self.metrics.failed_files += 1
+
     def await_results(
                 self,
                 result_processor: ScanResultCallback,
@@ -821,8 +864,14 @@ class ScanWorkerPool:
         self._assert_started()
         while True:
             try:
-                event = self._event_queue.get(block=final)
+                self.check_workers()
+                event = self._event_queue.get(
+                        block=final,
+                        timeout=RESULT_QUEUE_READ_TIMEOUT
+                    )
             except queue.Empty:
+                if final:
+                    continue
                 return False
             if event is None:
                 log.debug('All workers have completed and all results have '

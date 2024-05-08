@@ -48,12 +48,15 @@ class VectorscanMatcherContext(BaseMatcherContext):
             return True
         return self.matched
 
+    def finalize_content(self) -> None:
+        self.matcher.scanner.reset()
+
     def __enter__(self):
         self.matcher.scanner.set_callback(self._match_callback)
         return super().__enter__()
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
-        self.matcher.scanner.reset()
+        pass
 
 
 class VectorscanCompiler(Compiler):
