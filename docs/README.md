@@ -18,6 +18,7 @@ Wordfence CLI is a high performance, multi-process, command-line malware scanner
 - **Malware Scanning**
 	- [Subcommand Configuration](malware-scan/Configuration.md)
 	- [Automatic Remediation](malware-scan/Remediation.md)
+	- [Faster Scanning with Vectorscan](malware-scan/Vectorscan.md)
 	- [Examples](malware-scan/Examples.md)
 		- [Scanning a single directory for malware](malware-scan/Examples.md#scanning-a-single-directory-for-malware)
 		- [Writing malware scan results to a CSV](malware-scan/Examples.md#writing-malware-scan-results-to-a-csv)
