@@ -178,7 +178,7 @@ class WordfenceCli:
             return subcommand.invoke()
 
 
-def main():
+def invoke_cli():
     exception_handler = ExceptionHandler()
     try:
         cli = WordfenceCli(exception_handler)
@@ -189,6 +189,10 @@ def main():
         return 130
 
 
-if __name__ == '__main__':
-    exit_code = main()
+def main():
+    exit_code = invoke_cli()
     sys.exit(exit_code)
+
+
+if __name__ == '__main__':
+    main()
