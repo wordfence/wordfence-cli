@@ -444,6 +444,7 @@ class VectorscanStreamScanner(VectorscanScanner):
                 c_void_p()
             )
         _assert_success(error)
+        self._stream = None
 
     def scan(
                 self,

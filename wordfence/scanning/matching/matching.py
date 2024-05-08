@@ -47,6 +47,9 @@ class MatcherContext(AbstractContextManager):
             ):
         raise NotImplementedError()
 
+    def finalize_content(self) -> None:
+        pass
+
     def _record_match(self, identifier: str, matched: str) -> None:
         self.matches[identifier] = matched
 

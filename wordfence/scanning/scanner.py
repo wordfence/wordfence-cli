@@ -538,6 +538,7 @@ class ScanWorker(Process):
                         break
                 finally:
                     self._put_profile_event(match_timer)
+            context.finalize_content()
             self._put_event(
                     ScanEventType.FILE_PROCESSED,
                     {
