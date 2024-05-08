@@ -16,6 +16,7 @@ X-Python3-Version: >= 3.8
 Package: wordfence
 Architecture: all
 Depends: ${python3:Depends}, libpcre3
+Recommends: libhyperscan5
 Description: Command-line malware scanner powered by Wordfence
  Wordfence CLI is a multi-process malware scanner written in Python. It's
  designed to have low memory overhead while being able to utilize multiple
