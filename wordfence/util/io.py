@@ -280,3 +280,19 @@ def iterate_files(
             yield from iterate_files(item.path, parents, loop_callback)
         else:
             yield item.path
+
+
+def get_umask() -> int:
+    current = os.umask(0)
+    os.umask(current)
+    return current
+
+
+def umask_mode(mode: int) -> int:
+    umask = get_umask()
+    return mode & ~umask
+
+
+def chmod_with_umask(path: str, mode: int = 0o666) -> int:
+    mode = umask_mode(mode)
+    os.chmod(path, mode)
