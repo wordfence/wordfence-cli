@@ -119,6 +119,7 @@ def deserialize_precompiled_signature_set(data):
     signature_set = limited_deserialize(
             data,
             {
+                'wordfence.api.licensing.License',
                 'wordfence.intel.signatures.PrecompiledSignatureSet',
                 'wordfence.intel.signatures.SignatureSet',
                 'wordfence.intel.signatures.Signature',
