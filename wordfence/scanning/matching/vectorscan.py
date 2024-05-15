@@ -70,9 +70,10 @@ class VectorscanCompiler(Compiler):
                 for signature in signature_set.signatures.values()
             }
         pattern_count = len(patterns)
-        log.debug(
+        log.info(
                 f'Compiling {pattern_count} pattern(s) '
-                'to vectorscan database...'
+                'to vectorscan database (this may take a substantial '
+                'amount of time depending on system performance)...'
             )
         flags = (
                 VectorscanFlags.CASELESS |
@@ -89,7 +90,7 @@ class VectorscanCompiler(Compiler):
                 flags=flags,
                 platform_info=platform_info
             )
-        log.debug('Successfully compiled vectorscan database')
+        log.info('Successfully compiled vectorscan database')
         return database
 
     def compile_serializable(self, signature_set: SignatureSet) -> bytes:
