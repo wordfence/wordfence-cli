@@ -199,7 +199,7 @@ class VulnerabilityIndex:
                             self.vulnerabilities[identifier]
         return vulnerabilities
 
-    def get_core_vulnerabilties(
+    def get_core_vulnerabilities(
                 self,
                 version: str
             ) -> Dict[str, Vulnerability]:

@@ -10,7 +10,7 @@ If you do not know what the file is, we recommend making a backup before you rem
 
 #### What permissions are required to install/run CLI?
 
-Wordfence CLI can be installed and run as any user, including `root`. When installing using `pip` as root, `pip` will return a warning about running as root. Using that installation method, we recommend installing using `pip` as a non-priveledged user. 
+Wordfence CLI can be installed and run as any user, including `root`. When installing using `pip` as root, `pip` will return a warning about running as root. Using that installation method, we recommend installing using `pip` as a non-privileged user. 
 
 #### What the difference is between Wordfence CLI and WP-CLI?
 

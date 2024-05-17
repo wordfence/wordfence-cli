@@ -32,7 +32,7 @@ In order to store vulnerability scan specific configuration in the INI file, you
 - `-m`, `--output-format`: Output format used for result data.
 - `--output-headers`: Include column headers in output. Compatible formats: csv, tsv, null-delimited, line-delimited.
 - `-e`, `--exclude-vulnerability`: Vulnerability UUIDs or CVE IDs to exclude from scan results.
-- `-i`, `--include-vulnerability`: Vulnerabilitiy UUIDs or CVE IDs to include in scan results.
+- `-i`, `--include-vulnerability`: Vulnerability UUIDs or CVE IDs to include in scan results.
 - `-I`, `--informational`: Include informational vulnerability records in results.
 - `-f`, `--feed`: The feed to use for vulnerability information. The production feed provides all available information fields. The scanner feed contains only the minimum fields necessary to conduct a scan and may be a better choice when detailed vulnerability information is not needed.
 - `--require-path`: When enabled, an error will be issued if at least one path to scan is not specified. This is the default behavior when running in a terminal.

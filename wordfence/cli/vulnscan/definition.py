@@ -104,7 +104,7 @@ config_definitions: ConfigDefinitions = {
     },
     "include-vulnerability": {
         "short_name": "i",
-        "description": "Vulnerabilitiy UUIDs or CVE IDs to include in scan "
+        "description": "Vulnerability UUIDs or CVE IDs to include in scan "
                        "results.",
         "context": "ALL",
         "argument_type": "OPTION_REPEATABLE",

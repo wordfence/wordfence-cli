@@ -135,7 +135,7 @@ def load_ini(
         with open(GLOBAL_INI_PATH, 'r') as file:
             config.read_file(file)
     except FileNotFoundError:
-        pass  # Ignore nonexistant global config files
+        pass  # Ignore nonexistent global config files
     except OSError:
         log.warning(f'Failed to read global config file at {GLOBAL_INI_PATH}')
     ini_path = get_ini_path(cli_values)
