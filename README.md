@@ -56,3 +56,7 @@ The full documentation for Wordfence CLI can be found [here](docs/) which includ
 ## License
 
 Wordfence CLI is open source, licensed under GPLv3. The license can be found [here](LICENSE).
+
+## Contributing
+
+See [our contribution guidelines](CONTRIBUTING.md).
