@@ -41,7 +41,7 @@ jobs:
           python-version: '3.8'
       - name: Upload distribution packages
         run: |
-          pip install twine~=4.0.2
+          pip install twine~=5.1.1
           if [ "${{ github.event.inputs.pypi_repository }}" = "pypi" ]; then
             export TWINE_USERNAME="__token__"
             export TWINE_PASSWORD="${{ secrets.PYPI_TWINE_PASSWORD }}"
