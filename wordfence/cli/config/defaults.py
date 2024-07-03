@@ -1,2 +1,2 @@
-INI_DEFAULT_FILENAME = 'wordfence-cli.ini'
-INI_DEFAULT_PATH = f"~/.config/wordfence/{INI_DEFAULT_FILENAME}"
+INI_DEFAULT_FILENAME = b'wordfence-cli.ini'
+INI_DEFAULT_PATH = b'~/.config/wordfence/' + INI_DEFAULT_FILENAME

@@ -57,6 +57,9 @@ class ConfigItemMeta:
     accepts_file: bool = False
     accepts_directory: bool = False
 
+    def accepts_paths(self) -> bool:
+        return self.accepts_file or self.accepts_directory
+
 
 @dataclass(frozen=True)
 class ConfigItemDefinition:
@@ -96,10 +99,15 @@ class ConfigItemDefinition:
             return str
         return_type = self.meta.value_type
         if not return_type:
+            if self.meta.accepts_paths():
+                return bytes
             raise ValueError(
                 f"Specified type not in the allow list: {self.meta.value_type}"
                 )
         return return_type
+
+    def accepts_paths(self) -> bool:
+        return self.meta and self.meta.accepts_paths()
 
     @classmethod
     def from_dict(cls, source: dict):

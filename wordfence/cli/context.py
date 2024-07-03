@@ -70,12 +70,12 @@ class CliContext:
         settings = self.get_log_settings()
         settings.apply()
 
-    def set_up_cache(self, directory: str) -> None:
+    def set_up_cache(self, directory: bytes) -> None:
         cache = self._initialize_cache(directory)
         cache.add_filter(self.filter_cache_entry)
         self.cache = cache
 
-    def _initialize_cache(self, directory: str) -> Cache:
+    def _initialize_cache(self, directory: bytes) -> Cache:
         if self.config.cache:
             try:
                 return CacheDirectory(

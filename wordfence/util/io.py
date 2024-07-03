@@ -4,7 +4,6 @@ import errno
 from typing import Optional, IO, TextIO, Generator, Iterable, List, Union, \
     Callable, Set
 from enum import Enum, IntEnum
-from pathlib import Path
 from collections import deque
 
 
@@ -78,13 +77,25 @@ class FileLock:
         self._operate_lock(fcntl.LOCK_UN)
 
 
-def resolve_path(path: str) -> str:
+def resolve_path(path: bytes) -> bytes:
     """ Resolve a path to a normalized, absolute path """
     return os.path.abspath(os.path.expanduser(path))
 
 
-def pathlib_resolve(path: str) -> Path:
-    return Path(path).expanduser().resolve()
+def resolve_parent_path(path: bytes) -> bytes:
+    return resolve_path(os.path.dirname(path))
+
+
+def get_path_components(path: bytes) -> bytes:
+    components = []
+    while len(path) > 0:
+        path, current = os.path.split(path)
+        if len(current) > 0:
+            components.append(current)
+        else:
+            break
+    components.reverse()
+    return components
 
 
 # A memory-optimized tree-set implementation for paths
@@ -93,10 +104,10 @@ class PathSet:
     def __init__(self):
         self.children = {}
 
-    def _get_components(self, path: str) -> Iterable[str]:
+    def _get_components(self, path: bytes) -> Iterable[bytes]:
         return split_path(path)
 
-    def add(self, path: str) -> None:
+    def add(self, path: bytes) -> None:
         components = self._get_components(path)
         node = self.children
         for component in components:
@@ -107,7 +118,7 @@ class PathSet:
                 node[component] = child
                 node = child
 
-    def contains(self, path: str) -> bool:
+    def contains(self, path: bytes) -> bool:
         components = self._get_components(path)
         node = self.children
         for component in components:
@@ -118,7 +129,7 @@ class PathSet:
         return True
 
     def __contains__(self, path) -> bool:
-        if not isinstance(path, str):
+        if not isinstance(path, bytes):
             return False
         return self.contains(path)
 
@@ -127,9 +138,9 @@ DEFAULT_CREATE_MODE = 0o700
 
 
 def ensure_directory_is_writable(
-            path: str,
+            path: bytes,
             create_mode: int = DEFAULT_CREATE_MODE
-        ) -> str:
+        ) -> bytes:
     """ Ensure that the specified directory is writable, """
     """ creating it and parent directories as needed. Note """
     """ that the checks here are not atomic; this assumes """
@@ -153,9 +164,9 @@ def ensure_directory_is_writable(
 
 
 def ensure_file_is_writable(
-            path: str,
+            path: bytes,
             create_mode: int = 0o700
-        ) -> str:
+        ) -> bytes:
     path = resolve_path(path)
     if os.path.exists(path):
         if not os.path.isfile(path):
@@ -173,7 +184,7 @@ class PathType(Enum):
     LINK = 'link'
 
 
-def get_path_type(path: str) -> PathType:
+def get_path_type(path: bytes) -> PathType:
     if os.path.islink(path):
         return PathType.LINK
     elif os.path.isdir(path):
@@ -182,7 +193,7 @@ def get_path_type(path: str) -> PathType:
         return PathType.FILE
 
 
-def is_same_file(path: str, other: str) -> bool:
+def is_same_file(path: bytes, other: bytes) -> bool:
     type = get_path_type(path)
     other_type = get_path_type(other)
     if type is not other_type:
@@ -195,8 +206,8 @@ def is_symlink_error(error: OSError) -> bool:
 
 
 def is_symlink_loop(
-            path: str,
-            parents: Optional[Union[Iterable[str], PathSet]] = None
+            path: bytes,
+            parents: Optional[Union[Iterable[bytes], PathSet]] = None
         ) -> bool:
     realpath = os.path.realpath(path)
     try:
@@ -220,8 +231,8 @@ def is_symlink_loop(
 
 
 def is_symlink_and_loop(
-            path: str,
-            parents: Optional[Union[Iterable[str], PathSet]] = None
+            path: bytes,
+            parents: Optional[Union[Iterable[bytes], PathSet]] = None
         ) -> bool:
     try:
         if not os.path.islink(path):
@@ -231,7 +242,7 @@ def is_symlink_and_loop(
     return is_symlink_loop(path, parents)
 
 
-def get_all_parents(path: str) -> List[str]:
+def get_all_parents(path: bytes) -> List[bytes]:
     parents = [path]
     while len(path) > 1:
         path = os.path.dirname(path)
@@ -239,7 +250,7 @@ def get_all_parents(path: str) -> List[str]:
     return parents
 
 
-def split_path(path: str) -> Iterable[str]:
+def split_path(path: bytes) -> Iterable[bytes]:
     components = deque()
     while len(path) > 1:
         components.appendleft(os.path.basename(path))
@@ -248,10 +259,9 @@ def split_path(path: str) -> Iterable[str]:
 
 
 def populate_parents(
-            path: Union[str, os.PathLike],
-            parents: Optional[Set[str]] = None
+            path: bytes,
+            parents: Optional[Set[bytes]] = None
         ) -> Set[str]:
-    path = str(path)
     if parents is None:
         parents = set()
     else:
@@ -261,20 +271,20 @@ def populate_parents(
 
 
 def iterate_files(
-            path: Union[str, os.PathLike],
-            parents: Optional[Set[str]] = None,
-            loop_callback: Optional[Callable[[str], None]] = None
+            path: bytes,
+            parents: Optional[Set[bytes]] = None,
+            loop_callback: Optional[Callable[[bytes], None]] = None
         ) -> Generator[str, None, None]:
     parents = populate_parents(path, parents)
-    if is_symlink_and_loop(str(path), parents):
+    if is_symlink_and_loop(path, parents):
         if loop_callback is not None:
-            loop_callback(str(path))
+            loop_callback(path)
         return
     contents = os.scandir(path)
     for item in contents:
-        if is_symlink_and_loop(str(item.path), parents):
+        if is_symlink_and_loop(item.path, parents):
             if loop_callback is not None:
-                loop_callback(str(item.path))
+                loop_callback(item.path)
             continue
         if item.is_dir():
             yield from iterate_files(item.path, parents, loop_callback)
@@ -293,6 +303,17 @@ def umask_mode(mode: int) -> int:
     return mode & ~umask
 
 
-def chmod_with_umask(path: str, mode: int = 0o666) -> int:
+def chmod_with_umask(path: bytes, mode: int = 0o666) -> int:
     mode = umask_mode(mode)
     os.chmod(path, mode)
+
+
+class PathProperties:
+
+    def __init__(self, path: bytes):
+        self.path = path
+        self.directory, self.basename = os.path.split(self.path)
+        self.stem, self.extension = os.path.splitext(self.basename)
+
+    def has_extension(self) -> bool:
+        return len(self.extension) > 0

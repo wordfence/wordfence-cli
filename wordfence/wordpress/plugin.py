@@ -1,7 +1,7 @@
 import os
 from typing import Optional, Dict
-from pathlib import Path
 
+from ..util.io import PathProperties
 from .extension import Extension, ExtensionLoader
 
 
@@ -40,7 +40,7 @@ class PluginLoader(ExtensionLoader):
                 slug: str,
                 version: Optional[str],
                 header: Dict[str, str],
-                path: Path
+                path: bytes
             ):
         return Plugin(
                 slug=slug,
@@ -49,24 +49,31 @@ class PluginLoader(ExtensionLoader):
                 path=path
             )
 
-    def _has_php_extension(self, path: Path) -> bool:
-        return path.suffix == '.php'
+    def _has_php_extension(self, properties: PathProperties) -> bool:
+        return properties.extension == b'.php'
 
     def _process_entry(self, entry: os.DirEntry) -> Optional[Plugin]:
-        if entry.name.find('.') == 0:
+        # Ignore dot files
+        if entry.name.find(b'.') == 0:
             return None
-        path = Path(entry.path)
+        path_properties = PathProperties(entry.path)
         if entry.is_file():
-            slug = path.stem
-            if self._has_php_extension(path):
-                return self.load(slug, path)
+            if self._has_php_extension(path_properties):
+                return self.load(
+                        os.fsdecode(path_properties.stem),
+                        entry.path
+                    )
         elif entry.is_dir():
-            slug = entry.name
+            slug = os.fsdecode(entry.name)
             for child in os.scandir(entry.path):
                 if child.is_file():
-                    child_path = path / child.name
-                    if self._has_php_extension(child_path):
-                        plugin = self.load(slug, child_path, base_path=path)
+                    child_path = os.path.join(entry.path, child.name)
+                    if self._has_php_extension(PathProperties(child_path)):
+                        plugin = self.load(
+                                slug,
+                                child_path,
+                                base_path=path_properties.basename
+                            )
                         if plugin is not None:
                             return plugin
         return None

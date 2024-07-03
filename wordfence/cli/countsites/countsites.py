@@ -1,3 +1,4 @@
+import os
 from ...wordpress.site import WordpressLocator
 from ...logging import log
 from ..subcommands import Subcommand
@@ -7,7 +8,7 @@ from ..exceptions import ConfigurationException
 
 class CountSitesSubcommand(Subcommand):
 
-    def count_sites(self, path: str) -> int:
+    def count_sites(self, path: bytes) -> int:
         count = 0
         locator = WordpressLocator(
                     path=path,
@@ -15,7 +16,7 @@ class CountSitesSubcommand(Subcommand):
                     allow_io_errors=self.config.allow_io_errors
                 )
         for core in locator.locate_core_paths():
-            log.debug(f'Located WordPress site at {core}')
+            log.debug('Located WordPress site at ' + os.fsdecode(core))
             count += 1
         return count
 

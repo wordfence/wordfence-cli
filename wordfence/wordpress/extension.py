@@ -1,7 +1,6 @@
 import re
 import os
 from typing import Optional, Dict, List
-from pathlib import Path
 
 from ..logging import log
 from ..util.io import SYMLINK_IO_ERRORS
@@ -20,7 +19,7 @@ class Extension:
                 slug: str,
                 version: Optional[str],
                 header: Dict[str, str],
-                path: Path
+                path: bytes
             ):
         self.slug = slug
         self.version = version
@@ -54,7 +53,7 @@ class ExtensionLoader:
     def _clean_up_header_value(self, value: str) -> str:
         return HEADER_CLEANUP_PATTERN.sub('', value).strip()
 
-    def _read_header(self, path: str) -> str:
+    def _read_header(self, path: bytes) -> str:
         try:
             with open(path, 'r', errors='replace') as stream:
                 data = stream.read(HEADER_READ_SIZE)
@@ -83,10 +82,10 @@ class ExtensionLoader:
     def load(
                 self,
                 slug: str,
-                path: Path,
-                base_path: Optional[Path] = None
+                path: bytes,
+                base_path: Optional[bytes] = None
             ) -> Optional[Extension]:
-        header_data = self._read_header(str(path))
+        header_data = self._read_header(path)
         header = self._parse_header(header_data)
         if 'Name' not in header:
             return None
@@ -103,7 +102,7 @@ class ExtensionLoader:
                 slug: str,
                 version: Optional[str],
                 header: Dict[str, str],
-                path: Path
+                path: bytes
             ):
         return Extension(
                 slug=slug,

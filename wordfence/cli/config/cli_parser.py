@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from argparse import ArgumentParser, Namespace
 from typing import Set, List, Dict, Any, Tuple
 
@@ -118,7 +119,10 @@ def add_to_parser(target_parser,
     # and will throw an error if type is specified
     elif not isinstance(named_params['action'], str) or \
             not named_params['action'].startswith('store_'):
-        named_params['type'] = config_definition.get_value_type()
+        if config_definition.accepts_paths():
+            named_params['type'] = os.fsencode
+        else:
+            named_params['type'] = config_definition.get_value_type()
 
     named_params['help'] = argparse.SUPPRESS
 

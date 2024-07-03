@@ -1,3 +1,5 @@
+import os
+
 from ...wordpress.remediator import Remediator, Noc1RemediationSource
 from ...logging import log
 from ..subcommands import Subcommand
@@ -12,9 +14,9 @@ class RemediateSubcommand(Subcommand):
                 Noc1RemediationSource(self.context.get_noc1_client())
             )
 
-    def process_path(self, path: str, report: RemediationReport) -> None:
+    def process_path(self, path: bytes, report: RemediationReport) -> None:
         log.debug(f'Attempting to remediate {path}...')
-        for result in self.remediator.remediate(path):
+        for result in self.remediator.remediate(os.fsencode(path)):
             report.add_result(result)
 
     def invoke(self) -> int:

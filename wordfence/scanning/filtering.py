@@ -9,7 +9,7 @@ class FilterCondition:
         self.test = test
         self.allow = allow
 
-    def evaluate(self, path: str) -> bool:
+    def evaluate(self, path: bytes) -> bool:
         return self.test(path)
 
 
@@ -24,7 +24,7 @@ class FileFilter:
     def add(self, test: Callable[[str], bool], allow: bool = True):
         self.add_condition(FilterCondition(test, allow))
 
-    def filter(self, path: str) -> bool:
+    def filter(self, path: bytes) -> bool:
         allowed = False
         for condition in self._conditions:
             if condition.allow and allowed:
@@ -38,57 +38,57 @@ class FileFilter:
         return allowed
 
 
-def matches_regex(regex: re.Pattern, string: str) -> bool:
+def matches_regex(regex: re.Pattern, string: bytes) -> bool:
     return regex.search(string) is not None
 
 
-def filter_any(path: str) -> bool:
+def filter_any(path: bytes) -> bool:
     return True
 
 
 PATTERN_PHP = re.compile(
-        r'\.(?:php(?:\d+)?|phtml)(\.|$)',
+        br'\.(?:php(?:\d+)?|phtml)(\.|$)',
         re.IGNORECASE
     )
 PATTERN_HTML = re.compile(
-        r'\.(?:html?)(\.|$)',
+        br'\.(?:html?)(\.|$)',
         re.IGNORECASE
     )
 PATTERN_JS = re.compile(
-        r'\.(?:js|svg)(\.|$)',
+        br'\.(?:js|svg)(\.|$)',
         re.IGNORECASE
     )
 PATTERN_IMAGES = re.compile(
         (
-            r'\.(?:jpg|jpeg|mp3|avi|m4v|mov|mp4|gif|png|tiff?|svg|sql|js|tbz2?'
-            r'|bz2?|xz|zip|tgz|gz|tar|log|err\d+)(\.|$)'
+            br'\.(?:jpg|jpeg|mp3|avi|m4v|mov|mp4|gif|png|tiff?|svg|sql|js|tbz2?'  # noqa: E501
+            br'|bz2?|xz|zip|tgz|gz|tar|log|err\d+)(\.|$)'
         ),
         re.IGNORECASE
     )
 
 
-def filter_php(path: str) -> bool:
+def filter_php(path: bytes) -> bool:
     return matches_regex(PATTERN_PHP, path)
 
 
-def filter_html(path: str) -> bool:
+def filter_html(path: bytes) -> bool:
     return matches_regex(PATTERN_HTML, path)
 
 
-def filter_js(path: str) -> bool:
+def filter_js(path: bytes) -> bool:
     return matches_regex(PATTERN_JS, path)
 
 
-def filter_images(path: str) -> bool:
+def filter_images(path: bytes) -> bool:
     return matches_regex(PATTERN_IMAGES, path)
 
 
 class FilenameFilter:
 
-    def __init__(self, value: str):
+    def __init__(self, value: bytes):
         self.value = value
 
-    def __call__(self, path: str):
+    def __call__(self, path: bytes):
         filename = os.path.basename(path)
         return filename == self.value
 
@@ -98,17 +98,17 @@ class Filter:
     def __init__(self, pattern: Pattern[AnyStr]):
         self.pattern = pattern
 
-    def __call__(self, path: str) -> bool:
+    def __call__(self, path: bytes) -> bool:
         return matches_regex(self.pattern, path)
 
 
 class InvalidPatternException(Exception):
 
-    def __init__(self, pattern: str):
+    def __init__(self, pattern: bytes):
         self.pattern = pattern
 
 
-def filter_pattern(regex: str) -> Callable[[str], bool]:
+def filter_pattern(regex: bytes) -> Callable[[bytes], bool]:
     try:
         pattern = re.compile(regex)
         return Filter(pattern)

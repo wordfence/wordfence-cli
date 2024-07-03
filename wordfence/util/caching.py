@@ -108,7 +108,7 @@ class RuntimeCache(Cache):
 
 class CacheDirectory(Cache):
 
-    def __init__(self, path: str, allowed: Optional[Set[str]] = None):
+    def __init__(self, path: bytes, allowed: Optional[Set[str]] = None):
         super().__init__()
         self.path = path
         self.allowed = allowed
@@ -128,10 +128,10 @@ class CacheDirectory(Cache):
     def _deserialize_value(self, value: Any) -> Any:
         return limited_deserialize(value, self.allowed)
 
-    def _get_path(self, key: str) -> str:
+    def _get_path(self, key: str) -> bytes:
         return os.path.join(
                 self.path,
-                base64.b16encode(key.encode('utf-8')).decode('utf-8')
+                os.fsencode(base64.b16encode(key.encode('utf-8')))
             )
 
     def _save(self, key: str, value: Any) -> None:

@@ -1,3 +1,5 @@
+import os
+
 from typing import List, Dict, Tuple
 from dataclasses import dataclass
 
@@ -137,8 +139,10 @@ def load_config(
 
     ini_values, ini_path = load_ini(cli_values, subcommand_definition)
 
+    trailing_arguments_are_paths = False
     if subcommand_definition is not None:
         value_extractors.append(get_ini_value_extractor(subcommand_definition))
+        trailing_arguments_are_paths = subcommand_definition.accepts_paths()
     value_extractors.append(get_default_ini_value_extractor())
     value_extractors.append(CliCanonicalValueExtractor())
 
@@ -150,6 +154,11 @@ def load_config(
             ini_values,
             cli_values
         )
+
+    if trailing_arguments_are_paths:
+        instance.trailing_arguments = [
+                os.fsencode(path) for path in instance.trailing_arguments
+            ]
 
     if global_config is not None:
         global_config.debug = instance.debug

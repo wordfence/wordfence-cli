@@ -1,4 +1,5 @@
 import sys
+import os
 from collections import namedtuple
 from configparser import ConfigParser, DuplicateSectionError
 from multiprocessing import cpu_count
@@ -67,19 +68,20 @@ class ConfigFileManager:
         self.require_section(update.section)
         self.parser.set(update.section, update.key, update.value)
 
-    def resolve_ini_path(self) -> str:
+    def resolve_ini_path(self) -> bytes:
         ini_path = self.config.ini_path if self.config.has_ini_file() \
             else self.config.configuration
         return resolve_path(ini_path)
 
-    def read_existing_config(self, file: TextIO, ini_path: str) -> None:
+    def read_existing_config(self, file: TextIO, ini_path: bytes) -> None:
         try:
             if not self._read:
                 self.parser.read_file(file)
         except BaseException:  # noqa: B036
             log.warning(
                     'Failed to read existing config file at '
-                    f'{ini_path}. existing data will be truncated.'
+                    + os.fsdecode(ini_path) + '. existing data will be '
+                    'truncated.'
                 )
         self._read = True
 
@@ -100,10 +102,11 @@ class ConfigFileManager:
 
             file.truncate(0)
             file.seek(0)
-            log.debug(f'Writing config to {ini_path}...')
+            ini_path_str = os.fsdecode(ini_path)
+            log.debug(f'Writing config to {ini_path_str}...')
             self.parser.write(file)
             self.written = True
-            log.info(f'Config saved to {ini_path}')
+            log.info(f'Config saved to {ini_path_str}')
 
     def read(self) -> List[ConfigValue]:
         values = []
@@ -116,7 +119,10 @@ class ConfigFileManager:
                 for key, value in section_proxy.items():
                     values.append(ConfigValue(section_name, key, value))
         except FileNotFoundError:
-            log.debug(f'No existing config file found at {ini_path}')
+            log.debug(
+                    'No existing config file found at '
+                    + os.fsdecode(ini_path)
+                )
         return values
 
     def delete_section(self, section: str) -> None:
@@ -189,7 +195,8 @@ class Configurer:
         if not self.overwrite and self.config.has_ini_file():
             overwrite = prompt_yes_no(
                     'An existing configuration file was found at '
-                    f'{self.config.ini_path}, do you want to update it?',
+                    + os.fsdecode(self.config.ini_path) +
+                    ', do you want to update it?',
                     default=False
                 )
             return overwrite
@@ -274,7 +281,7 @@ class Configurer:
                 raise InvalidInputException(
                         f'Directory {directory} is not writable'
                     ) from e
-            return directory
+            return os.fsencode(directory)
 
         if self.config.is_from_cli('cache_directory') or self.default:
             _validate_writable(self.config.cache_directory)
@@ -282,7 +289,7 @@ class Configurer:
 
         directory = prompt(
                 'Cache directory',
-                self.config.cache_directory,
+                os.fsdecode(self.config.cache_directory),
                 transformer=_validate_writable
             )
         return directory
@@ -322,7 +329,7 @@ class Configurer:
         cache_directory = self._prompt_for_cache_directory()
         self.update_config(
                 'cache_directory',
-                cache_directory
+                os.fsdecode(cache_directory)
             )
         self.context.set_up_cache(cache_directory)
         self.license = self._prompt_for_license()

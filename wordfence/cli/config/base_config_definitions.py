@@ -168,7 +168,7 @@ config_definitions = {
         "description": "A path to use for cache files.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "default": "~/.cache/wordfence",
+        "default": b'~/.cache/wordfence',
         "category": "Caching",
         "meta": {
             "accepts_directory": True

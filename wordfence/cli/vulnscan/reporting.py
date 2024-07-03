@@ -1,3 +1,5 @@
+import os
+
 from typing import List, Dict, Callable, Any, Optional
 from email.message import EmailMessage
 from email.headerregistry import Address
@@ -57,7 +59,9 @@ class VulnScanReportColumn(ReportColumnEnum):
     UPDATED = 'updated', \
         lambda record: record.vulnerability.updated, \
         VulnerabilityFeedVariant.PRODUCTION
-    SCANNED_PATH = 'scanned_path', lambda record: record.software.scan_path
+    SCANNED_PATH = 'scanned_path', lambda record: os.fsdecode(
+            record.software.scan_path
+        )
 
     def __init__(
                 self,

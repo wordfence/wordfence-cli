@@ -17,7 +17,7 @@ from ..subcommands import SubcommandDefinition
 valid_contexts: Set[Context] = {Context.ALL, Context.CONFIG}
 
 
-GLOBAL_INI_PATH = '/etc/wordfence/wordfence-cli.ini'
+GLOBAL_INI_PATH = b'/etc/wordfence/wordfence-cli.ini'
 DEFAULT_SECTION_NAME = 'DEFAULT'
 
 
@@ -54,6 +54,15 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
                     definition.property_name,
                     fallback=not_set_token
                 )
+        elif definition.accepts_paths():
+            path = source.get(
+                    section,
+                    definition.property_name,
+                    fallback=not_set_token
+                )
+            if path != not_set_token:
+                path = os.fsencode(path)
+            return path
         elif isinstance(definition.get_value_type(), Callable):
             value = source.get(
                     section,
@@ -119,7 +128,7 @@ def get_default_ini_value_extractor() -> IniCanonicalValueExtractor:
 
 def get_ini_path(cli_values: Namespace) -> str:
     if 'configuration' not in cli_values or not isinstance(
-            cli_values.configuration, str):
+            cli_values.configuration, bytes):
         path = INI_DEFAULT_PATH
     else:
         path = cli_values.configuration

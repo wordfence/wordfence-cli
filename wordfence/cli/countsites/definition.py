@@ -62,5 +62,6 @@ definition = SubcommandDefinition(
     config_definitions=config_definitions,
     config_section='COUNT_SITES',
     cacheable_types=set(),
-    examples=examples
+    examples=examples,
+    accepts_directories=True
 )

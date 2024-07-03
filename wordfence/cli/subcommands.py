@@ -111,6 +111,9 @@ class SubcommandDefinition:
     def accepts_option(self, name: str) -> bool:
         return name in self.config_definitions
 
+    def accepts_paths(self) -> bool:
+        return self.accepts_files or self.accepts_directories
+
     def initialize_subcommand(self, context: CliContext) -> Subcommand:
         module = import_subcommand_module(self.name)
         assert hasattr(module, 'factory')

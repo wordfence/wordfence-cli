@@ -1,7 +1,8 @@
-from typing import Optional
-from pathlib import Path
+import os
 
-from ..util.io import pathlib_resolve, iterate_files
+from typing import Optional
+
+from ..util.io import iterate_files, resolve_path
 from ..logging import log
 from ..api import noc1
 from ..api.exceptions import ApiException
@@ -29,7 +30,7 @@ class Noc1RemediationSource(RemediationSource):
             ) -> Optional[bytes]:
         try:
             type = identity.type.value
-            path = str(identity.local_path)
+            path = os.fsdecode(identity.local_path)
             if identity.extension is None:
                 return self.client.get_wp_file_content(
                         type,
@@ -55,11 +56,11 @@ class RemediationResult:
 
     def __init__(
                 self,
-                path: Path,
+                path: bytes,
                 identity: FileIdentity,
                 known: bool = False,
                 remediated: bool = False,
-                target_path: Optional[Path] = None
+                target_path: Optional[bytes] = None
             ):
         self.path = path
         self.identity = identity
@@ -83,15 +84,15 @@ class Remediator:
 
     def remediate_file(
                 self,
-                path: Path,
-                target_path: Optional[Path] = None
+                path: bytes,
+                target_path: Optional[bytes] = None
             ) -> RemediationResult:
         identity = self.identifier.identify(path)
         result = RemediationResult(path, identity, target_path=target_path)
         if identity.type is FileType.UNKNOWN:
             log.warning(f'Unable to identify {path}')
             return result
-        log.debug(f'Identified {path} as {identity}')
+        log.debug('Identified ' + os.fsdecode(path) + f' as {identity}')
         correct_content = self.get_correct_content(identity)
         if correct_content is None:
             log.warning(
@@ -115,16 +116,16 @@ class Remediator:
     def handle_symlink_loop(self, path: str) -> None:
         log.warning(f'Symlink loop detected at {path}')
 
-    def remediate(self, path: str) -> RemediationResult:
+    def remediate(self, path: bytes) -> RemediationResult:
         self.input_count += 1
-        path = pathlib_resolve(path)
-        if path.is_dir():
+        path = resolve_path(path)
+        if os.path.isdir(path):
             file_found = False
             for file in iterate_files(
                         path,
                         loop_callback=self.handle_symlink_loop
                     ):
-                yield self.remediate_file(pathlib_resolve(file), path)
+                yield self.remediate_file(resolve_path(file), path)
                 file_found = True
             if not file_found:
                 yield RemediationResult(

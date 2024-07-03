@@ -8,7 +8,7 @@ from .lexing import Lexer, Token, TokenType, CharacterType, STRING_ESCAPE
 
 class SourceMetadata:
 
-    def __init__(self, path: str):
+    def __init__(self, path: bytes):
         self.path = path
 
 
@@ -659,11 +659,11 @@ class PhpMagicConstant(PhpEntity, Evaluable):
     def evaluate(self, state: PhpState) -> Any:
         if self.token_type == TokenType.DIR:
             return PhpValue.for_python_value(
-                    os.path.dirname(self.source_metadata.path)
+                    os.fsdecode(os.path.dirname(self.source_metadata.path))
                 )
         elif self.token_type == TokenType.FILE:
             return PhpValue.for_python_value(
-                    self.source_metadata.path
+                    os.fsdecode(self.source_metadata.path)
                 )
         else:
             raise EvaluationException('Unsupported magic constant')
@@ -681,10 +681,10 @@ class PhpInclude(PhpInstruction, Evaluable):
         self.required = required
         self.once = once
 
-    def evaluate_path(self, state: PhpState) -> str:
+    def evaluate_path(self, state: PhpState) -> bytes:
         path = self.path.evaluate(state)
         if isinstance(path, str):
-            return path
+            return os.fsencode(path)
         raise EvaluationException(
                 'Included path is not a string, received: {repr(path)}'
             )
@@ -1630,7 +1630,7 @@ class Parser:
         return context
 
 
-def parse_php_file(path: str) -> PhpContext:
+def parse_php_file(path: bytes) -> PhpContext:
     try:
         with open(path, 'r') as stream:
             metadata = SourceMetadata(path)

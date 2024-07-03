@@ -2,26 +2,26 @@ import os
 import os.path
 from dataclasses import dataclass, field
 from typing import Optional, List, Generator
-from pathlib import Path
 
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
 from ..logging import log
-from ..util.io import is_symlink_loop, PathSet, resolve_path
+from ..util.io import is_symlink_loop, PathSet, resolve_path, \
+    resolve_parent_path
 from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
 
-WP_BLOG_HEADER_NAME = 'wp-blog-header.php'
-WP_CONFIG_NAME = 'wp-config.php'
+WP_BLOG_HEADER_NAME = b'wp-blog-header.php'
+WP_CONFIG_NAME = b'wp-config.php'
 
 EXPECTED_CORE_FILES = {
         WP_BLOG_HEADER_NAME,
-        'wp-load.php'
+        b'wp-load.php'
     }
 EXPECTED_CORE_DIRECTORIES = {
-        'wp-admin',
-        'wp-includes'
+        b'wp-admin',
+        b'wp-includes'
     }
 
 EVALUATION_OPTIONS = PhpEvaluationOptions(
@@ -29,7 +29,7 @@ EVALUATION_OPTIONS = PhpEvaluationOptions(
     )
 
 ALTERNATE_RELATIVE_CONTENT_PATHS = [
-        '../app'
+        b'../app'
     ]
 
 
@@ -42,13 +42,13 @@ class WordpressStructureOptions:
 
 class PathResolver:
 
-    def __init__(self, path: str):
+    def __init__(self, path: bytes):
         self.path = path
 
-    def _resolve_path(self, path: str, base: str) -> str:
-        return os.path.join(base, path.lstrip('/'))
+    def _resolve_path(self, path: bytes, base: bytes) -> bytes:
+        return os.path.join(base, path.lstrip(b'/'))
 
-    def resolve_path(self, path: str) -> str:
+    def resolve_path(self, path: bytes) -> bytes:
         return self._resolve_path(path, self.path)
 
 
@@ -56,7 +56,7 @@ class WordpressLocator(PathResolver):
 
     def __init__(
                 self,
-                path: str,
+                path: bytes,
                 allow_nested: bool = True,
                 allow_io_errors: bool = False
             ):
@@ -64,7 +64,7 @@ class WordpressLocator(PathResolver):
         self.allow_nested = allow_nested
         self.allow_io_errors = allow_io_errors
 
-    def _is_core_directory(self, path: str, quiet: bool = False) -> bool:
+    def _is_core_directory(self, path: bytes, quiet: bool = False) -> bool:
         missing_files = EXPECTED_CORE_FILES.copy()
         missing_directories = EXPECTED_CORE_DIRECTORIES.copy()
         try:
@@ -79,7 +79,8 @@ class WordpressLocator(PathResolver):
                 except OSError as error:
                     if self.allow_io_errors:
                         log.warning(
-                                f'Unable to determine if {file.path} is an '
+                                'Unable to determine if ' +
+                                os.fsdecode(file.path) + ' is an '
                                 'expected WordPress file as its type could '
                                 f'not be determined: {error}'
                             )
@@ -103,7 +104,7 @@ class WordpressLocator(PathResolver):
 
     def _extract_core_path_from_index(self) -> Optional[str]:
         try:
-            context = parse_php_file(self.resolve_path('index.php'))
+            context = parse_php_file(self.resolve_path(b'index.php'))
             for include in context.get_includes():
                 path = include.evaluate_path(context.state)
                 basename = os.path.basename(path)
@@ -116,9 +117,9 @@ class WordpressLocator(PathResolver):
 
     def _get_child_directories(
                 self,
-                path: str,
+                path: bytes,
                 processed: PathSet
-            ) -> List[str]:
+            ) -> List[bytes]:
         directories = []
         for file in os.scandir(path):
             try:
@@ -130,7 +131,8 @@ class WordpressLocator(PathResolver):
             except OSError as error:
                 if self.allow_io_errors:
                     log.warning(
-                            f'Ignoring child entry at {file.path} as its type '
+                            'Ignoring child entry at '
+                            + os.fsdecode(file.path) + ' as its type '
                             f'could not be determined: {error}'
                         )
                 else:
@@ -143,7 +145,7 @@ class WordpressLocator(PathResolver):
                 self,
                 located: PathSet,
                 processed: PathSet
-            ) -> Generator[str, None, None]:
+            ) -> Generator[bytes, None, None]:
         paths = [self.path]
         while len(paths) > 0:
             directories = set()
@@ -173,7 +175,7 @@ class WordpressLocator(PathResolver):
                 else:
                     paths.add(directory)
 
-    def locate_core_paths(self) -> str:
+    def locate_core_paths(self) -> Generator[bytes, None, None]:
         located = PathSet()
         if self._is_core_directory(self.path):
             yield self.path
@@ -186,17 +188,16 @@ class WordpressLocator(PathResolver):
             processed.add(self.path)
             yield from self._search_for_core_directory(located, processed)
         else:
-            yield path
+            yield os.fsencode(path)
 
-    def locate_parent_installation(self) -> Optional[str]:
-        current = Path(self.path).expanduser().resolve()
-        if not current.is_dir():
-            current = current.parent.resolve()
+    def locate_parent_installation(self) -> Optional[bytes]:
+        current = resolve_path(self.path)
+        if not os.path.isdir(current):
+            current = resolve_parent_path(current)
         while True:
-            current_string = str(current)
-            if self._is_core_directory(current_string):
-                return current_string
-            parent = current.parent.resolve()
+            if self._is_core_directory(current):
+                return current
+            parent = resolve_parent_path
             if parent == current:
                 break
             current = parent
@@ -204,10 +205,10 @@ class WordpressLocator(PathResolver):
 
 
 def locate_core_path(
-            path: str,
+            path: bytes,
             up: bool = False,
             allow_io_errors: bool = False
-        ) -> str:
+        ) -> bytes:
     locator = WordpressLocator(path, allow_io_errors=allow_io_errors)
     if up:
         core_path = locator.locate_parent_installation()
@@ -226,9 +227,9 @@ class WordpressSite(PathResolver):
 
     def __init__(
                 self,
-                path: str,
+                path: bytes,
                 structure_options: Optional[WordpressStructureOptions] = None,
-                core_path: str = None,
+                core_path: bytes = None,
                 is_child_path: bool = False,
                 allow_io_errors: bool = False
             ):
@@ -238,14 +239,14 @@ class WordpressSite(PathResolver):
             if structure_options is not None else WordpressStructureOptions()
         self._version = None
 
-    def resolve_core_path(self, path: str) -> str:
+    def resolve_core_path(self, path: bytes) -> bytes:
         return self._resolve_path(path, self.core_path)
 
-    def resolve_content_path(self, path: str) -> str:
+    def resolve_content_path(self, path: bytes) -> bytes:
         return self._resolve_path(path, self.get_content_directory())
 
     def _determine_version(self) -> str:
-        version_path = self.resolve_core_path('wp-includes/version.php')
+        version_path = self.resolve_core_path(b'wp-includes/version.php')
         context = parse_php_file(version_path)
         try:
             state = context.evaluate(
@@ -267,8 +268,8 @@ class WordpressSite(PathResolver):
 
     def _locate_config_file(self) -> str:
         paths = [
-                self.resolve_core_path('wp-config.php'),
-                os.path.join(os.path.dirname(self.core_path), 'wp-config.php')
+                self.resolve_core_path(b'wp-config.php'),
+                os.path.join(os.path.dirname(self.core_path), b'wp-config.php')
             ]
         for path in paths:
             if os.path.isfile(path):
@@ -280,7 +281,6 @@ class WordpressSite(PathResolver):
         try:
             if config_path is not None:
                 context = parse_php_file(config_path)
-                # raise Exception('Exit early')
                 return context.evaluate(
                         options=EVALUATION_OPTIONS
                     )
@@ -329,14 +329,14 @@ class WordpressSite(PathResolver):
             yield self.resolve_core_path(path)
         for path in ALTERNATE_RELATIVE_CONTENT_PATHS:
             yield self.resolve_core_path(path)
-        yield self.resolve_core_path('wp-content')
+        yield self.resolve_core_path(b'wp-content')
 
     def _locate_content_directory(self) -> str:
         for path in self._generate_possible_content_paths():
-            log.debug(f'Checking potential content path: {path}')
-            possible_themes_path = self._resolve_path('themes', path)
+            log.debug('Checking potential content path: ' + os.fsdecode(path))
+            possible_themes_path = self._resolve_path(b'themes', path)
             if os.path.isdir(path) and os.path.isdir(possible_themes_path):
-                log.debug(f'Located content directory at {path}')
+                log.debug('Located content directory at ' + os.fsdecode(path))
                 return path
         raise WordpressException(
                 f'Unable to locate content directory for site at {self.path}'
@@ -366,7 +366,7 @@ class WordpressSite(PathResolver):
             yield self.resolve_core_path(path)
         try:
             yield self.resolve_content_path(
-                    'mu-plugins' if mu else 'plugins'
+                    b'mu-plugins' if mu else b'plugins'
                 )
         except WordpressException:
             if not allow_io_errors:
@@ -379,11 +379,17 @@ class WordpressSite(PathResolver):
             ) -> List[Plugin]:
         log_plugins = 'must-use plugins' if mu else 'plugins'
         for path in self._generate_possible_plugins_paths(mu, allow_io_errors):
-            log.debug(f'Checking potential {log_plugins} path: {path}')
+            log.debug(
+                    f'Checking potential {log_plugins} path: '
+                    + os.fsdecode(path)
+                )
             loader = PluginLoader(path, allow_io_errors)
             try:
                 plugins = loader.load_all()
-                log.debug(f'Located {log_plugins} directory at {path}')
+                log.debug(
+                        f'Located {log_plugins} directory at '
+                        + os.fsdecode(path)
+                    )
                 return plugins
             except ExtensionException:
                 # If extensions can't be loaded, the directory is not valid
@@ -406,7 +412,7 @@ class WordpressSite(PathResolver):
         return plugins
 
     def get_theme_directory(self) -> str:
-        return self.resolve_content_path('themes')
+        return self.resolve_content_path(b'themes')
 
     def get_themes(self, allow_io_errors: bool = False) -> List[Theme]:
         try:

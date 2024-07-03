@@ -1,3 +1,5 @@
+import os
+
 from typing import List, Optional, Dict
 from email.message import EmailMessage
 from email.headerregistry import Address
@@ -16,7 +18,7 @@ from ..context import CliContext
 
 
 class RemediationReportColumn(ReportColumnEnum):
-    PATH = 'path', lambda record: record.result.path,
+    PATH = 'path', lambda record: os.fsdecode(record.result.path),
     STATUS = 'status', lambda record: record.get_status(),
     TYPE = 'type', lambda record: record.result.identity.type,
     SITE = 'site', \
@@ -43,18 +45,19 @@ class HumanReadableWriter(BaseHumanReadableWriter):
 
     def format_record(self, record) -> str:
         result = record.result
+        path_str = os.fsdecode(result.path)
         if result.remediated:
             green = escape(Color.GREEN)
-            return f'{green}Successfully remediated {result.path}{RESET}'
+            return f'{green}Successfully remediated {path_str}{RESET}'
         elif not result.known:
             yellow = escape(Color.YELLOW)
             return (
-                    f'{yellow}Path at {result.path} is unknown and cannot'
+                    f'{yellow}Path at {path_str} is unknown and cannot'
                     f' be remediated{RESET}'
                 )
         else:
             red = escape(Color.RED)
-            return f'{red}Remediation for {result.path} failed{RESET}'
+            return f'{red}Remediation for {path_str} failed{RESET}'
 
 
 REPORT_FORMAT_HUMAN = ReportFormat(

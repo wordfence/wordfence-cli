@@ -154,7 +154,7 @@ def use_event_queue_log_handler(event_queue: Queue, worker_index: int) -> None:
 
 @dataclass
 class Options:
-    paths: Set[str]
+    paths: Set[bytes]
     match_engine_options: MatchEngineOptions
     workers: int = 1
     chunk_size: int = DEFAULT_CHUNK_SIZE
@@ -181,7 +181,7 @@ class FileLocator:
 
     def __init__(
                 self,
-                path: str,
+                path: bytes,
                 queue: Queue,
                 file_filter: FileFilter,
                 allow_io_errors: bool = False,
@@ -196,25 +196,29 @@ class FileLocator:
         self.located_count = 0
         self.skipped_count = 0
 
-    def _is_loop(self, path: str, parents: Optional[List[str]] = None) -> bool:
+    def _is_loop(
+                self,
+                path: bytes,
+                parents: Optional[List[bytes]] = None
+            ) -> bool:
         if is_symlink_loop(path, parents):
-            log.warning(f'Symlink loop detected at {path}')
+            log.warning('Symlink loop detected at ' + os.fsdecode(path))
             return True
         return False
 
-    def _handle_io_error(self, error: OSError, path: str) -> None:
+    def _handle_io_error(self, error: OSError, path: bytes) -> None:
         detail = str(error)
         if self.allow_io_errors:
             log.warning(
-                    f'Path {path} could not be scanned due to an IO error and '
-                    f'will be skipped. ({detail})'
+                    'Path ' + os.fsdecode(path) + ' could not be scanned due '
+                    f'to an IO error and will be skipped. ({detail})'
                 )
         else:
             raise ScanningIoException(
                     f'Directory search of {path} failed ({detail})'
                 ) from error
 
-    def search_directory(self, path: str, parents: Optional[list] = None):
+    def search_directory(self, path: bytes, parents: Optional[list] = None):
         try:
             if parents is None:
                 parents = get_all_parents(path)
@@ -248,13 +252,13 @@ class FileLocator:
             except OSError as os_error:
                 self._handle_io_error(os_error, item_path)
 
-    def _push_file(self, path: str) -> None:
+    def _push_file(self, path: bytes) -> None:
         if path in self.scanned_paths:
             log.warning(
-                    f'Skipping already queued path: {path}'
+                    'Skipping already queued path: ' + os.fsdecode(path)
                 )
         else:
-            log.log(VERBOSE, f'File added to scan queue: {path}')
+            log.log(VERBOSE, 'File added to scan queue: ' + os.fsdecode(path))
             self.queue.put(path)
             self.scanned_paths.add(path)
 
@@ -297,11 +301,11 @@ class FileLocatorProcess(Process):
         self._skipped_count = Value('i', 0)
         super().__init__(name='file-locator')
 
-    def add_path(self, path: str) -> bool:
+    def add_path(self, path: bytes) -> bool:
         try:
             self._input_queue.put(path, block=False)
             self._path_count += 1
-            log.info(f'Scanning path: {path}')
+            log.info('Scanning path: ' + os.fsdecode(path))
             return True
         except queue.Full:
             return False
@@ -510,11 +514,8 @@ class ScanWorker(Process):
             return min(self._scanned_content_limit - length, self._chunk_size)
 
     def _process_file(self, path: str, workspace: Optional[MatchWorkspace]):
-        self.last_file.value = path.encode('ascii')[:PATH_NAME_LIMIT] + b'\0'
-        log.log(VERBOSE, f'Processing file: {path}')
-        if 'malware-demo' in path:
-            import sys
-            sys.exit(1)
+        log.log(VERBOSE, 'Processing file: ' + os.fsdecode(path))
+        self.last_file.value = path[:PATH_NAME_LIMIT] + b'\0'
         open_timer = _event_timer(self._profile, 'open_file')
         with self._opener(path) as file, \
                 self._matcher.create_context() as context:
@@ -838,7 +839,6 @@ class ScanWorkerPool:
     def check_workers(self) -> None:
         for worker in self._workers:
             if worker.exitcode is not None and worker.exitcode != 0:
-                last_file = worker.last_file.value.decode('ascii')
                 if len(worker.last_file.value) == 0:
                     raise Exception(
                             'Worker exited abnormally (code: '
@@ -847,7 +847,8 @@ class ScanWorkerPool:
                 else:
                     log.warning(
                             f'Worker exited abnormally (code: '
-                            f'{worker.exitcode})  while processing {last_file}'
+                            f'{worker.exitcode})  while processing '
+                            + os.fsdecode(worker.last_file.value)
                         )
                     log.info(f'Restarting worker {worker.index}...')
                     self._workers[worker.index] = \
@@ -897,7 +898,7 @@ class ScanWorkerPool:
                 if result.get_timeout_count() > 0:
                     log.warning(
                             'The following signatures timed out while '
-                            f'processing {result.path}: ' +
+                            'processing ' + os.fsdecode(result.path) + ':' +
                             ', '.join({str(i) for i in result.timeouts})
                         )
                 self.metrics.record_result(
@@ -1013,7 +1014,7 @@ class Scanner:
                     path = self.options.path_source.read_entry()
                     if path is None:
                         break
-                    add_path(path)
+                    add_path(os.fsencode(path))
             while not file_locator_process.finalize_paths():
                 worker_pool.await_results(result_processor, final=False)
             log.debug('Awaiting results...')

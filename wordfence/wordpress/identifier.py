@@ -1,8 +1,9 @@
+import os
+
 from enum import Enum
 from typing import Optional
-from pathlib import Path
 
-from ..util.io import pathlib_resolve
+from ..util.io import resolve_path, get_path_components
 from .site import WordpressSite
 from .exceptions import WordpressException
 from .extension import Extension
@@ -36,7 +37,7 @@ class GroupIdentity(FileIdentity):
     def __init__(
                 self,
                 type: FileType,
-                path: Path,
+                path: bytes,
                 site: Optional[WordpressSite] = None,
                 extension: Optional[Extension] = None,
                 final: bool = False
@@ -54,7 +55,7 @@ class KnownFileIdentity(FileIdentity):
     def __init__(
                 self,
                 type: FileType,
-                local_path: str,
+                local_path: bytes,
                 site: Optional[WordpressSite] = None,
                 extension: Optional[Extension] = None,
             ):
@@ -71,7 +72,10 @@ class KnownFileIdentity(FileIdentity):
         else:
             software = self.extension.get_name()
             version = self.extension.version
-        return f'{self.local_path} of {self.type.value} {software} ({version})'
+        return (
+                os.fsdecode(self.local_path) +
+                f' of {self.type.value} {software} ({version})'
+            )
 
 
 class KnownPath:
@@ -86,11 +90,11 @@ class KnownPath:
     def is_root(self) -> bool:
         return self.path is None
 
-    def find_identity(self, path: Path) -> Optional[FileIdentity]:
+    def find_identity(self, path: bytes) -> Optional[FileIdentity]:
         node = self
-        path = pathlib_resolve(path)
+        path = resolve_path(path)
         identity = None
-        for component in path.parts:
+        for component in get_path_components(path):
             if node.identity is not None:
                 identity = node.identity
                 if node.identity.is_final():
@@ -105,14 +109,14 @@ class KnownPath:
 
     def set_identity(
                 self,
-                path: Path,
+                path: bytes,
                 identity: FileIdentity,
                 resolve: bool = True
             ) -> None:
         node = self
         if resolve:
-            path = pathlib_resolve(path)
-        for component in path.parts:
+            path = resolve_path(path)
+        for component in get_path_components(path):
             if component not in node.children:
                 node.children[component] = KnownPath()
             node = node.children[component]
@@ -137,14 +141,14 @@ class FileIdentifier:
     def __init__(self):
         self.known_paths = KnownPath()
 
-    def _identify_new_path(self, path: Path):
+    def _identify_new_path(self, path: bytes):
         try:
             site = WordpressSite(
-                        str(path),
+                        path,
                         is_child_path=True,
                         allow_io_errors=True
                     )
-            core_path = Path(site.core_path)
+            core_path = site.core_path
             self.known_paths.set_identity(
                     core_path,
                     GroupIdentity(
@@ -185,7 +189,7 @@ class FileIdentifier:
                     )
                 )
 
-    def identify(self, path: Path, identify_new: bool = True) -> FileIdentity:
+    def identify(self, path: bytes, identify_new: bool = True) -> FileIdentity:
         identity = self.known_paths.find_identity(path)
         if identity is None:
             if identify_new:
@@ -194,9 +198,9 @@ class FileIdentifier:
             else:
                 return FileIdentity(FileType.UNKNOWN)
         elif isinstance(identity, GroupIdentity):
-            local_path = path.relative_to(identity.path) \
-                    if path != identity.path \
-                    else path.name
+            local_path = os.path.relpath(path, identity.path) \
+                if path != identity.path \
+                else path.name
             identity = KnownFileIdentity(
                     identity.type,
                     local_path,
