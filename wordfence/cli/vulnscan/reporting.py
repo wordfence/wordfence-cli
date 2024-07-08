@@ -248,7 +248,8 @@ class VulnScanReportManager(ReportManager):
                 columns=VulnScanReportColumn,
                 context=context,
                 read_stdin=context.config.read_stdin,
-                input_delimiter=context.config.path_separator
+                input_delimiter=context.config.path_separator,
+                binary_input=True
             )
         self.feed_variant = feed_variant
 

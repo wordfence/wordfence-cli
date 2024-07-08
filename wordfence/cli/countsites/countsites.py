@@ -25,7 +25,8 @@ class CountSitesSubcommand(Subcommand):
         paths_counted = 0
         io_manager = IoManager(
                 self.config.read_stdin,
-                self.config.path_separator
+                self.config.path_separator,
+                binary=True
             )
         for path in self.config.trailing_arguments:
             count += self.count_sites(path)

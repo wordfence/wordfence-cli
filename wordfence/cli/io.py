@@ -11,14 +11,22 @@ class IoManager:
                 read_stdin: Optional[bool],
                 input_delimiter: Union[str, bytes],
                 write_stdout: Optional[bool] = None,
-                output_path: Optional[str] = None
+                output_path: Optional[str] = None,
+                encode_paths: bool = False,
+                binary: bool = False
             ):
         self.read_stdin = read_stdin
-        self.input_delimiter = input_delimiter \
-            if isinstance(input_delimiter, str) \
-            else input_delimiter.decode('utf-8')
+        if binary:
+            self.input_delimiter = input_delimiter \
+                if isinstance(input_delimiter, bytes) \
+                else input_delimiter.encode('utf-8')
+        else:
+            self.input_delimiter = input_delimiter \
+                if isinstance(input_delimiter, str) \
+                else input_delimiter.decode('utf-8')
         self.write_stdout = write_stdout
         self.output_path = output_path
+        self.binary = binary
 
     def should_read_stdin(self) -> bool:
         if sys.stdin is None:
@@ -32,7 +40,8 @@ class IoManager:
         if not hasattr(self, 'input_reader'):
             self.input_reader = StreamReader(
                     sys.stdin,
-                    self.input_delimiter
+                    self.input_delimiter,
+                    binary=self.binary
                 )
         return self.input_reader
 
