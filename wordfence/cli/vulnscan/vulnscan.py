@@ -102,7 +102,10 @@ class VulnScanSubcommand(Subcommand):
                 )
         except WordpressException as error:
             if self.config.allow_io_errors:
-                log.warning(f'Unable to scan site at {path}: {error}')
+                log.warning(
+                        'Unable to scan site at ' + os.fsdecode(path)
+                        + f': {error}'
+                    )
                 return
             else:
                 raise
@@ -189,7 +192,10 @@ class VulnScanSubcommand(Subcommand):
                 scanner: VulnerabilityScanner,
                 structure_options: WordpressStructureOptions = None
             ) -> None:
-        log.info(f'Searching for WordPress installations under {path}...')
+        log.info(
+                'Searching for WordPress installations under '
+                + os.fsdecode(path) + '...'
+            )
         locator = WordpressLocator(
                 path=path,
                 allow_nested=self.config.allow_nested,
@@ -198,7 +204,7 @@ class VulnScanSubcommand(Subcommand):
         site_found = False
         for core_path in locator.locate_core_paths():
             site_found = True
-            log.info(f'Scanning site at {core_path}...')
+            log.info('Scanning site at ' + os.fsdecode(core_path) + '...')
             try:
                 self._scan(
                         core_path,
@@ -209,11 +215,11 @@ class VulnScanSubcommand(Subcommand):
                     )
             except AlreadyScannedException:
                 log.warning(
-                        f'Site found at {core_path} has already been '
-                        'scanned'
+                        'Site found at ' + os.fsdecode(core_path)
+                        + ' has already been scanned'
                     )
         if not site_found:
-            log.warning(f'No sites found under {path}')
+            log.warning('No sites found under ' + os.fsdecode(path))
 
     def _requires_paths(self) -> bool:
         required = self.config.require_path
@@ -286,7 +292,10 @@ class VulnScanSubcommand(Subcommand):
                 if self._requires_paths() and path_count == 0:
                     self._raise_path_error()
             for path in self.config.wordpress_path:
-                log.info(f'Scanning core installation at {path}...')
+                log.info(
+                        'Scanning core installation at '
+                        + os.fsdecode(path) + '...'
+                    )
                 try:
                     self._scan(
                             os.fsencode(path),
@@ -295,26 +304,32 @@ class VulnScanSubcommand(Subcommand):
                         )
                 except AlreadyScannedException:
                     log.warning(
-                            f'Core installation at {path} has already been '
-                            'scanned'
+                            'Core installation at ' + os.fsdecode(path)
+                            + ' has already been scanned'
                         )
             for path in self.config.plugin_directory:
-                log.info(f'Scanning plugin directory at {path}...')
+                log.info(
+                        'Scanning plugin directory at ' + os.fsdecode(path)
+                        + '...'
+                    )
                 try:
                     self._scan_plugin_directory(os.fsencode(path), scanner)
                 except AlreadyScannedException:
                     log.warning(
-                            f'Plugin directory at {path} has already been '
-                            'scanned'
+                            'Plugin directory at ' + os.fsdecode(path)
+                            + ' has already been scanned'
                         )
             for path in self.config.theme_directory:
-                log.info(f'Scanning theme directory at {path}...')
+                log.info(
+                        'Scanning theme directory at ' + os.fsdecode(path)
+                        + '...'
+                    )
                 try:
                     self._scan_theme_directory(os.fsencode(path), scanner)
                 except AlreadyScannedException:
                     log.warning(
-                            f'Theme directory at {path} has already been '
-                            'scanned'
+                            'Theme directory at ' + os.fsdecode(path)
+                            + ' has already been scanned'
                         )
             self._output_summary(scanner)
             report.scanner = scanner

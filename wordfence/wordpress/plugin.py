@@ -56,12 +56,12 @@ class PluginLoader(ExtensionLoader):
         # Ignore dot files
         if entry.name.find(b'.') == 0:
             return None
-        path_properties = PathProperties(entry.path)
         if entry.is_file():
+            path_properties = PathProperties(entry.path)
             if self._has_php_extension(path_properties):
                 return self.load(
                         os.fsdecode(path_properties.stem),
-                        entry.path
+                        entry.path,
                     )
         elif entry.is_dir():
             slug = os.fsdecode(entry.name)
@@ -72,7 +72,7 @@ class PluginLoader(ExtensionLoader):
                         plugin = self.load(
                                 slug,
                                 child_path,
-                                base_path=path_properties.basename
+                                base_path=entry.path
                             )
                         if plugin is not None:
                             return plugin

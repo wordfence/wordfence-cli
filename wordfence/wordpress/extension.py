@@ -60,7 +60,8 @@ class ExtensionLoader:
                 return data
         except OSError as error:
             raise ExtensionException(
-                    f'Unable to read {self.extension_type} header from {path}'
+                    f'Unable to read {self.extension_type} header from '
+                    + os.fsdecode(path)
                 ) from error
 
     def _parse_header(
@@ -128,7 +129,7 @@ class ExtensionLoader:
                     if self.allow_io_errors:
                         log.warning(
                                 f'Unable to load {self.extension_type} from '
-                                f'{entry.path}: {error}'
+                                + os.fsdecode(entry.path) + f': {error}'
                             )
                     else:
                         raise
@@ -136,7 +137,7 @@ class ExtensionLoader:
             if error.errno not in SYMLINK_IO_ERRORS:
                 message = (
                         f'Unable to scan {self.extension_type} directory at '
-                        f'{self.directory}'
+                        + os.fsdecode(self.directory)
                     )
                 if self.allow_io_errors:
                     log.warning(message)

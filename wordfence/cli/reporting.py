@@ -578,6 +578,7 @@ class ReportManager:
                 context: CliContext,
                 read_stdin: Optional[bool],
                 input_delimiter: Union[str, bytes],
+                binary_input: bool = False
             ):
         self.formats = formats
         self.columns = columns
@@ -585,6 +586,7 @@ class ReportManager:
         self.config = context.config
         self.read_stdin = read_stdin
         self.input_delimiter = input_delimiter
+        self.binary_input = binary_input
         self.email_addresses = [] if self.config.email is None \
             else self.config.email
         self.io_manager = None
@@ -604,7 +606,8 @@ class ReportManager:
                     self.read_stdin,
                     self.input_delimiter,
                     self.config.output,
-                    self.config.output_path
+                    self.config.output_path,
+                    binary=self.binary_input
                 )
         return self.io_manager
 

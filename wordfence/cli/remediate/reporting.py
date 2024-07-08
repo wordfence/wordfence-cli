@@ -187,7 +187,8 @@ class RemediationReportManager(ReportManager):
                 columns=RemediationReportColumn,
                 context=context,
                 read_stdin=context.config.read_stdin,
-                input_delimiter=context.config.path_separator
+                input_delimiter=context.config.path_separator,
+                binary_input=True
             )
         self.only_unremediated = context.config.output_unremediated
 

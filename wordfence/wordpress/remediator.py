@@ -102,7 +102,7 @@ class Remediator:
             return result
         result.known = True
         try:
-            log.debug(f'Overwriting {path}...')
+            log.debug('Overwriting ' + os.fsdecode(path) + '...')
             with open(path, 'wb') as file:
                 file.write(correct_content)
             result.remediated = True

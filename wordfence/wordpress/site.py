@@ -93,12 +93,13 @@ class WordpressLocator(PathResolver):
         except OSError as error:
             if self.allow_io_errors:
                 log.warning(
-                        f'Unable to scan directory at {path}: {error}'
+                        'Unable to scan directory at ' + os.fsdecode(path)
+                        + f': {error}'
                     )
                 return False
             else:
                 raise WordpressException(
-                        f'Unable to scan directory at {path}'
+                        'Unable to scan directory at ' + os.fsdecode(path)
                     ) from error
         return False
 
@@ -137,7 +138,8 @@ class WordpressLocator(PathResolver):
                         )
                 else:
                     raise WordpressException(
-                            f'Unable to determine type of file at {file.path}'
+                            'Unable to determine type of file at '
+                            + os.fsdecode(file.path)
                         )
         return directories
 
@@ -156,8 +158,8 @@ class WordpressLocator(PathResolver):
                         )
                 except OSError as error:
                     message = (
-                            f'Unable to search child directory at {path}'
-                            ' due to IO error'
+                            'Unable to search child directory at '
+                            + os.fsdecode(path) + ' due to IO error'
                         )
                     if self.allow_io_errors:
                         log.warning(message + f': {error}')
@@ -197,7 +199,7 @@ class WordpressLocator(PathResolver):
         while True:
             if self._is_core_directory(current):
                 return current
-            parent = resolve_parent_path
+            parent = resolve_parent_path(current)
             if parent == current:
                 break
             current = parent
@@ -214,13 +216,17 @@ def locate_core_path(
         core_path = locator.locate_parent_installation()
         if core_path is None:
             raise WordpressException(
-                    f'Unable to locate core files above {path}'
+                    'Unable to locate core files above '
+                    + os.fsdecode(path)
                 )
         return core_path
     else:
         for path in locator.locate_core_paths():
             return path
-        raise WordpressException(f'Unable to locate core files under {path}')
+        raise WordpressException(
+                'Unable to locate core files under '
+                + os.fsdecode(path)
+            )
 
 
 class WordpressSite(PathResolver):
@@ -257,7 +263,8 @@ class WordpressSite(PathResolver):
                 return version
         except PhpException as exception:
             raise WordpressException(
-                    f'Unable to parse WordPress version file at {version_path}'
+                    'Unable to parse WordPress version file at '
+                    + os.fsdecode(version_path)
                 ) from exception
         raise WordpressException('Unable to determine WordPress version')
 
@@ -287,8 +294,9 @@ class WordpressSite(PathResolver):
         except PhpException as exception:
             # Ignore config files that cannot be parsed
             log.debug(
-                    f'Unable to parse WordPress config file at {config_path}: '
-                    f'{exception}'
+                    'Unable to parse WordPress config file at '
+                    + os.fsdecode(config_path)
+                    + f' : {exception}'
                 )
         return None
 
@@ -339,7 +347,8 @@ class WordpressSite(PathResolver):
                 log.debug('Located content directory at ' + os.fsdecode(path))
                 return path
         raise WordpressException(
-                f'Unable to locate content directory for site at {self.path}'
+                'Unable to locate content directory for site at '
+                + os.fsdecode(self.path)
             )
 
     def get_content_directory(self) -> str:
@@ -396,14 +405,15 @@ class WordpressSite(PathResolver):
                 continue
         if mu:
             log.warning(
-                    f'No mu-plugins directory found for site at {self.path}'
+                    'No mu-plugins directory found for site at '
+                    + os.fsdecode(self.path)
                 )
             return []
         if allow_io_errors:
             return []
         raise WordpressException(
                 f'Unable to locate {log_plugins} directory for site at '
-                f'{self.path}'
+                + os.fsdecode(self.path)
             )
 
     def get_all_plugins(self, allow_io_errors: bool = False) -> List[Plugin]:

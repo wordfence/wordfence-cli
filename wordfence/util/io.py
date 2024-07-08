@@ -2,7 +2,7 @@ import fcntl
 import os
 import errno
 from typing import Optional, IO, TextIO, Generator, Iterable, List, Union, \
-    Callable, Set
+    Callable, Set, BinaryIO
 from enum import Enum, IntEnum
 from collections import deque
 
@@ -19,14 +19,28 @@ class IoException(Exception):
 
 class StreamReader:
 
-    def __init__(self, stream: TextIO, delimiter: str, chunk_size: int = 1024):
+    def __init__(
+                self,
+                stream: Union[TextIO, BinaryIO],
+                delimiter: Union[str, bytes],
+                chunk_size: int = 1024,
+                binary: bool = False
+            ):
         self.stream = stream
         self.delimiter = delimiter
         self.chunk_size = chunk_size
-        self._buffer = ''
+        self.binary = binary
+        self._initialize_buffer()
         self._end_of_stream = False
+        self._empty = self._initialize_empty_string()
 
-    def read_entry(self) -> Optional[str]:
+    def _initialize_empty_string(self) -> Union[str, bytes]:
+        return b'' if self.binary else ''
+
+    def _initialize_buffer(self) -> None:
+        self._buffer = self._initialize_empty_string()
+
+    def read_entry(self) -> Optional[Union[str, bytes]]:
         while True:
             index = self._buffer.find(self.delimiter)
             if index != -1:
@@ -37,20 +51,22 @@ class StreamReader:
                 read = os.read(
                         self.stream.fileno(),
                         self.chunk_size
-                    ).decode(self.stream.encoding)
-                if read == '':
+                    )
+                if not self.binary:
+                    read = read.decode(self.stream.encoding)
+                if read == self._empty:
                     self._end_of_stream = True
                 self._buffer += read
             else:
                 break
         if len(self._buffer) > 0:
             path = self._buffer
-            self._buffer = ''
+            self._initialize_buffer()
             return path
         else:
             return None
 
-    def read_all_entries(self) -> Generator[str, None, None]:
+    def read_all_entries(self) -> Generator[Union[str, bytes], None, None]:
         while (entry := self.read_entry()) is not None:
             yield entry
 
