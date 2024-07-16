@@ -466,7 +466,7 @@ class Report:
         for name, file in self.files.items():
             file.seek(0)
             content = file.read()
-            attachments[name] = content
+            attachments[os.fsdecode(name)] = content
         hostname = gethostname()
         for recipient in self.email_addresses:
             recipient = Address(addr_spec=recipient)
