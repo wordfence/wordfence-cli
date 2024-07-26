@@ -2,7 +2,7 @@ import re
 
 from collections import deque
 from enum import Enum, auto
-from typing import Generator, IO, Optional, Union, Set
+from typing import Generator, BinaryIO, Optional, Union, Set
 
 
 class LexingException(Exception):
@@ -18,11 +18,11 @@ class MatchType(Enum):
 
 class TokenMatcher:
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         return MatchType.NONE
 
     # TODO: Find a more efficient algorithm for string end matching
-    def match_at_end(self, value: str) -> MatchType:
+    def match_at_end(self, value: bytes) -> MatchType:
         match_length = 1
         total_length = len(value)
         while match_length <= total_length:
@@ -34,7 +34,7 @@ class TokenMatcher:
         return MatchType.NONE
 
 
-def match_literal(literal: str, value: str) -> MatchType:
+def match_literal(literal: bytes, value: bytes) -> MatchType:
     if value == literal:
         return MatchType.FINAL_MATCH
     elif len(value) < len(literal) and literal.find(value) == 0:
@@ -45,16 +45,16 @@ def match_literal(literal: str, value: str) -> MatchType:
 
 class LiteralTokenMatcher(TokenMatcher):
 
-    def __init__(self, value: str):
+    def __init__(self, value: bytes):
         self.value = value
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         return match_literal(self.value, value)
 
 
 class WhitespaceTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         # TODO: Does this match PHP's definition of whitespace?
         if value.isspace():
             return MatchType.MATCH
@@ -63,17 +63,17 @@ class WhitespaceTokenMatcher(TokenMatcher):
 
 class OpenTagTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         # TODO: Handle tag variations
-        return match_literal('<?php', value)
+        return match_literal(b'<?php', value)
 
 
-DOC_COMMENT_START = '/*'
-DOC_COMMENT_END = '*/'
-COMMENT_START = '//'
-ALTERNATE_COMMENT_START = '#'
-COMMENT_END = '\n'
-CLOSING_TAG = '?>'
+DOC_COMMENT_START = b'/*'
+DOC_COMMENT_END = b'*/'
+COMMENT_START = b'//'
+ALTERNATE_COMMENT_START = b'#'
+COMMENT_END = b'\n'
+CLOSING_TAG = b'?>'
 POSSIBLE_COMMENT_STARTS = {
         COMMENT_START,
         ALTERNATE_COMMENT_START
@@ -86,12 +86,12 @@ POSSIBLE_COMMENT_ENDS = {
 
 class EnclosedTokenMatcher(TokenMatcher):
 
-    def __init__(self, start: str, end: str):
+    def __init__(self, start: bytes, end: bytes):
         self.start = start
         self.end = end
         self.end_length = len(end)
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         if value.find(self.start) == 0:
             if value.find(self.end) == \
                     len(value) - self.end_length:
@@ -114,7 +114,7 @@ class DocCommentTokenMatcher(EnclosedTokenMatcher):
 
 class CommentTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         for start in POSSIBLE_COMMENT_STARTS:
             if value.find(start) == 0:
                 for end in POSSIBLE_COMMENT_ENDS:
@@ -126,14 +126,14 @@ class CommentTokenMatcher(TokenMatcher):
         return MatchType.NONE
 
 
-VARIABLE_PREFIX = '$'
-IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$')
+VARIABLE_PREFIX = b'$'
+IDENTIFIER_PATTERN = re.compile(br'^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$')
 
 
 class VariableTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
-        if value[0] == VARIABLE_PREFIX:
+    def match(self, value: bytes) -> MatchType:
+        if value[0:1] == VARIABLE_PREFIX:
             if IDENTIFIER_PATTERN.fullmatch(value[1:]) is not None:
                 return MatchType.MATCH
             if len(value) == 1:
@@ -143,37 +143,29 @@ class VariableTokenMatcher(TokenMatcher):
 
 class IdentifierTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         if IDENTIFIER_PATTERN.fullmatch(value):
             return MatchType.MATCH
         return MatchType.NONE
 
 
-class SingleCharacterTokenMatcher(TokenMatcher):
-
-    def match(self, value: str) -> MatchType:
-        if len(value) == 1:
-            return MatchType.MATCH
-        return MatchType.NONE
-
-
 STRING_QUOTES = {
-    '"',
-    "'"
+    b'"',
+    b"'"
 }
-STRING_ESCAPE = "\\"
+STRING_ESCAPE = b"\\"
 
 
 class StringLiteralTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
-        quote = value[0]
+    def match(self, value: bytes) -> MatchType:
+        quote = value[0:1]
         if quote in STRING_QUOTES:
             escaped = None
             length = len(value)
             end = length - 1
             for index in range(1, length):
-                character = value[index]
+                character = value[index:index+1]
                 if escaped is None:
                     escaped = False
                 if character == quote and not escaped:
@@ -186,12 +178,12 @@ class StringLiteralTokenMatcher(TokenMatcher):
         return MatchType.NONE
 
 
-INTEGER_PATTERN = re.compile('^[0-9]+$')
+INTEGER_PATTERN = re.compile(b'^[0-9]+$')
 
 
 class IntegerLiteralTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         # TODO: Support alternate integer syntaxes
         if INTEGER_PATTERN.match(value) is not None:
             return MatchType.MATCH
@@ -200,13 +192,13 @@ class IntegerLiteralTokenMatcher(TokenMatcher):
 
 class UnmatchingTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         return MatchType.NONE
 
 
 class CharacterTokenMatcher(TokenMatcher):
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         if len(value) == 1:
             return MatchType.FINAL_MATCH
         return MatchType.NONE
@@ -239,130 +231,130 @@ class TokenType(Enum):
     LNUMBER = IntegerLiteralTokenMatcher(),
 
     # Literal token types
-    INCLUDE_ONCE = _literal('include_once'),
-    INCLUDE = _literal('include'),
-    EVAL = _literal('eval'),
-    REQUIRE_ONCE = _literal('require_once'),
-    REQUIRE = _literal('require'),
-    LOGICAL_OR = _literal('or'),
-    LOGICAL_XOR = _literal('xor'),
-    LOGICAL_AND = _literal('and'),
-    PRINT = _literal('print'),
-    YIELD = _literal('yield'),
-    YIELD_FROM = _literal('yield from'),
-    INSTANCEOF = _literal('instanceof'),
-    NEW = _literal('new'),
-    CLONE = _literal('clone'),
-    EXIT = _literal('exit'),
-    IF = _literal('if'),
-    ELSEIF = _literal('elseif'),
-    ELSE = _literal('else'),
-    ENDIF = _literal('endif'),
-    ECHO = _literal('echo'),
-    DO = _literal('do'),
-    WHILE = _literal('while'),
-    ENDWHILE = _literal('endwhile'),
-    FOREACH = _literal('foreach'),
-    FOR = _literal('for'),
-    ENDFOR = _literal('endfor'),
-    ENDFOREACH = _literal('endforeach'),
-    DECLARE = _literal('declare'),
-    ENDDECLARE = _literal('enddeclare'),
-    AS = _literal('as'),
-    SWITCH = _literal('switch'),
-    ENDSWITCH = _literal('endswitch'),
-    CASE = _literal('case'),
-    DEFAULT = _literal('default'),
-    MATCH = _literal('match'),
-    BREAK = _literal('break'),
-    CONTINUE = _literal('continue'),
-    GOTO = _literal('goto'),
-    FUNCTION = _literal('function'),
-    FN = _literal('fn'),
-    CONST = _literal('const'),
-    RETURN = _literal('return'),
-    TRY = _literal('try'),
-    CATCH = _literal('catch'),
-    FINALLY = _literal('finally'),
-    THROW = _literal('throw'),
-    USE = _literal('use'),
-    INSTEADOF = _literal('insteadof'),
-    GLOBAL = _literal('global'),
-    STATIC = _literal('static'),
-    ABSTRACT = _literal('abstract'),
-    FINAL = _literal('final'),
-    PRIVATE = _literal('private'),
-    PROTECTED = _literal('protected'),
-    PUBLIC = _literal('public'),
-    READONLY = _literal('readonly'),
-    VAR = _literal('var'),
-    UNSET = _literal('unset'),
-    ISSET = _literal('isset'),
-    EMPTY = _literal('empty'),
-    HALT_COMPILER = _literal('__halt_compiler'),
-    CLASS = _literal('class'),
-    TRAIT = _literal('trait'),
-    INTERFACE = _literal('interface'),
-    ENUM = _literal('enum'),
-    EXTENDS = _literal('extends'),
-    IMPLEMENTS = _literal('implements'),
-    NAMESPACE = _literal('namespace'),
-    LIST = _literal('list'),
-    ARRAY = _literal('array'),
-    CALLABLE = _literal('callable'),
-    LINE = _literal('__LINE__'),
-    FILE = _literal('__FILE__'),
-    DIR = _literal('__DIR__'),
-    CLASS_C = _literal('__CLASS__'),
-    TRAIT_C = _literal('__TRAIT__'),
-    METHOD_C = _literal('__METHOD__'),
-    FUNC_C = _literal('__FUNCTION__'),
-    NS_C = _literal('__NAMESPACE__'),
-    PLUS_EQUAL = _literal('+='),
-    MINUS_EQUAL = _literal('-='),
-    MUL_EQUAL = _literal('*='),
-    DIV_EQUAL = _literal('/='),
-    CONCAT_EQUAL = _literal('.='),
-    MOD_EQUAL = _literal('%='),
-    AND_EQUAL = _literal('&='),
-    OR_EQUAL = _literal('|='),
-    XOR_EQUAL = _literal('^='),
-    SL_EQUAL = _literal('<<='),
-    SR_EQUAL = _literal('>>='),
-    COALESCE_EQUAL = _literal('??='),
-    BOOLEAN_OR = _literal('||'),
-    BOOLEAN_AND = _literal('&&'),
-    IS_IDENTICAL = _literal('==='),
-    IS_NOT_IDENTICAL = _literal('!=='),
-    IS_SMALLER_OR_EQUAL = _literal('<='),
-    IS_GREATER_OR_EQUAL = _literal('>='),
-    SPACESHIP = _literal('<=>'),
-    IS_EQUAL = _literal('=='),
-    IS_NOT_EQUAL = _literal('!='),
-    SL = _literal('<<'),
-    SR = _literal('>>'),
-    INC = _literal('++'),
-    DEC = _literal('--'),
-    INT_CAST = _literal('(int)'),
-    DOUBLE_CAST = _literal('(double)'),
-    STRING_CAST = _literal('(string)'),
-    ARRAY_CAST = _literal('(array)'),
-    OBJECT_CAST = _literal('(object)'),
-    BOOL_CAST = _literal('(bool)'),
-    UNSET_CAST = _literal('(unset)'),
-    OBJECT_OPERATOR = _literal('->'),
-    NULLSAFE_OBJECT_OPERATOR = _literal('?->'),
-    DOUBLE_ARROW = _literal('=>'),
-    DOLLAR_OPEN_CURLY_BRACES = _literal('${'),
-    CURLY_OPEN = _literal('{$'),
-    PAAMAYIM_NEKUDOTAYIM = _literal('::'),
-    NS_SEPARATOR = _literal('\\'),
-    ELLIPSIS = _literal('...'),
-    COALESCE = _literal('??'),
-    POW = _literal('**'),
-    POW_EQUAL = _literal('**='),
-    ATTRIBUTE = _literal('#['),
-    OPEN_TAG_WITH_ECHO = _literal('<?='),
+    INCLUDE_ONCE = _literal(b'include_once'),
+    INCLUDE = _literal(b'include'),
+    EVAL = _literal(b'eval'),
+    REQUIRE_ONCE = _literal(b'require_once'),
+    REQUIRE = _literal(b'require'),
+    LOGICAL_OR = _literal(b'or'),
+    LOGICAL_XOR = _literal(b'xor'),
+    LOGICAL_AND = _literal(b'and'),
+    PRINT = _literal(b'print'),
+    YIELD = _literal(b'yield'),
+    YIELD_FROM = _literal(b'yield from'),
+    INSTANCEOF = _literal(b'instanceof'),
+    NEW = _literal(b'new'),
+    CLONE = _literal(b'clone'),
+    EXIT = _literal(b'exit'),
+    IF = _literal(b'if'),
+    ELSEIF = _literal(b'elseif'),
+    ELSE = _literal(b'else'),
+    ENDIF = _literal(b'endif'),
+    ECHO = _literal(b'echo'),
+    DO = _literal(b'do'),
+    WHILE = _literal(b'while'),
+    ENDWHILE = _literal(b'endwhile'),
+    FOREACH = _literal(b'foreach'),
+    FOR = _literal(b'for'),
+    ENDFOR = _literal(b'endfor'),
+    ENDFOREACH = _literal(b'endforeach'),
+    DECLARE = _literal(b'declare'),
+    ENDDECLARE = _literal(b'enddeclare'),
+    AS = _literal(b'as'),
+    SWITCH = _literal(b'switch'),
+    ENDSWITCH = _literal(b'endswitch'),
+    CASE = _literal(b'case'),
+    DEFAULT = _literal(b'default'),
+    MATCH = _literal(b'match'),
+    BREAK = _literal(b'break'),
+    CONTINUE = _literal(b'continue'),
+    GOTO = _literal(b'goto'),
+    FUNCTION = _literal(b'function'),
+    FN = _literal(b'fn'),
+    CONST = _literal(b'const'),
+    RETURN = _literal(b'return'),
+    TRY = _literal(b'try'),
+    CATCH = _literal(b'catch'),
+    FINALLY = _literal(b'finally'),
+    THROW = _literal(b'throw'),
+    USE = _literal(b'use'),
+    INSTEADOF = _literal(b'insteadof'),
+    GLOBAL = _literal(b'global'),
+    STATIC = _literal(b'static'),
+    ABSTRACT = _literal(b'abstract'),
+    FINAL = _literal(b'final'),
+    PRIVATE = _literal(b'private'),
+    PROTECTED = _literal(b'protected'),
+    PUBLIC = _literal(b'public'),
+    READONLY = _literal(b'readonly'),
+    VAR = _literal(b'var'),
+    UNSET = _literal(b'unset'),
+    ISSET = _literal(b'isset'),
+    EMPTY = _literal(b'empty'),
+    HALT_COMPILER = _literal(b'__halt_compiler'),
+    CLASS = _literal(b'class'),
+    TRAIT = _literal(b'trait'),
+    INTERFACE = _literal(b'interface'),
+    ENUM = _literal(b'enum'),
+    EXTENDS = _literal(b'extends'),
+    IMPLEMENTS = _literal(b'implements'),
+    NAMESPACE = _literal(b'namespace'),
+    LIST = _literal(b'list'),
+    ARRAY = _literal(b'array'),
+    CALLABLE = _literal(b'callable'),
+    LINE = _literal(b'__LINE__'),
+    FILE = _literal(b'__FILE__'),
+    DIR = _literal(b'__DIR__'),
+    CLASS_C = _literal(b'__CLASS__'),
+    TRAIT_C = _literal(b'__TRAIT__'),
+    METHOD_C = _literal(b'__METHOD__'),
+    FUNC_C = _literal(b'__FUNCTION__'),
+    NS_C = _literal(b'__NAMESPACE__'),
+    PLUS_EQUAL = _literal(b'+='),
+    MINUS_EQUAL = _literal(b'-='),
+    MUL_EQUAL = _literal(b'*='),
+    DIV_EQUAL = _literal(b'/='),
+    CONCAT_EQUAL = _literal(b'.='),
+    MOD_EQUAL = _literal(b'%='),
+    AND_EQUAL = _literal(b'&='),
+    OR_EQUAL = _literal(b'|='),
+    XOR_EQUAL = _literal(b'^='),
+    SL_EQUAL = _literal(b'<<='),
+    SR_EQUAL = _literal(b'>>='),
+    COALESCE_EQUAL = _literal(b'??='),
+    BOOLEAN_OR = _literal(b'||'),
+    BOOLEAN_AND = _literal(b'&&'),
+    IS_IDENTICAL = _literal(b'==='),
+    IS_NOT_IDENTICAL = _literal(b'!=='),
+    IS_SMALLER_OR_EQUAL = _literal(b'<='),
+    IS_GREATER_OR_EQUAL = _literal(b'>='),
+    SPACESHIP = _literal(b'<=>'),
+    IS_EQUAL = _literal(b'=='),
+    IS_NOT_EQUAL = _literal(b'!='),
+    SL = _literal(b'<<'),
+    SR = _literal(b'>>'),
+    INC = _literal(b'++'),
+    DEC = _literal(b'--'),
+    INT_CAST = _literal(b'(int)'),
+    DOUBLE_CAST = _literal(b'(double)'),
+    STRING_CAST = _literal(b'(string)'),
+    ARRAY_CAST = _literal(b'(array)'),
+    OBJECT_CAST = _literal(b'(object)'),
+    BOOL_CAST = _literal(b'(bool)'),
+    UNSET_CAST = _literal(b'(unset)'),
+    OBJECT_OPERATOR = _literal(b'->'),
+    NULLSAFE_OBJECT_OPERATOR = _literal(b'?->'),
+    DOUBLE_ARROW = _literal(b'=>'),
+    DOLLAR_OPEN_CURLY_BRACES = _literal(b'${'),
+    CURLY_OPEN = _literal(b'{$'),
+    PAAMAYIM_NEKUDOTAYIM = _literal(b'::'),
+    NS_SEPARATOR = _literal(b'\\'),
+    ELLIPSIS = _literal(b'...'),
+    COALESCE = _literal(b'??'),
+    POW = _literal(b'**'),
+    POW_EQUAL = _literal(b'**='),
+    ATTRIBUTE = _literal(b'#['),
+    OPEN_TAG_WITH_ECHO = _literal(b'<?='),
     CLOSE_TAG = _literal(CLOSING_TAG),
 
     STRING = IdentifierTokenMatcher(),
@@ -372,26 +364,26 @@ class TokenType(Enum):
     def __init__(self, matcher: TokenMatcher):
         self.matcher = matcher
 
-    def match(self, value: str) -> MatchType:
+    def match(self, value: bytes) -> MatchType:
         return self.matcher.match(value)
 
-    def match_at_end(self, value: str) -> MatchType:
+    def match_at_end(self, value: bytes) -> MatchType:
         return self.matcher.match_at_end(value)
 
 
-class CharacterType(str, Enum):
-    EQUALS = '=',
-    SEMICOLON = ';',
-    OPEN_PARENTHESIS = '(',
-    CLOSE_PARENTHESIS = ')',
-    COMMA = ',',
-    OPEN_BRACE = '{',
-    CLOSE_BRACE = '}'
+class CharacterType(bytes, Enum):
+    EQUALS = b'=',
+    SEMICOLON = b';',
+    OPEN_PARENTHESIS = b'(',
+    CLOSE_PARENTHESIS = b')',
+    COMMA = b',',
+    OPEN_BRACE = b'{',
+    CLOSE_BRACE = b'}'
 
 
 class Token:
 
-    def __init__(self, type: TokenType, value: str):
+    def __init__(self, type: TokenType, value: bytes):
         self.type = type
         self.value = value
 
@@ -418,13 +410,13 @@ class Token:
     def is_comma(self) -> bool:
         return self.is_character(CharacterType.COMMA)
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> bytes:
         return f'{self.type.name} ({self.value})'
 
 
 class Lexer:
 
-    def __init__(self, stream: IO, chunk_size: int = 4096):
+    def __init__(self, stream: BinaryIO, chunk_size: int = 4096):
         self.chunks = deque()
         self.chunk_size = chunk_size
         self.chunk_offset = 0
@@ -450,7 +442,7 @@ class Lexer:
                 return False
         return True
 
-    def get_current(self) -> str:
+    def get_current(self) -> bytes:
         components = []
         remaining = self.position - self.offset
         remaining_offset = self.offset
@@ -465,7 +457,7 @@ class Lexer:
             if chunk_length >= remaining:
                 break
             remaining -= chunk_length
-        return ''.join(components)
+        return b''.join(components)
 
     def step_backwards(self) -> None:
         self.position -= 1
@@ -547,7 +539,7 @@ class Lexer:
         return token
 
 
-def lex(stream: IO) -> Generator[Token, None, None]:
+def lex(stream: BinaryIO) -> Generator[Token, None, None]:
     lexer = Lexer(stream)
     while (token := lexer.get_next_token()) is not None:
         yield token

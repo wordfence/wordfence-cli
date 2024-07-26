@@ -46,7 +46,7 @@ class SoftwareType(str, Enum):
 class ScannableSoftware:
     type: SoftwareType
     slug: str
-    version: str
+    version: bytes
     scan_path: Optional[str]
 
     def get_key(self) -> str:

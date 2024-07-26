@@ -22,7 +22,7 @@ from ..email import Mailer
 class VulnScanReportColumn(ReportColumnEnum):
     SOFTWARE_TYPE = 'software_type', lambda record: record.software.type.value
     SLUG = 'slug', lambda record: record.software.slug
-    VERSION = 'version', lambda record: record.software.version
+    VERSION = 'version', lambda record: record.software.version.decode('ascii')
     ID = 'id', \
         lambda record: record.vulnerability.identifier
     TITLE = 'title', lambda record: record.vulnerability.title
@@ -92,6 +92,7 @@ class HumanReadableWriter(BaseHumanReadableWriter):
     def format_record(self, record) -> str:
         vuln = record.vulnerability
         sw = record.software
+        sw_version = sw.version.decode('ascii')
         yellow = escape(color=Color.YELLOW)
         link = vuln.get_wordfence_link()
         blue = escape(color=Color.BLUE)
@@ -115,7 +116,7 @@ class HumanReadableWriter(BaseHumanReadableWriter):
             info_message = ''
         return (
             f'{yellow}Found {severity_message}{info_message}vulnerability '
-            f'{vuln.title} in {sw.slug}({sw.version})\n'
+            f'{vuln.title} in {sw.slug}({sw_version})\n'
             f'{white}Details: {blue}{link}{RESET}'
             )
 

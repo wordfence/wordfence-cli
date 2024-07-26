@@ -2,41 +2,42 @@ import re
 from typing import List, Dict, Union, Optional
 
 
-PHP_VERSION_DELIMITER = '.'
-PHP_VERSION_ALTERNATE_DELIMITERS = ['_', '-', '+']
+PHP_VERSION_DELIMITER = b'.'
+PHP_VERSION_ALTERNATE_DELIMITERS = [b'_', b'-', b'+']
 
 
-NON_NUMBER_PATTERN = re.compile('[^0-9.]+')
-NUMBER_PATTERN = re.compile('^[0-9]+$')
-REPEATED_DOT_PATTERN = re.compile('\\.{2,}')
+NON_NUMBER_PATTERN = re.compile(b'[^0-9.]+')
+NUMBER_PATTERN = re.compile(b'^[0-9]+$')
+REPEATED_DOT_PATTERN = re.compile(b'\\.{2,}')
 
 
+# TODO: Convert str to bytes
 def delimit_non_numbers(version: str) -> str:
-    return NON_NUMBER_PATTERN.sub(".\\g<0>.", version).strip('.')
+    return NON_NUMBER_PATTERN.sub(b".\\g<0>.", version).strip(b'.')
 
 
-def is_number(string: str) -> bool:
+def is_number(string: bytes) -> bool:
     return NUMBER_PATTERN.match(string) is not None
 
 
-def strip_repeated_delimiters(version: str) -> str:
+def strip_repeated_delimiters(version: bytes) -> bytes:
     return REPEATED_DOT_PATTERN.sub('.', version)
 
 
 LOWER_ALPHA_VERSIONS = [
-    ['dev'],
-    ['alpha', 'a'],
-    ['beta', 'b'],
-    ['RC', 'rc'],
+    [b'dev'],
+    [b'alpha', b'a'],
+    [b'beta', b'b'],
+    [b'RC', b'rc'],
 ]
 HIGHER_ALPHA_VERSIONS = [
-    ['pl', 'p']
+    [b'pl', b'p']
 ]
 TIER_OFFSET = 2
 TIER_NUMBER = len(LOWER_ALPHA_VERSIONS) + TIER_OFFSET
 
 
-def create_alpha_version_map(versions: List[List[str]]) -> Dict[str, int]:
+def create_alpha_version_map(versions: List[List[bytes]]) -> Dict[bytes, int]:
     map = {}
     for index, tier in enumerate(versions):
         for version in tier:
@@ -48,24 +49,24 @@ LOWER_ALPHA_VERSION_MAP = create_alpha_version_map(LOWER_ALPHA_VERSIONS)
 HIGHER_ALPHA_VERSIONS_MAP = create_alpha_version_map(HIGHER_ALPHA_VERSIONS)
 
 
-def get_alpha_tier(string: str, map: Dict[str, int]) -> Optional[int]:
+def get_alpha_tier(string: bytes, map: Dict[bytes, int]) -> Optional[int]:
     try:
         return map[string]
     except KeyError:
         return None
 
 
-def get_lower_alpha_tier(string: str) -> Optional[int]:
+def get_lower_alpha_tier(string: bytes) -> Optional[int]:
     return get_alpha_tier(string, LOWER_ALPHA_VERSION_MAP)
 
 
-def get_higher_alpha_tier(string: str) -> Optional[int]:
+def get_higher_alpha_tier(string: bytes) -> Optional[int]:
     return get_alpha_tier(string, HIGHER_ALPHA_VERSIONS_MAP)
 
 
 class PhpVersionComponent:
 
-    def __init__(self, value: str):
+    def __init__(self, value: bytes):
         self.is_number = is_number(value)
         if self.is_number:
             self.value = int(value)
@@ -93,23 +94,25 @@ class PhpVersionComponent:
         return str(self.value)
 
 
-DefaultComponent = PhpVersionComponent('0')
+DefaultComponent = PhpVersionComponent(b'0')
 
 
 class PhpVersion:
 
-    def __init__(self, version: str):
+    def __init__(self, version: Union[str, bytes]):
+        if isinstance(version, str):
+            version = version.encode('ascii')
         self.version = version
         self._components = self.extract_components(version)
 
-    def extract_components(self, version: str) -> List[str]:
+    def extract_components(self, version: bytes) -> List[bytes]:
         for character in PHP_VERSION_ALTERNATE_DELIMITERS:
             version = version.replace(character, PHP_VERSION_DELIMITER)
         # Note that this also strips leading/trailing delimiters
         version = strip_repeated_delimiters(
                 delimit_non_numbers(version)
             )
-        return list(map(PhpVersionComponent, version.split('.')))
+        return list(map(PhpVersionComponent, version.split(b'.')))
 
     def _get_component(self, index: int) -> PhpVersionComponent:
         try:
@@ -132,8 +135,8 @@ def compare_version_components(
 
 
 def compare_php_versions(
-            a: Union[PhpVersion, str],
-            b: Union[PhpVersion, str]
+            a: Union[PhpVersion, str, bytes],
+            b: Union[PhpVersion, str, bytes]
         ) -> int:
     """ This is intended to mirror PHP's version_compare function  """
     """ https://www.php.net/manual/en/function.version-compare.php """

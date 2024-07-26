@@ -251,15 +251,15 @@ class WordpressSite(PathResolver):
     def resolve_content_path(self, path: bytes) -> bytes:
         return self._resolve_path(path, self.get_content_directory())
 
-    def _determine_version(self) -> str:
+    def _determine_version(self) -> bytes:
         version_path = self.resolve_core_path(b'wp-includes/version.php')
         context = parse_php_file(version_path)
         try:
             state = context.evaluate(
                     options=EVALUATION_OPTIONS
                 )
-            version = state.get_variable_value('wp_version')
-            if isinstance(version, str):
+            version = state.get_variable_value(b'wp_version')
+            if isinstance(version, bytes):
                 return version
         except PhpException as exception:
             raise WordpressException(
