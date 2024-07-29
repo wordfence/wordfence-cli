@@ -21,7 +21,7 @@ def is_number(string: bytes) -> bool:
 
 
 def strip_repeated_delimiters(version: bytes) -> bytes:
-    return REPEATED_DOT_PATTERN.sub('.', version)
+    return REPEATED_DOT_PATTERN.sub(b'.', version)
 
 
 LOWER_ALPHA_VERSIONS = [
