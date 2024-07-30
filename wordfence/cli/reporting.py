@@ -566,6 +566,21 @@ def get_config_options(
             "default": None,
             "category": "Output Control"
         },
+        "email": {
+            "short_name": "E",
+            "description": (
+                    "Email address(es) to which to send reports.\n"
+                    "The output file will be attached to the email report "
+                    "when the --output-path option is used."
+                ),
+            "context": "ALL",
+            "argument_type": "OPTION_REPEATABLE",
+            "default": None,
+            "meta": {
+                "separator": ","
+            },
+            "category": "Email"
+        },
     }
 
 

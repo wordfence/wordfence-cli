@@ -33,17 +33,6 @@ config_definitions = {
         "argument_type": "OPTION",
         "default": None
     },
-    "email": {
-        "short_name": "E",
-        "description": "Email address(es) to which to send reports.",
-        "context": "ALL",
-        "argument_type": "OPTION_REPEATABLE",
-        "default": None,
-        "meta": {
-            "separator": ","
-        },
-        "category": "Email"
-    },
     "email-from": {
         "description": "The From address to use when sending emails. If not "
                        "specified, the current username and hostname will be "

@@ -17,6 +17,10 @@ The following command line arguments can be supplied to either the malware scan 
 
 If you do not have access to an external SMTP server, `sendmail` can be used as a local relay. We recommend going through the process of authenticating your server as an email sender using SPF, DKIM, and DMARC to prevent emails from CLI from being flagged as spam.
 
+## Attaching Output Files
+
+Using the `--output-path` option in conjunction with `--email` will cause the output file to be added as an attachment to the emailed report.
+
 ## Further reading
 
 - [Email Authentication](https://en.wikipedia.org/wiki/Email_authentication)
