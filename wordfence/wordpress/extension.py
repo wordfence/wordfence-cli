@@ -17,7 +17,7 @@ class Extension:
     def __init__(
                 self,
                 slug: str,
-                version: Optional[str],
+                version: Optional[bytes],
                 header: Dict[str, str],
                 path: bytes
             ):
@@ -92,6 +92,8 @@ class ExtensionLoader:
             return None
         try:
             version = header['Version']
+            if isinstance(version, str):
+                version = version.encode('ascii')
         except KeyError:
             version = None
         if base_path is None:

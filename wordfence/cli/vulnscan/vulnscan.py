@@ -45,7 +45,10 @@ class VulnScanSubcommand(Subcommand):
         if not child_scan:
             scanner.add_scan_path(path)
         for plugin in plugins:
-            log.debug(f'Plugin {plugin.slug}, version: {plugin.version}')
+            log.debug(
+                    f'Plugin {plugin.slug}, version: ' +
+                    plugin.version.decode('ascii')
+                )
             scanner.scan_plugin(plugin, path)
 
     def _scan_plugin_directory(
@@ -70,7 +73,10 @@ class VulnScanSubcommand(Subcommand):
         if not child_scan:
             scanner.add_scan_path(path)
         for theme in themes:
-            log.debug(f'Theme {theme.slug}, version: {theme.version}')
+            log.debug(
+                    f'Theme {theme.slug}, version: ' +
+                    theme.version.decode('ascii')
+                )
             scanner.scan_theme(theme, path)
 
     def _scan_theme_directory(
