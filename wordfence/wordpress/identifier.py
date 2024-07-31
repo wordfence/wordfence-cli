@@ -72,6 +72,8 @@ class KnownFileIdentity(FileIdentity):
         else:
             software = self.extension.get_name()
             version = self.extension.version
+        if isinstance(version, bytes):
+            version = version.decode('ascii')
         return (
                 os.fsdecode(self.local_path) +
                 f' of {self.type.value} {software} ({version})'
