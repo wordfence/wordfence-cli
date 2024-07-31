@@ -365,7 +365,7 @@ class VulnerabilityScanner:
 
     def scan_core(
                 self,
-                version: str,
+                version: bytes,
                 scan_path: Optional[str]
             ) -> Dict[str, Vulnerability]:
         return self.scan(
