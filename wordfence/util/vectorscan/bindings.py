@@ -4,6 +4,7 @@ from enum import IntFlag, IntEnum
 from typing import Dict, Optional, Callable, Union, Any
 
 from ..library import load_library, LibraryNotAvailableException
+from ..encoding import bytes_to_str
 from .. import signals
 
 from .vectorscan import VectorscanException, \
@@ -19,7 +20,7 @@ except LibraryNotAvailableException:
 _hs_version = hs.hs_version
 _hs_version.argtypes = []
 _hs_version.restype = c_char_p
-VERSION = _hs_version().decode('ascii')
+VERSION = bytes_to_str(_hs_version())
 API_VERSION = ''.join(VERSION.split()[:1])
 
 

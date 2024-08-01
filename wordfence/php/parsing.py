@@ -3,6 +3,8 @@ from typing import IO, List, Optional, Any, Callable, Dict, Set
 from enum import Enum
 from collections import deque
 
+from ..util.encoding import str_to_bytes
+
 from .lexing import Lexer, Token, TokenType, CharacterType, STRING_ESCAPE
 
 
@@ -45,7 +47,7 @@ class PhpStateType:
 
 def make_strings_binary(value: Any) -> Any:
     if isinstance(value, str):
-        return value.encode('ascii', 'ignore')
+        return str_to_bytes(value)
     return value
 
 

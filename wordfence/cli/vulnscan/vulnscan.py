@@ -8,6 +8,7 @@ from ...intel.vulnerabilities import VulnerabilityIndex, \
         is_cve_id
 from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.caching import Cacheable, DURATION_ONE_DAY
+from ...util.versioning import version_to_str
 from ...wordpress.site import WordpressSite, WordpressStructureOptions, \
         WordpressLocator, WordpressException
 from ...wordpress.plugin import PluginLoader, Plugin
@@ -47,7 +48,7 @@ class VulnScanSubcommand(Subcommand):
         for plugin in plugins:
             log.debug(
                     f'Plugin {plugin.slug}, version: ' +
-                    plugin.version.decode('ascii')
+                    version_to_str(plugin.version)
                 )
             scanner.scan_plugin(plugin, path)
 
@@ -75,7 +76,7 @@ class VulnScanSubcommand(Subcommand):
         for theme in themes:
             log.debug(
                     f'Theme {theme.slug}, version: ' +
-                    theme.version.decode('ascii')
+                    version_to_str(theme.version)
                 )
             scanner.scan_theme(theme, path)
 
@@ -119,7 +120,7 @@ class VulnScanSubcommand(Subcommand):
         version = site.get_version()
         log.debug(
                 'WordPress Core Version: ' +
-                version.decode('ascii', 'replace')
+                version_to_str(version)
             )
         if scan_path is None:
             scan_path = path

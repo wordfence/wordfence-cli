@@ -1,6 +1,8 @@
 import re
 from typing import List, Dict, Union, Optional
 
+from .encoding import str_to_bytes, bytes_to_str
+
 
 PHP_VERSION_DELIMITER = b'.'
 PHP_VERSION_ALTERNATE_DELIMITERS = [b'_', b'-', b'+']
@@ -101,7 +103,7 @@ class PhpVersion:
 
     def __init__(self, version: Union[str, bytes]):
         if isinstance(version, str):
-            version = version.encode('ascii')
+            version = str_to_bytes(version)
         self.version = version
         self._components = self.extract_components(version)
 
@@ -153,3 +155,9 @@ def compare_php_versions(
         if comparison != 0:
             return comparison
     return 0
+
+
+def version_to_str(version: Optional[bytes]) -> str:
+    if version is None:
+        return 'unknown'
+    return bytes_to_str(version)
