@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Optional
 
 from ..util.io import resolve_path, get_path_components
+from ..util.encoding import bytes_to_str
 from .site import WordpressSite
 from .exceptions import WordpressException
 from .extension import Extension
@@ -73,7 +74,7 @@ class KnownFileIdentity(FileIdentity):
             software = self.extension.get_name()
             version = self.extension.version
         if isinstance(version, bytes):
-            version = version.decode('ascii')
+            version = bytes_to_str(version)
         return (
                 os.fsdecode(self.local_path) +
                 f' of {self.type.value} {software} ({version})'

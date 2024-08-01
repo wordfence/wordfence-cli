@@ -9,6 +9,7 @@ from ...intel.vulnerabilities import ScannableSoftware, Vulnerability, \
 from ...api.intelligence import VulnerabilityFeedVariant
 from ...util.terminal import Color, escape, RESET
 from ...util.html import Tag
+from ...util.versioning import version_to_str
 from ..reporting import Report, ReportColumnEnum, ReportFormatEnum, \
         ReportRecord, ReportManager, ReportFormat, ReportColumn, \
         BaseHumanReadableWriter, ReportEmail, get_config_options, \
@@ -22,7 +23,7 @@ from ..email import Mailer
 class VulnScanReportColumn(ReportColumnEnum):
     SOFTWARE_TYPE = 'software_type', lambda record: record.software.type.value
     SLUG = 'slug', lambda record: record.software.slug
-    VERSION = 'version', lambda record: record.software.version.decode('ascii')
+    VERSION = 'version', lambda record: version_to_str(record.software.version)
     ID = 'id', \
         lambda record: record.vulnerability.identifier
     TITLE = 'title', lambda record: record.vulnerability.title
@@ -92,7 +93,7 @@ class HumanReadableWriter(BaseHumanReadableWriter):
     def format_record(self, record) -> str:
         vuln = record.vulnerability
         sw = record.software
-        sw_version = sw.version.decode('ascii')
+        sw_version = version_to_str(sw.version)
         yellow = escape(color=Color.YELLOW)
         link = vuln.get_wordfence_link()
         blue = escape(color=Color.BLUE)

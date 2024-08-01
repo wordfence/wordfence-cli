@@ -4,6 +4,7 @@ from typing import Optional, Dict, List
 
 from ..logging import log
 from ..util.io import SYMLINK_IO_ERRORS
+from ..util.encoding import str_to_bytes
 from .exceptions import ExtensionException
 
 
@@ -93,7 +94,7 @@ class ExtensionLoader:
         try:
             version = header['Version']
             if isinstance(version, str):
-                version = version.encode('ascii')
+                version = str_to_bytes(version)
         except KeyError:
             version = None
         if base_path is None:

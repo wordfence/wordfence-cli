@@ -4,6 +4,7 @@ from enum import IntEnum
 from typing import Optional
 
 from ..library import load_library, LibraryNotAvailableException
+from ..encoding import bytes_to_str
 
 from .pcre import PcreException, PcreLibraryNotAvailableException, \
     PcreOptions, \
@@ -18,7 +19,7 @@ except LibraryNotAvailableException:
 _pcre_version = pcre.pcre_version
 _pcre_version.argtypes = []
 _pcre_version.restype = c_char_p
-VERSION = _pcre_version().decode('ascii')
+VERSION = bytes_to_str(_pcre_version())
 
 
 class PcreError(IntEnum):

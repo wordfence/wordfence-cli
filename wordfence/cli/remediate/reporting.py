@@ -15,6 +15,7 @@ from ..reporting import ReportColumnEnum, Report, ReportManager, \
         REPORT_FORMAT_CSV, REPORT_FORMAT_TSV, REPORT_FORMAT_NULL_DELIMITED, \
         REPORT_FORMAT_LINE_DELIMITED
 from ..context import CliContext
+from ...util.encoding import bytes_to_str
 
 
 class RemediationReportColumn(ReportColumnEnum):
@@ -22,12 +23,17 @@ class RemediationReportColumn(ReportColumnEnum):
     STATUS = 'status', lambda record: record.get_status(),
     TYPE = 'type', lambda record: record.result.identity.type,
     SITE = 'site', \
-        lambda record: record.result.identity.site.core_path \
+        lambda record: os.fsdecode(
+                record.result.identity.site.core_path
+            ) \
         if record.result.identity.site is not None \
         else None
-    TARGET_PATH = 'target_path', lambda record: record.result.target_path,
+    TARGET_PATH = 'target_path', \
+        lambda record: os.fsdecode(record.result.target_path),
     WORDPRESS_VERSION = 'wordpress_version', \
-        lambda record: record.result.identity.site.get_version() \
+        lambda record: bytes_to_str(
+                record.result.identity.site.get_version()
+            ) \
         if record.result.identity.site is not None \
         else None
     EXTENSION_SLUG = 'extension_slug', \
@@ -37,7 +43,9 @@ class RemediationReportColumn(ReportColumnEnum):
         lambda record: record.result.identity.extension.get_name() \
         if record.result.identity.extension is not None else None
     EXTENSION_VERSION = 'extension_version', \
-        lambda record: record.result.identity.extension.version \
+        lambda record: bytes_to_str(
+                record.result.identity.extension.version
+            ) \
         if record.result.identity.extension is not None else None
 
 
