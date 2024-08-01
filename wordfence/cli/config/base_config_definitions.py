@@ -2,6 +2,7 @@ from ...logging import LogLevel
 
 from ..terms_management import TERMS_URL
 from ..mailing_lists import EMAIL_SIGNUP_MESSAGE
+from ..email import SmtpTlsMode
 
 from .defaults import INI_DEFAULT_PATH
 from .config_items import config_definitions_to_config_map
@@ -31,6 +32,92 @@ config_definitions = {
         "context": "ALL",
         "argument_type": "OPTION",
         "default": None
+    },
+    "email": {
+        "short_name": "E",
+        "description": (
+                "Email address(es) to which to send reports.\n"
+                "The output file will be attached to the email report "
+                "when the --output-path option is used. (for supported "
+                "subcommands)"
+            ),
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": None,
+        "meta": {
+            "separator": ","
+        },
+        "category": "Email"
+    },
+    "email-from": {
+        "description": "The From address to use when sending emails. If "
+                       "not specified, the current username and hostname "
+                       "will be used.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": None,
+        "category": "Email"
+    },
+    "smtp-host": {
+        "description": "The host name of the SMTP server to use for "
+                       "sending email.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": None,
+        "category": "Email"
+    },
+    "smtp-port": {
+        "description": "The port of the SMTP server to use for sending "
+                       "email.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "meta": {
+            "value_type": int
+        },
+        "default": None,
+        "category": "Email"
+    },
+    "smtp-tls-mode": {
+        "description": "The SSL/TLS mode to use when communicating with "
+                       f"the SMTP server. {SmtpTlsMode.NONE.value} "
+                       f"disables TLS entirely. {SmtpTlsMode.SMTPS.value} "
+                       "requires TLS for all communication while "
+                       f"{SmtpTlsMode.STARTTLS.value} will negotiate TLS "
+                       "if supported using the STARTTLS SMTP command.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "meta": {
+            "valid_options": [mode.value for mode in SmtpTlsMode]
+        },
+        "default": SmtpTlsMode.STARTTLS.value,
+        "category": "Email"
+    },
+    "smtp-user": {
+        "description": "The username for authenticating with the SMTP "
+                       "server.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": None,
+        "category": "Email"
+    },
+    "smtp-password": {
+        "description": "The password for authentication with the SMTP "
+                       "server. This should generally be specified in an "
+                       "INI file as including passwords as command line "
+                       "arguments can expose them to other users on the "
+                       "same system.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": None,
+        "category": "Email"
+    },
+    "sendmail-path": {
+        "description": "The path to the sendmail executable. This will be "
+                       "used to send email if SMTP is not configured.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": "sendmail",
+        "category": "Email"
     },
     "verbose": {
         "short_name": "v",
