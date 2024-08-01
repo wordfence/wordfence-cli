@@ -17,7 +17,7 @@ from wordfence.util.html import Document, Tag, Stylesheet, Style, RawHtml, \
         HtmlContent
 from .context import CliContext
 from .io import IoManager
-from .email import Mailer, SmtpTlsMode
+from .email import Mailer
 
 
 class ReportingException(Exception):
@@ -565,92 +565,7 @@ def get_config_options(
             "argument_type": "FLAG",
             "default": None,
             "category": "Output Control"
-        },
-        "email": {
-            "short_name": "E",
-            "description": (
-                    "Email address(es) to which to send reports.\n"
-                    "The output file will be attached to the email report "
-                    "when the --output-path option is used."
-                ),
-            "context": "ALL",
-            "argument_type": "OPTION_REPEATABLE",
-            "default": None,
-            "meta": {
-                "separator": ","
-            },
-            "category": "Email"
-        },
-        "email-from": {
-            "description": "The From address to use when sending emails. If "
-                           "not specified, the current username and hostname "
-                           "will be used.",
-            "context": "ALL",
-            "argument_type": "OPTION",
-            "default": None,
-            "category": "Email"
-        },
-        "smtp-host": {
-            "description": "The host name of the SMTP server to use for "
-                           "sending email.",
-            "context": "ALL",
-            "argument_type": "OPTION",
-            "default": None,
-            "category": "Email"
-        },
-        "smtp-port": {
-            "description": "The port of the SMTP server to use for sending "
-                           "email.",
-            "context": "ALL",
-            "argument_type": "OPTION",
-            "meta": {
-                "value_type": int
-            },
-            "default": None,
-            "category": "Email"
-        },
-        "smtp-tls-mode": {
-            "description": "The SSL/TLS mode to use when communicating with "
-                           f"the SMTP server. {SmtpTlsMode.NONE.value} "
-                           f"disables TLS entirely. {SmtpTlsMode.SMTPS.value} "
-                           "requires TLS for all communication while "
-                           f"{SmtpTlsMode.STARTTLS.value} will negotiate TLS "
-                           "if supported using the STARTTLS SMTP command.",
-            "context": "ALL",
-            "argument_type": "OPTION",
-            "meta": {
-                "valid_options": [mode.value for mode in SmtpTlsMode]
-            },
-            "default": SmtpTlsMode.STARTTLS.value,
-            "category": "Email"
-        },
-        "smtp-user": {
-            "description": "The username for authenticating with the SMTP "
-                           "server.",
-            "context": "ALL",
-            "argument_type": "OPTION",
-            "default": None,
-            "category": "Email"
-        },
-        "smtp-password": {
-            "description": "The password for authentication with the SMTP "
-                           "server. This should generally be specified in an "
-                           "INI file as including passwords as command line "
-                           "arguments can expose them to other users on the "
-                           "same system.",
-            "context": "ALL",
-            "argument_type": "OPTION",
-            "default": None,
-            "category": "Email"
-        },
-        "sendmail-path": {
-            "description": "The path to the sendmail executable. This will be "
-                           "used to send email if SMTP is not configured.",
-            "context": "ALL",
-            "argument_type": "OPTION",
-            "default": "sendmail",
-            "category": "Email"
-        },
+        }
     }
 
 
