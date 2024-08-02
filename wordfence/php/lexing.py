@@ -4,6 +4,8 @@ from collections import deque
 from enum import Enum, auto
 from typing import Generator, BinaryIO, Optional, Union, Set
 
+from wordfence.util.encoding import bytes_to_str
+
 
 class LexingException(Exception):
     pass
@@ -410,8 +412,11 @@ class Token:
     def is_comma(self) -> bool:
         return self.is_character(CharacterType.COMMA)
 
-    def __repr__(self) -> bytes:
-        return f'{self.type.name} ({self.value})'
+    def __repr__(self) -> str:
+        return self.type.name + ' (' + bytes_to_str(self.value) + ')'
+
+    def __str__(self) -> str:
+        return repr(self)
 
 
 class Lexer:

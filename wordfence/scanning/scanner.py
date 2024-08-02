@@ -562,9 +562,9 @@ class ScanResult:
 
     def __init__(
                 self,
-                path: str,
+                path: bytes,
                 read_length: int,
-                matches: Dict[int, str],
+                matches: Dict[int, bytes],
                 timeouts: Set[int],
                 timestamp: float = None
             ):

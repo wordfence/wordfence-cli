@@ -1066,7 +1066,7 @@ class Parser:
         try:
             return OPERATOR_MAP[token.value]
         except KeyError:
-            raise ParsingException(f'Unrecognized operator: {token.value}')
+            raise ParsingException(f'Unrecognized operator: {token}')
 
     def parse_identifier(
                 self,
@@ -1207,8 +1207,7 @@ class Parser:
             return self.parse_operator(token)
         else:
             raise ParsingException(
-                    f'Unrecognized token in expression({token.type.name}):'
-                    f' {token.value}'
+                    f'Unrecognized token in expression: {token}'
                 )
 
     def parse_expression(
@@ -1451,8 +1450,7 @@ class Parser:
                 break
             else:
                 raise ParsingException(
-                        f'Unexpected token in class definition({token.type}): '
-                        f'"{token.value}"'
+                        f'Unexpected token in class definition: {token}'
                     )
 
     def parse_class(
@@ -1592,7 +1590,7 @@ class Parser:
             elif token.type is TokenType.CLOSE_TAG:
                 raise TagStateChanged(False)
             else:
-                raise ParsingException(f'Unexpected token: {token.type}')
+                raise ParsingException(f'Unexpected token: {token}')
         if content is not None:
             return PhpOutput(content)
         return None
