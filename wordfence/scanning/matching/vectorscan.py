@@ -30,7 +30,7 @@ class VectorscanMatcherContext(BaseMatcherContext):
             return False
         self._record_match(
                 identifier=match.identifier,
-                matched=''
+                matched=None
             )
         self.matched = True
         return False if self.matcher.match_all else True

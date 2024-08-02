@@ -50,7 +50,7 @@ class MatcherContext(AbstractContextManager):
     def finalize_content(self) -> None:
         pass
 
-    def _record_match(self, identifier: str, matched: str) -> None:
+    def _record_match(self, identifier: str, matched: Optional[bytes]) -> None:
         self.matches[identifier] = matched
 
     def __enter__(self):
