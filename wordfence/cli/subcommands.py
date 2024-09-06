@@ -14,6 +14,7 @@ VALID_SUBCOMMANDS = {
         'vuln-scan',
         'remediate',
         'count-sites',
+        'db-scan',
         'help',
         'version',
         'terms'

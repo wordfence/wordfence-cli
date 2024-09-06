@@ -24,6 +24,7 @@ If you'd like to install Wordfence CLI manually or use CLI for development, you 
 - Python packages:
 	- `packaging` >= 21.0 
 	- `requests` >= 2.3
+	- `mysql-connector-python` >= 8.0
 
 ### Obtaining a license
 

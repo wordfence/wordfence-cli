@@ -25,7 +25,8 @@ classifiers = [
 ]
 dependencies = [
     "packaging>=21.0",
-    "requests>=2.3"
+    "requests>=2.3",
+	"mysql-connector-python>=8.0"
 ]
 dynamic = [ "version" ]
 

@@ -1,6 +1,7 @@
 # Runtime dependencies
 packaging >= 21.0
 requests >= 2.3
+mysql-connector-python >= 8.0
 # Build requirements
 build ~= 0.10
 setuptools ~= 68.0
