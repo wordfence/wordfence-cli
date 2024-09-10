@@ -1,7 +1,7 @@
 import os
 import os.path
 from dataclasses import dataclass, field
-from typing import Optional, List, Generator
+from typing import Optional, List, Generator, Dict, Callable, Any
 
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
@@ -11,6 +11,7 @@ from ..util.io import is_symlink_loop, PathSet, resolve_path, \
 from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
+from .database import WordpressDatabase, WordpressDatabaseServer, DEFAULT_PORT
 
 WP_BLOG_HEADER_NAME = b'wp-blog-header.php'
 WP_CONFIG_NAME = b'wp-config.php'
@@ -32,11 +33,18 @@ ALTERNATE_RELATIVE_CONTENT_PATHS = [
         b'../app'
     ]
 
+DATABASE_CONFIG_CONSTANTS = {
+        b'DB_NAME': 'name',
+        b'DB_USER': 'user',
+        b'DB_PASSWORD': 'password',
+        b'DB_HOST': 'host'
+    }
+
 
 @dataclass
 class WordpressStructureOptions:
     relative_content_paths: List[str] = field(default_factory=list)
-    relative_plugins_paths: List[str] = field(default_factory=list)
+    relaGtive_plugins_paths: List[str] = field(default_factory=list)
     relative_mu_plugins_paths: List[str] = field(default_factory=list)
 
 
@@ -307,18 +315,16 @@ class WordpressSite(PathResolver):
 
     def _extract_string_from_config(
                 self,
-                constant: str,
-                default: Optional[str] = None
-            ) -> str:
+                constant: bytes,
+                default: Optional[bytes],
+                extractor: Callable[[PhpState], Any]
+            ) -> bytes:
         try:
             state = self._get_parsed_config_state()
             if state is not None:
-                path = state.get_constant_value(
-                        name=constant,
-                        default_to_name=False
-                    )
-                if isinstance(path, str):
-                    return path
+                value = extractor(state)
+                if isinstance(value, bytes):
+                    return value
         except PhpException as exception:
             # Just use the default if parsing errors occur
             log.warning(
@@ -327,8 +333,43 @@ class WordpressSite(PathResolver):
                 )
         return default
 
+    def _extract_string_from_config_constant(
+                self,
+                constant: bytes,
+                default: Optional[bytes] = None
+            ):
+        def get_constant_value(state: PhpState):
+            return state.get_constant_value(
+                    name=constant,
+                    default_to_name=False
+                )
+        return self._extract_string_from_config(
+                constant,
+                default,
+                get_constant_value
+            )
+
+    def _extract_string_from_config_variable(
+                self,
+                variable: bytes,
+                default: Optional[bytes] = None
+            ):
+        def get_variable_value(state: PhpState):
+            return state.get_variable_value(variable)
+        return self._extract_string_from_config(
+                variable,
+                default,
+                get_variable_value
+            )
+
+    def get_config_constant(self, constant: bytes) -> bytes:
+        return self._extract_string_from_config_constant(constant)
+
+    def get_config_variable(self, variable: bytes) -> bytes:
+        return self._extract_string_from_config_variable(variable)
+
     def _generate_possible_content_paths(self) -> Generator[str, None, None]:
-        configured = self._extract_string_from_config(
+        configured = self._extract_string_from_config_constant(
                 'WP_CONTENT_DIR'
             )
         if configured is not None:
@@ -357,7 +398,7 @@ class WordpressSite(PathResolver):
         return self.content_path
 
     def get_configured_plugins_directory(self, mu: bool = False) -> str:
-        return self._extract_string_from_config(
+        return self._extract_string_from_config_constant(
                 'WPMU_PLUGIN_DIR' if mu else 'WP_PLUGIN_DIR',
             )
 
@@ -434,3 +475,45 @@ class WordpressSite(PathResolver):
                 raise
         loader = ThemeLoader(directory, allow_io_errors)
         return loader.load_all()
+
+    def _extract_database_config(self) -> Dict[str, str]:
+        config = {}
+
+        def add_config(key: str, value: Any):
+            if value is None:
+                raise WordpressException(
+                        'Unable to extract database connection details from '
+                        f'WordPress config (Key: {key}, Value: '
+                        + repr(value) + ')'
+                    )
+            config[key] = value.decode('latin1')
+
+        for constant, attribute in DATABASE_CONFIG_CONSTANTS.items():
+            add_config(
+                    key=attribute,
+                    value=self.get_config_constant(constant)
+                )
+        add_config(
+                key='prefix',
+                value=self.get_config_variable(b'table_prefix')
+            )
+        return config
+
+    def get_database(self) -> WordpressDatabase:
+        config = self._extract_database_config()
+        host_components = config['host'].split(':', 1)
+        host = host_components[0]
+        try:
+            port = host_components[1]
+        except IndexError:
+            port = DEFAULT_PORT
+        server = WordpressDatabaseServer(
+                host=host,
+                port=port,
+                user=config['user'],
+                password=config['password']
+            )
+        return WordpressDatabase(
+                name=config['name'],
+                server=server
+            )

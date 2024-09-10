@@ -9,9 +9,10 @@ class DatabaseScanner:
 
     def __init__(
                 self,
-                ruleSet: DatabaseRuleSet
+                rule_set: DatabaseRuleSet
             ):
-        self.ruleSet = ruleSet
+        self.rule_set = rule_set
+        self.scan_count = 0
 
     def _scan_connection(
                 self,
@@ -25,6 +26,7 @@ class DatabaseScanner:
                 self,
                 database: Union[WordpressDatabase, WordpressDatabaseConnection]
             ) -> None:
+        self.scan_count += 1
         if isinstance(database, WordpressDatabaseConnection):
             return self._scan_connection(database)
         else:

@@ -1,17 +1,13 @@
 import mysql.connector
 from typing import Optional, Generator
 
+from .exceptions import WordpressDatabaseException
+
 
 DEFAULT_HOST = 'localhost'
 DEFAULT_PORT = 3306
 DEFAULT_USER = 'root'
 DEFAULT_PREFIX = 'wp_'
-
-
-class WordpressDatabaseException(Exception):
-
-    def __init__(self, database, message):
-        self.database = database
 
 
 class WordpressDatabaseConnection:
@@ -29,7 +25,7 @@ class WordpressDatabaseConnection:
         except mysql.connector.Error:
             raise WordpressDatabaseException(
                     database,
-                    f'Failed to connect to database: {self.debug_string}'
+                    f'Failed to connect to database: {database.debug_string}'
                 )
 
     def __enter__(self):

@@ -4,3 +4,9 @@ class WordpressException(Exception):
 
 class ExtensionException(WordpressException):
     pass
+
+
+class WordpressDatabaseException(Exception):
+
+    def __init__(self, database, message):
+        self.database = database

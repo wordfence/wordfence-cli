@@ -61,6 +61,69 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTION",
         "default": DEFAULT_PREFIX,
         "category": "Database Connectivity"
+    },
+    "database-name": {
+        "short_name": "D",
+        "description": "The MySQL database name",
+        "context": "CLI",
+        "argument_type": "OPTION",
+        "default": None
+    },
+    "read-stdin": {
+        "description": "Read paths from stdin. If not specified, paths will "
+                       "automatically be read from stdin when input is not "
+                       "from a TTY.",
+        "context": "ALL",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
+    },
+    "path-separator": {
+        "short_name": "s",
+        "description": "Separator used to delimit paths when reading from "
+                       "stdin. Defaults to the null byte.",
+        "context": "ALL",
+        "argument_type": "OPTION",
+        "default": "AA==",
+        "default_type": "base64"
+    },
+    "require-database": {
+        "description": "When enabled, invoking the db-scan command without "
+                       "specifying at least one database will trigger an "
+                       "error. This is the default behavior when running in "
+                       "a terminal.",
+        "context": "CLI",
+        "argument_type": "OPTIONAL_FLAG",
+        "default": None
+    },
+    "locate-sites": {
+        "short_name": "S",
+        "description": (
+                "Automatically locate WordPress config files to extract "
+                "database connection details"
+            ),
+        "context": "CLI",
+        "argument_type": "FLAG",
+        "default": None,
+        "category": "Site Location"
+    },
+    "allow-nested": {
+        "description": "Allow WordPress installations nested below other "
+                       "installations to be identified as targets for "
+                       "database scanning",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True,
+        "category": "Site Location"
+    },
+    "allow-io-errors": {
+        "description": "Allow scanning to continue even if an IO error occurs"
+                       "while locating WordPress sites. Sites that cannot "
+                       "be identified due to IO errors will be excluded from "
+                       "scanning. This is the default behavior.",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True,
+        "category": "Site Location"
     }
 }
 
@@ -78,5 +141,6 @@ definition = SubcommandDefinition(
     config_definitions=config_definitions,
     config_section='DB_SCAN',
     cacheable_types=set(),
-    examples=examples
+    examples=examples,
+    accepts_directories=True
 )

@@ -20,7 +20,7 @@ config_definitions: ConfigDefinitions = {
         "default_type": "base64"
     },
     "require-path": {
-        "description": "When enabled, invoking the remediate command without "
+        "description": "When enabled, invoking the count command without "
                        "specifying at least one path will trigger an error. "
                        "This is the default behavior when running in a "
                        "terminal.",
