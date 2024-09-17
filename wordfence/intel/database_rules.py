@@ -13,3 +13,7 @@ class DatabaseRule:
 
 class DatabaseRuleSet:
     pass
+
+
+def load_rules_file(path: str) -> None:
+	pass

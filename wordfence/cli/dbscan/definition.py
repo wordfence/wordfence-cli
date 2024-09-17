@@ -1,5 +1,5 @@
 from wordfence.wordpress.database import DEFAULT_HOST, DEFAULT_PORT, \
-    DEFAULT_USER, DEFAULT_PREFIX
+    DEFAULT_USER, DEFAULT_PREFIX, DEFAULT_COLLATION
 
 from ..subcommands import SubcommandDefinition, UsageExample
 from ..config.typing import ConfigDefinitions
@@ -69,6 +69,13 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTION",
         "default": None
     },
+	"collation": {
+		"short_name": "C",
+		"description": "The collation to use when connecting to MySQL",
+		"context": "CLI",
+		"argument_type": "OPTION",
+		"default": DEFAULT_COLLATION
+	},
     "read-stdin": {
         "description": "Read paths from stdin. If not specified, paths will "
                        "automatically be read from stdin when input is not "

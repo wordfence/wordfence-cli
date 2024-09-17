@@ -11,7 +11,8 @@ from ..util.io import is_symlink_loop, PathSet, resolve_path, \
 from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
-from .database import WordpressDatabase, WordpressDatabaseServer, DEFAULT_PORT
+from .database import WordpressDatabase, WordpressDatabaseServer, \
+    DEFAULT_PORT, DEFAULT_COLLATION
 
 WP_BLOG_HEADER_NAME = b'wp-blog-header.php'
 WP_CONFIG_NAME = b'wp-config.php'
@@ -37,7 +38,8 @@ DATABASE_CONFIG_CONSTANTS = {
         b'DB_NAME': 'name',
         b'DB_USER': 'user',
         b'DB_PASSWORD': 'password',
-        b'DB_HOST': 'host'
+        b'DB_HOST': 'host',
+        b'DB_COLLATE': 'collation'
     }
 
 
@@ -507,6 +509,10 @@ class WordpressSite(PathResolver):
             port = host_components[1]
         except IndexError:
             port = DEFAULT_PORT
+        try:
+            collation = config['collation;']
+        except KeyError:
+            collation = DEFAULT_COLLATION
         server = WordpressDatabaseServer(
                 host=host,
                 port=port,
@@ -515,5 +521,6 @@ class WordpressSite(PathResolver):
             )
         return WordpressDatabase(
                 name=config['name'],
-                server=server
+                server=server,
+                collation=collation
             )
