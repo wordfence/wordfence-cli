@@ -8,6 +8,7 @@ DEFAULT_HOST = 'localhost'
 DEFAULT_PORT = 3306
 DEFAULT_USER = 'root'
 DEFAULT_PREFIX = 'wp_'
+DEFAULT_COLLATION = 'utf8mb4_unicode_ci'
 
 
 class WordpressDatabaseConnection:
@@ -20,7 +21,8 @@ class WordpressDatabaseConnection:
                     port=database.server.port,
                     user=database.server.user,
                     password=database.server.password,
-                    database=database.name
+                    database=database.name,
+                    collation=database.collation
                 )
         except mysql.connector.Error:
             raise WordpressDatabaseException(
@@ -59,7 +61,7 @@ class WordpressDatabaseServer:
                 host: str = DEFAULT_HOST,
                 port: int = DEFAULT_PORT,
                 user: str = DEFAULT_USER,
-                password: Optional[str] = None,
+                password: Optional[str] = None
             ):
         self.host = host
         self.port = port
@@ -73,11 +75,13 @@ class WordpressDatabase:
                 self,
                 name: str,
                 server: WordpressDatabaseServer,
-                prefix: str = DEFAULT_PREFIX
+                prefix: str = DEFAULT_PREFIX,
+                collation: str = DEFAULT_COLLATION
             ):
         self.name = name
         self.server = server
         self.prefix = prefix
+        self.collation = collation
         self.debug_string = self._build_debug_string()
 
     def connect(self) -> WordpressDatabaseConnection:
