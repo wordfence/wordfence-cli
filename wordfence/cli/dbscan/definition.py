@@ -69,13 +69,13 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTION",
         "default": None
     },
-	"collation": {
-		"short_name": "C",
-		"description": "The collation to use when connecting to MySQL",
-		"context": "CLI",
-		"argument_type": "OPTION",
-		"default": DEFAULT_COLLATION
-	},
+    "collation": {
+        "short_name": "C",
+        "description": "The collation to use when connecting to MySQL",
+        "context": "CLI",
+        "argument_type": "OPTION",
+        "default": DEFAULT_COLLATION
+    },
     "read-stdin": {
         "description": "Read paths from stdin. If not specified, paths will "
                        "automatically be read from stdin when input is not "
@@ -132,15 +132,15 @@ config_definitions: ConfigDefinitions = {
         "default": True,
         "category": "Site Location"
     },
-	"rules-file": {
-		"short_name": "R",
-		"description": "Path to a JSON file containing scanning rules",
-		"context": "ALL",
-		"argument_type": "OPTION_REPEATABLE",
-		"meta": {
-			"accepts_file": True
-		}
-	}
+    "rules-file": {
+        "short_name": "R",
+        "description": "Path to a JSON file containing scanning rules",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "meta": {
+            "accepts_file": True
+        }
+    }
 }
 
 examples = [
