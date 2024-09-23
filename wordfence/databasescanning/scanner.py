@@ -14,6 +14,13 @@ class DatabaseScanner:
         self.rule_set = rule_set
         self.scan_count = 0
 
+    def _scan_table(
+                self,
+                connection: WordpressDatabaseConnection,
+                table: str
+            ):
+        pass
+
     def _scan_connection(
                 self,
                 connection: WordpressDatabaseConnection
