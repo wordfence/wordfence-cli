@@ -131,7 +131,16 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "FLAG",
         "default": True,
         "category": "Site Location"
-    }
+    },
+	"rules-file": {
+		"short_name": "R",
+		"description": "Path to a JSON file containing scanning rules",
+		"context": "ALL",
+		"argument_type": "OPTION_REPEATABLE",
+		"meta": {
+			"accepts_file": True
+		}
+	}
 }
 
 examples = [

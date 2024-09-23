@@ -3,7 +3,7 @@ from wordfence.wordpress.database import WordpressDatabase, \
 from wordfence.wordpress.site import WordpressLocator, \
     WordpressSite
 from wordfence.wordpress.exceptions import WordpressException
-from wordfence.intel.database_rules import DatabaseRuleSet
+from wordfence.intel.database_rules import DatabaseRuleSet, load_database_rules
 from wordfence.databasescanning.scanner import DatabaseScanner
 from wordfence.util.validation import ListValidator, DictionaryValidator, \
     OptionalValueValidator
@@ -142,8 +142,15 @@ class DbScanSubcommand(Subcommand):
             databases.append(database)
         return databases
 
-    def invoke(self) -> int:
+    def _load_rules(self) -> DatabaseRuleSet:
         rule_set = DatabaseRuleSet()
+        for rules_file in self.config.rules_file:
+            load_database_rules(rules_file, rule_set)
+        return rule_set
+
+    def invoke(self) -> int:
+        rule_set = self._load_rules()
+        print(repr(vars((rule_set.rules[1]))))
         scanner = DatabaseScanner(rule_set)
         for database in self._get_databases():
             scanner.scan(database)
