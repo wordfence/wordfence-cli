@@ -9,6 +9,8 @@ from .licensing import License
 
 from ..intel.signatures import CommonString, Signature, SignatureSet, \
     PrecompiledSignatureSet, deserialize_precompiled_signature_set
+from ..intel.database_rules import DatabaseRuleSet, JSON_VALIDATOR as \
+    DATABASE_RULES_JSON_VALIDATOR, parse_database_rules
 from ..util.validation import DictionaryValidator, ListValidator, Validator, \
     OptionalValueValidator
 from ..util.platform import Platform
@@ -258,3 +260,11 @@ class Client(NocClient):
                 body=parameters
             )
         return response
+
+    def get_database_rules(self) -> DatabaseRuleSet:
+        response = self.request('get_database_rules')
+        validator = DictionaryValidator({
+                'rules': DATABASE_RULES_JSON_VALIDATOR
+            })
+        self.validate_response(response, validator)
+        return parse_database_rules(response['rules'], pre_validated=True)

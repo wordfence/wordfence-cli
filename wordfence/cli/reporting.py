@@ -455,7 +455,8 @@ class Report:
     def generate_email(
                 self,
                 recipient: str,
-                attachments: Dict[str, str]
+                attachments: Dict[str, str],
+                hostname: str
             ) -> ReportEmail:
         raise NotImplementedError(
                 'This report does not support email generation'

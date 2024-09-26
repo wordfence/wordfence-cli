@@ -36,13 +36,16 @@ class WordpressDatabaseConnection:
     def __exit__(self, exc_type, exc_val, exc_tb):
         return
 
+    def prefix_table(self, table: str) -> str:
+        return self.database.prefix_table(table)
+
     def query(
                 self,
                 query: str,
                 parameters: tuple = ()
             ) -> Generator[tuple, None, None]:
         try:
-            cursor = self.connection.cursor()
+            cursor = self.connection.cursor(dictionary=True)
             cursor.execute(query, parameters)
             for result in cursor:
                 yield result
@@ -92,3 +95,6 @@ class WordpressDatabase:
                 f'{self.server.user}@{self.server.host}:'
                 f'{self.server.port}/{self.name}'
             )
+
+    def prefix_table(self, table: str) -> str:
+        return self.prefix + table

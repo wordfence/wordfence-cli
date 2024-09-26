@@ -4,6 +4,8 @@ from wordfence.wordpress.database import DEFAULT_HOST, DEFAULT_PORT, \
 from ..subcommands import SubcommandDefinition, UsageExample
 from ..config.typing import ConfigDefinitions
 
+from .reporting import DATABASE_SCAN_REPORT_CONFIG_OPTIONS
+
 config_definitions: ConfigDefinitions = {
     "host": {
         "short_name": "H",
@@ -67,7 +69,8 @@ config_definitions: ConfigDefinitions = {
         "description": "The MySQL database name",
         "context": "CLI",
         "argument_type": "OPTION",
-        "default": None
+        "default": None,
+        "category": "Database Connectivity"
     },
     "collation": {
         "short_name": "C",
@@ -93,6 +96,7 @@ config_definitions: ConfigDefinitions = {
         "default": "AA==",
         "default_type": "base64"
     },
+    **DATABASE_SCAN_REPORT_CONFIG_OPTIONS,
     "require-database": {
         "description": "When enabled, invoking the db-scan command without "
                        "specifying at least one database will trigger an "
@@ -132,6 +136,13 @@ config_definitions: ConfigDefinitions = {
         "default": True,
         "category": "Site Location"
     },
+    "use-remote-rules": {
+        "description": "If enabled, scanning rules will be pulled from "
+                       "the Wordfence API",
+        "context": "ALL",
+        "argument_type": "FLAG",
+        "default": True
+    },
     "rules-file": {
         "short_name": "R",
         "description": "Path to a JSON file containing scanning rules",
@@ -152,7 +163,7 @@ examples = [
 
 definition = SubcommandDefinition(
     name='db-scan',
-    usage='[OPTIONS] [DATABASE_NAME]...',
+    usage='[OPTIONS] [DATABASE_CONFIG_PATH or WORDPRESS_INSTALLATION_PATH]...',
     description='Scan for malicious content in a WordPress databases',
     config_definitions=config_definitions,
     config_section='DB_SCAN',

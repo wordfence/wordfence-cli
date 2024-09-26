@@ -50,6 +50,9 @@ class DatabaseRuleSet:
     def get_targeted_tables(self) -> List[str]:
         return self.table_rules.keys()
 
+    def get_rule(self, identifier: int) -> DatabaseRule:
+        return self.rules[identifier]
+
 
 JSON_VALIDATOR = ListValidator(
         DictionaryValidator({
@@ -61,10 +64,12 @@ JSON_VALIDATOR = ListValidator(
     )
 
 
-def load_database_rules(path: bytes) -> DatabaseRuleSet:
-    with open(path, 'rb') as file:
-        data = json.load(file)
-    JSON_VALIDATOR.validate(data)
+def parse_database_rules(
+            data,
+            pre_validated: bool = False
+        ) -> DatabaseRuleSet:
+    if not pre_validated:
+        JSON_VALIDATOR.validate(data)
     rule_set = DatabaseRuleSet()
     for rule_data in data:
         rule = DatabaseRule(
@@ -74,3 +79,9 @@ def load_database_rules(path: bytes) -> DatabaseRuleSet:
             )
         rule_set.add_rule(rule)
     return rule_set
+
+
+def load_database_rules(path: bytes) -> DatabaseRuleSet:
+    with open(path, 'rb') as file:
+        data = json.load(file)
+    return parse_database_rules(data)
