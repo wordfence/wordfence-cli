@@ -75,7 +75,8 @@ def parse_database_rules(
         rule = DatabaseRule(
                 identifier=rule_data['id'],
                 tables=rule_data['tables'],
-                condition=rule_data['condition']
+                condition=rule_data['condition'],
+                description=rule_data['description']
             )
         rule_set.add_rule(rule)
     return rule_set

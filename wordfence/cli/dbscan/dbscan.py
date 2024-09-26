@@ -187,9 +187,11 @@ class DbScanSubcommand(Subcommand):
             raise ConfigurationException(
                     'At least one database to scan must be specified'
                 )
+        elapsed_time = round(scanner.get_elapsed_time())
         log.info(
                 f'Found {report.result_count} result(s) after scanning '
-                f'{scanner.scan_count} database(s)'
+                f'{scanner.scan_count} database(s) over {elapsed_time} '
+                'second(s)'
             )
         return 0
 

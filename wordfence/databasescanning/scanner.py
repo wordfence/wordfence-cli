@@ -1,8 +1,9 @@
+from typing import Union, Generator, List
 from wordfence.intel.database_rules import DatabaseRuleSet, DatabaseRule
 from wordfence.wordpress.database import WordpressDatabase, \
     WordpressDatabaseConnection
-from ..logging import log
-from typing import Union, Generator
+from wordfence.logging import log
+from wordfence.util.timing import Timer
 
 
 class DatabaseScanResult:
@@ -26,6 +27,19 @@ class DatabaseScanner:
             ):
         self.rule_set = rule_set
         self.scan_count = 0
+        self.timer = Timer(start=False)
+
+    def _get_valid_columns(
+                self,
+                connection: WordpressDatabaseConnection,
+                prefixed_table: str
+            ) -> List:
+        columns = connection.get_column_types(prefixed_table)
+        try:
+            del columns['rule_id']
+        except KeyError:
+            pass  # If the column doesn't exist, that's fine
+        return list(columns.keys())
 
     def _scan_table(
                 self,
@@ -41,8 +55,11 @@ class DatabaseScanner:
                     f'WHEN {rule.condition} THEN {rule.identifier}'
                 )
         rule_case = 'CASE\n' + '\n'.join(rule_selects) + '\nEND'
+        selected_columns = self._get_valid_columns(connection, prefixed_table)
+        selected_columns.append(f'{rule_case} as rule_id')
+        selected_columns = ', '.join(selected_columns)
         query = (
-                f'SELECT {rule_case} AS rule_id, {prefixed_table}.* FROM '
+                f'SELECT {selected_columns} FROM '
                 f'{prefixed_table} WHERE '
                 + ' OR '.join(conditions)
             )
@@ -51,7 +68,7 @@ class DatabaseScanner:
             del result['rule_id']
             yield DatabaseScanResult(
                     rule=rule,
-                    table=table,
+                    table=prefixed_table,
                     row=result
                 )
 
@@ -59,10 +76,12 @@ class DatabaseScanner:
                 self,
                 connection: WordpressDatabaseConnection
             ) -> Generator[DatabaseScanResult, None, None]:
+        self.timer.resume()
         log.debug(f'Scanning database: {connection.database.debug_string}...')
         for table in self.rule_set.get_targeted_tables():
             yield from self._scan_table(connection, table)
         log.debug(f'Scan completed for: {connection.database.debug_string}')
+        self.timer.stop()
 
     def scan(
                 self,
@@ -79,3 +98,6 @@ class DatabaseScanner:
                         f'{database.debug_string}'
                     )
                 yield from self._scan_connection(connection)
+
+    def get_elapsed_time(self) -> int:
+        return self.timer.get_elapsed()

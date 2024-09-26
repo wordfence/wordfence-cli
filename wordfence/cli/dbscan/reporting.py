@@ -2,8 +2,11 @@ import json
 from typing import List, Optional, Dict
 
 from wordfence.databasescanning.scanner import DatabaseScanResult
+from wordfence.util.terminal import Color, escape, RESET
+from wordfence.util.json import safe_json_encode
 from ..reporting import ReportManager, ReportColumnEnum, ReportFormatEnum, \
     ReportRecord, Report, ReportFormat, ReportColumn, ReportEmail, \
+    BaseHumanReadableWriter, \
     get_config_options, generate_html_table, generate_report_email_html, \
     REPORT_FORMAT_CSV, REPORT_FORMAT_TSV, REPORT_FORMAT_NULL_DELIMITED, \
     REPORT_FORMAT_LINE_DELIMITED
@@ -16,8 +19,27 @@ class DatabaseScanReportColumn(ReportColumnEnum):
     RULE_ID = 'rule_id', lambda record: record.result.rule.identifier
     RULE_DESCRIPTION = 'rule_description', \
         lambda record: record.result.rule.description
-    # TODO: Ensure rows can be safely represented as JSON
-    ROW = 'row', lambda record: json.dumps(record.result.row)
+    ROW = 'row', lambda record: safe_json_encode(record.result.row)
+
+
+class HumanReadableWriter(BaseHumanReadableWriter):
+
+    def format_record(self, record) -> str:
+        result = record.result
+        return (
+                escape(Color.YELLOW)
+                + 'Suspicious database record found in table '
+                f'"{result.table}" matching rule "{result.rule.description}"'
+                ': ' + safe_json_encode(record.result.row) + RESET
+            )
+
+
+REPORT_FORMAT_HUMAN = ReportFormat(
+        'human',
+        lambda stream, columns: HumanReadableWriter(stream),
+        allows_headers=False,
+        allows_column_customization=False
+    )
 
 
 class DatabaseScanReportFormat(ReportFormatEnum):
@@ -25,6 +47,7 @@ class DatabaseScanReportFormat(ReportFormatEnum):
     TSV = REPORT_FORMAT_TSV
     NULL_DELIMITED = REPORT_FORMAT_NULL_DELIMITED
     LINE_DELIMITED = REPORT_FORMAT_LINE_DELIMITED
+    HUMAN = REPORT_FORMAT_HUMAN
 
 
 class DatabaseScanReportRecord(ReportRecord):
@@ -125,5 +148,5 @@ class DatabaseScanReportManager(ReportManager):
 DATABASE_SCAN_REPORT_CONFIG_OPTIONS = get_config_options(
         DatabaseScanReportFormat,
         DatabaseScanReportColumn,
-        default_format='csv'
+        default_format='human'
     )

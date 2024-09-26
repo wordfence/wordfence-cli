@@ -167,7 +167,10 @@ definition = SubcommandDefinition(
     description='Scan for malicious content in a WordPress databases',
     config_definitions=config_definitions,
     config_section='DB_SCAN',
-    cacheable_types=set(),
+    cacheable_types={
+            'wordfence.intel.database_rules.DatabaseRuleSet',
+            'wordfence.intel.database_rules.DatabaseRule'
+        },
     examples=examples,
     accepts_directories=True
 )

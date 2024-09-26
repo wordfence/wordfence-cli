@@ -1,5 +1,5 @@
 import mysql.connector
-from typing import Optional, Generator
+from typing import Optional, Generator, Dict
 
 from .exceptions import WordpressDatabaseException
 
@@ -55,6 +55,18 @@ class WordpressDatabaseConnection:
                     self.database,
                     'Failed to execute query'
                 )
+
+    def get_column_types(
+                self,
+                table: str,
+                prefix: bool = False
+            ) -> Dict[str, str]:
+        if prefix:
+            table = self.prefix_table(table)
+        columns = {}
+        for result in self.query(f'SHOW COLUMNS FROM {table}'):
+            columns[result['Field'].lower()] = result['Type']
+        return columns
 
 
 class WordpressDatabaseServer:
