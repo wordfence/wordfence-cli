@@ -103,11 +103,13 @@ JSON_VALIDATOR = ListValidator(
 
 def parse_database_rules(
             data,
-            pre_validated: bool = False
+            pre_validated: bool = False,
+            rule_set: Optional[DatabaseRuleSet] = None
         ) -> DatabaseRuleSet:
     if not pre_validated:
         JSON_VALIDATOR.validate(data)
-    rule_set = DatabaseRuleSet()
+    if rule_set is None:
+        rule_set = DatabaseRuleSet()
     for rule_data in data:
         rule = DatabaseRule(
                 identifier=rule_data['id'],
@@ -119,7 +121,10 @@ def parse_database_rules(
     return rule_set
 
 
-def load_database_rules(path: bytes) -> DatabaseRuleSet:
+def load_database_rules(
+            path: bytes,
+            rule_set: Optional[DatabaseRuleSet] = None
+        ) -> DatabaseRuleSet:
     with open(path, 'rb') as file:
         data = json.load(file)
-    return parse_database_rules(data)
+    return parse_database_rules(data, rule_set=rule_set)
