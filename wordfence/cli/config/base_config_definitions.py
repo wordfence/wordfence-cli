@@ -86,9 +86,7 @@ config_definitions = {
                        "if supported using the STARTTLS SMTP command.",
         "context": "ALL",
         "argument_type": "OPTION",
-        "meta": {
-            "valid_options": [mode.value for mode in SmtpTlsMode]
-        },
+        "meta": {"valid_options": [mode.value for mode in SmtpTlsMode]},
         "default": SmtpTlsMode.STARTTLS.value,
         "category": "Email"
     },
