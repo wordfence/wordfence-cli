@@ -5,6 +5,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get update && sudo apt-get install -y python3-pip
-      - run: pip3 install flake8 flake8-bugbear
-      - run: flake8 --require-plugins pycodestyle,flake8-bugbear
+      - run: sudo apt-get update && sudo apt-get install -y python3-full
+      - run: python3 -m venv ./python-venv
+      - run: ./python-venv/bin/pip install flake8 flake8-bugbear
+      - run: ./python-venv/bin/python -m flake8 --require-plugins pycodestyle,flake8-bugbear
