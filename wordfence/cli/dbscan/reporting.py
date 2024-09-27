@@ -1,4 +1,3 @@
-import json
 from typing import List, Optional, Dict
 
 from wordfence.databasescanning.scanner import DatabaseScanResult
