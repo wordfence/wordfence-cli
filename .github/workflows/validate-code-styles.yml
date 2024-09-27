@@ -2,7 +2,7 @@ name: "Validate Code Styles"
 on: [push]
 jobs:
   flake8:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt-get update && sudo apt-get install -y python3-pip
