@@ -151,6 +151,30 @@ config_definitions: ConfigDefinitions = {
         "meta": {
             "accepts_file": True
         }
+    },
+    "exclude-rules": {
+        "short_name": "e",
+        "description": "Specify rule IDs to ignore when scanning. May be "
+                       "comma-delimited and/or repeated.",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": None,
+        "meta": {
+            "separator": ",",
+            "value_type": int
+        }
+    },
+    "include-rules": {
+        "short_name": "i",
+        "description": "Specify rule IDs to include when scanning. May be "
+                       "comma-delimited and/or repeated.",
+        "context": "ALL",
+        "argument_type": "OPTION_REPEATABLE",
+        "default": None,
+        "meta": {
+            "separator": ",",
+            "value_type": int
+        }
     }
 }
 

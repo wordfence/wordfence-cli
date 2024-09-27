@@ -18,6 +18,15 @@ class DatabaseRule:
         self.condition = condition
         self.description = description
 
+    def __hash__(self):
+        return hash(self.identifier)
+
+    def __eq__(self, other) -> bool:
+        return (
+                type(other) is type(self)
+                and other.identifier == self.identifier
+            )
+
 
 class DatabaseRuleSet:
 
@@ -31,12 +40,27 @@ class DatabaseRuleSet:
             raise Exception('Duplicate rule ID: {rule.identifier}')
         self.rules[rule.identifier] = rule
         if rule.tables is None:
-            self.global_rules.append(rule)
+            self.global_rules.add(rule)
         else:
             for table in rule.tables:
                 if table not in self.table_rules:
-                    self.table_rules[table] = []
-                self.table_rules[table].append(rule)
+                    self.table_rules[table] = set()
+                self.table_rules[table].add(rule)
+
+    def remove_rule(self, rule_id: int) -> None:
+        try:
+            rule = self.rules.pop(rule_id)
+            if rule.tables is None:
+                self.global_rules.discard(rule)
+            else:
+                for table in rule.tables:
+                    if table in list(self.table_rules.keys()):
+                        table_rules = self.table_rules[table]
+                        table_rules.discard(rule)
+                        if len(table_rules) == 0:
+                            del self.table_rules[table]
+        except KeyError:
+            pass  # Rule doesn't exist, no need to remove
 
     def get_rules(self, table: str) -> List[DatabaseRule]:
         rules = []
@@ -52,6 +76,19 @@ class DatabaseRuleSet:
 
     def get_rule(self, identifier: int) -> DatabaseRule:
         return self.rules[identifier]
+
+    def filter_rules(
+                self,
+                included: Optional[Set[int]] = None,
+                excluded: Optional[Set[int]] = None
+            ):
+        if included is not None:
+            for rule_id in list(self.rules.keys()):
+                if rule_id not in included:
+                    self.remove_rule(rule_id)
+        if excluded is not None:
+            for rule_id in excluded:
+                self.remove_rule(rule_id)
 
 
 JSON_VALIDATOR = ListValidator(

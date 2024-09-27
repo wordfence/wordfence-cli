@@ -63,7 +63,10 @@ class DatabaseScanner:
                 f'{prefixed_table} WHERE '
                 + ' OR '.join(conditions)
             )
-        for result in connection.query(query):
+        # Using a dict as the query parameters avoids %s from being
+        # interpreted as a placeholder (there is apparently no way
+        # to escape "%s" ("%%s" doesn't work)
+        for result in connection.query(query, {}):
             rule = self.rule_set.get_rule(result['rule_id'])
             del result['rule_id']
             yield DatabaseScanResult(

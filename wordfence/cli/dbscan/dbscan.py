@@ -161,6 +161,15 @@ class DbScanSubcommand(Subcommand):
 
         return cacheable.get(self.cache)
 
+    def _filter_rules(self, rule_set: DatabaseRuleSet) -> None:
+        included = None
+        if self.config.include_rules:
+            included = set(self.config.include_rules)
+        excluded = None
+        if self.config.exclude_rules:
+            excluded = set(self.config.exclude_rules)
+        rule_set.filter_rules(included, excluded)
+
     def _load_rules(self) -> DatabaseRuleSet:
         rule_set = self._load_remote_rules() \
             if self.config.use_remote_rules \
@@ -168,6 +177,7 @@ class DbScanSubcommand(Subcommand):
         if self.config.rules_file is not not_set_token:
             for rules_file in self.config.rules_file:
                 load_database_rules(rules_file, rule_set)
+        self._filter_rules(rule_set)
         return rule_set
 
     def invoke(self) -> int:
