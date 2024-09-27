@@ -12,7 +12,10 @@ RUN dnf -y upgrade && \
         python3.11-wheel \
         python3.11-pytest \
         python3.11-requests \
-        python3-tomli
+        python3-tomli \
+        python3-mysqlclient
+
+RUN pip
 
 COPY ./docker/build/entrypoint.sh /root/entrypoint.sh
 COPY ./ /root/wordfence-cli
