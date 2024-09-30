@@ -1,5 +1,5 @@
-import mysql.connector
-from typing import Optional, Generator, Dict
+import MySQLdb
+from typing import Optional, Generator, Dict, Any
 
 from .exceptions import WordpressDatabaseException
 
@@ -16,15 +16,15 @@ class WordpressDatabaseConnection:
     def __init__(self, database):
         self.database = database
         try:
-            self.connection = mysql.connector.connect(
+            self.connection = MySQLdb.connect(
                     host=database.server.host,
                     port=database.server.port,
                     user=database.server.user,
                     password=database.server.password,
-                    database=database.name,
-                    collation=database.collation
+                    database=database.name
                 )
-        except mysql.connector.Error:
+            self.set_collation(database.collation)
+        except MySQLdb.MySQLError:
             raise WordpressDatabaseException(
                     database,
                     f'Failed to connect to database: {database.debug_string}'
@@ -43,18 +43,26 @@ class WordpressDatabaseConnection:
                 self,
                 query: str,
                 parameters: tuple = ()
-            ) -> Generator[tuple, None, None]:
+            ) -> Generator[Dict[str, Any], None, None]:
         try:
-            cursor = self.connection.cursor(dictionary=True)
+            cursor = self.connection.cursor(MySQLdb.cursors.DictCursor)
             cursor.execute(query, parameters)
             for result in cursor:
                 yield result
             cursor.close()
-        except mysql.connector.Error:
+        except MySQLdb.MySQLError:
             raise WordpressDatabaseException(
                     self.database,
                     'Failed to execute query'
                 )
+
+    def query_literal(
+                self,
+                query: str
+            ) -> Generator[Dict[str, Any], None, None]:
+        return self.query(
+                query.replace('%', '%%')
+            )
 
     def get_column_types(
                 self,
@@ -67,6 +75,16 @@ class WordpressDatabaseConnection:
         for result in self.query(f'SHOW COLUMNS FROM {table}'):
             columns[result['Field'].lower()] = result['Type']
         return columns
+
+    def set_variable(
+                self,
+                variable: str,
+                value: str
+            ) -> None:
+        self.query('SET %s = %s', (variable, value))
+
+    def set_collation(self, collation: str) -> None:
+        self.set_variable('collation_connection', collation)
 
 
 class WordpressDatabaseServer:
