@@ -15,7 +15,7 @@ RUN dnf -y upgrade && \
         python3-tomli \
         python3-mysqlclient
 
-RUN pip
+RUN pip-3.11
 
 COPY ./docker/build/entrypoint.sh /root/entrypoint.sh
 COPY ./ /root/wordfence-cli
