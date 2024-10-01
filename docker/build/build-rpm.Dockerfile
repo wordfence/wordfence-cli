@@ -12,8 +12,8 @@ RUN dnf -y upgrade && \
         python3.11-wheel \
         python3.11-pytest \
         python3.11-requests \
-        python3-tomli \
-        python3-mysqlclient
+        python3.11-PyMySQL \
+		python3.11-setuptools
 
 RUN pip-3.11
 

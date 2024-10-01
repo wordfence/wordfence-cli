@@ -23,7 +23,7 @@ Wordfence CLI is an open source, high performance, multi-process security scanne
 
 %package -n python%{python3_pkgversion}-wordfence
 Summary:        %{summary}
-Requires:       pcre python%{python3_pkgversion}-mysqlclient
+Requires:       pcre python%{python3_pkgversion}-packaging python%{python3_pkgversion}-requests python%{python3_pkgversion}-pymysql
 
 
 %description -n python%{python3_pkgversion}-wordfence %_description

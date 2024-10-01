@@ -1,9 +1,9 @@
 # Runtime dependencies
 packaging >= 21.0
 requests >= 2.3
-mysqlclient >= 1.4
+pymysql >= 0.9.3
 # Build requirements
 build ~= 0.10
-setuptools ~= 68.0
+setuptools ~= 65.0
 # Helpful development tools
 pyinstaller ~= 5.13.0

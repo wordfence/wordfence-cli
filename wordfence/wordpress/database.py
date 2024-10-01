@@ -1,4 +1,4 @@
-import MySQLdb
+import pymysql
 from typing import Optional, Generator, Dict, Any
 
 from .exceptions import WordpressDatabaseException
@@ -16,7 +16,7 @@ class WordpressDatabaseConnection:
     def __init__(self, database):
         self.database = database
         try:
-            self.connection = MySQLdb.connect(
+            self.connection = pymysql.connect(
                     host=database.server.host,
                     port=database.server.port,
                     user=database.server.user,
@@ -24,7 +24,7 @@ class WordpressDatabaseConnection:
                     database=database.name
                 )
             self.set_collation(database.collation)
-        except MySQLdb.MySQLError:
+        except pymysql.MySQLError:
             raise WordpressDatabaseException(
                     database,
                     f'Failed to connect to database: {database.debug_string}'
@@ -45,12 +45,12 @@ class WordpressDatabaseConnection:
                 parameters: tuple = ()
             ) -> Generator[Dict[str, Any], None, None]:
         try:
-            cursor = self.connection.cursor(MySQLdb.cursors.DictCursor)
+            cursor = self.connection.cursor(pymysql.cursors.DictCursor)
             cursor.execute(query, parameters)
             for result in cursor:
                 yield result
             cursor.close()
-        except MySQLdb.MySQLError:
+        except pymysql.MySQLError:
             raise WordpressDatabaseException(
                     self.database,
                     'Failed to execute query'

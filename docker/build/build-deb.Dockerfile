@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-all \
     python3-pip \
-    pybuild-plugin-pyproject
+    pybuild-plugin-pyproject \
+	pkg-config
 
 COPY ./docker/build/entrypoint.sh /root/entrypoint.sh
 COPY ./ /root/wordfence-cli
