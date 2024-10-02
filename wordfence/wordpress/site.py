@@ -46,7 +46,7 @@ DATABASE_CONFIG_CONSTANTS = {
 @dataclass
 class WordpressStructureOptions:
     relative_content_paths: List[str] = field(default_factory=list)
-    relaGtive_plugins_paths: List[str] = field(default_factory=list)
+    relative_plugins_paths: List[str] = field(default_factory=list)
     relative_mu_plugins_paths: List[str] = field(default_factory=list)
 
 
