@@ -97,6 +97,8 @@ if [ "$PACKAGE_TYPE" = 'standalone' ]; then
     --hidden-import wordfence.cli.countsites.definition \
     --hidden-import wordfence.scanning.matching.pcre \
     --hidden-import wordfence.scanning.matching.vectorscan \
+    --hidden-import wordfence.cli.dbscan.dbscan \
+    --hidden-import wordfence.cli.dbscan.definition \
     main.py
 
   # compress and copy to output volume
