@@ -1,5 +1,5 @@
 from wordfence.wordpress.database import WordpressDatabase, \
-    WordpressDatabaseServer, DEFAULT_PORT, DEFAULT_COLLATION
+    WordpressDatabaseServer, DEFAULT_PORT, DEFAULT_COLLATION, DEFAULT_PREFIX
 from wordfence.wordpress.site import WordpressLocator, \
     WordpressSite
 from wordfence.wordpress.exceptions import WordpressException
@@ -48,6 +48,7 @@ class DbScanSubcommand(Subcommand):
         return WordpressDatabase(
                 name=name,
                 server=server,
+                prefix=self.config.prefix,
                 collation=self.config.collation
             )
 
@@ -99,7 +100,8 @@ class DbScanSubcommand(Subcommand):
                         'password': str,
                         'host': str,
                         'port': OptionalValueValidator(int),
-                        'collation': OptionalValueValidator(str)
+                        'collation': OptionalValueValidator(str),
+                        'prefix': OptionalValueValidator(str)
                     }, optional_keys={'port', 'collation'})
             )
 
@@ -121,6 +123,10 @@ class DbScanSubcommand(Subcommand):
                         collation = config['collation']
                     except KeyError:
                         collation = DEFAULT_COLLATION
+                    try:
+                        prefix = config['prefix']
+                    except KeyError:
+                        prefix = DEFAULT_PREFIX
                     yield WordpressDatabase(
                             name=config['name'],
                             server=WordpressDatabaseServer(
@@ -129,6 +135,7 @@ class DbScanSubcommand(Subcommand):
                                     user=config['user'],
                                     password=config['password']
                                 ),
+                            prefix=prefix,
                             collation=collation
                         )
 

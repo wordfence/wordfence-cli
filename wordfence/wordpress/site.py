@@ -506,11 +506,11 @@ class WordpressSite(PathResolver):
         host_components = config['host'].split(':', 1)
         host = host_components[0]
         try:
-            port = host_components[1]
+            port = int(host_components[1])
         except IndexError:
             port = DEFAULT_PORT
         try:
-            collation = config['collation;']
+            collation = config['collation']
         except KeyError:
             collation = DEFAULT_COLLATION
         server = WordpressDatabaseServer(
@@ -522,5 +522,6 @@ class WordpressSite(PathResolver):
         return WordpressDatabase(
                 name=config['name'],
                 server=server,
+                prefix=config['prefix'],
                 collation=collation
             )
