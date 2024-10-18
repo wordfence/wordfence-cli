@@ -26,7 +26,7 @@ Yes. Within the Wordfence plugin scan options, you can disable the "Scan file co
 
 #### I got the error "Failed to locate libpcre". What do I do?
 
-Wordfence CLI uses the `libprce` library to run our signatures against files. There's a few ways to install it depending on your system:
+Wordfence CLI uses the `libpcre` library to run our signatures against files. There's a few ways to install it depending on your system:
 
 For Debian/Ubuntu flavors of Linux:
 

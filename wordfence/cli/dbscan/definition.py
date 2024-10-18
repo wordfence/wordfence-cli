@@ -127,7 +127,7 @@ config_definitions: ConfigDefinitions = {
         "category": "Site Location"
     },
     "allow-io-errors": {
-        "description": "Allow scanning to continue even if an IO error occurs"
+        "description": "Allow scanning to continue even if an IO error occurs "
                        "while locating WordPress sites. Sites that cannot "
                        "be identified due to IO errors will be excluded from "
                        "scanning. This is the default behavior.",
@@ -138,7 +138,7 @@ config_definitions: ConfigDefinitions = {
     },
     "use-remote-rules": {
         "description": "If enabled, scanning rules will be pulled from "
-                       "the Wordfence API",
+                       "the Wordfence API. This is the default behavior.",
         "context": "ALL",
         "argument_type": "FLAG",
         "default": True
@@ -187,8 +187,11 @@ examples = [
 
 definition = SubcommandDefinition(
     name='db-scan',
-    usage='[OPTIONS] [DATABASE_CONFIG_PATH or WORDPRESS_INSTALLATION_PATH]...',
-    description='Scan for malicious content in a WordPress databases',
+    usage=[
+        '[OPTIONS] [DATABASE_CONFIG_PATH]...',
+        '[OPTIONS] -S [WORDPRESS_INSTALLATION_PATH]...'
+    ],
+    description='Scan for malicious content in WordPress databases',
     config_definitions=config_definitions,
     config_section='DB_SCAN',
     cacheable_types={

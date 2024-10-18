@@ -212,12 +212,16 @@ class HelpGenerator:
         self.terminal_size = terminal_size
         self.line_formatter = LineFormatter(terminal_size)
 
-    def _generate_usage_details(self) -> str:
+    def _generate_usage_details(self) -> List[str]:
         raise NotImplementedError()
 
     def generate_usage(self) -> str:
         details = self._generate_usage_details()
-        return f'{COMMAND} {details}'
+        prefix = '\n' if len(details) > 1 else ''
+        usage_lines = []
+        for line in details:
+            usage_lines.append(f'{COMMAND} {line}')
+        return prefix + '\n'.join(usage_lines)
 
     def _get_config_map(self) -> Dict[str, ConfigItemDefinition]:
         raise NotImplementedError()
@@ -272,7 +276,7 @@ class BaseHelpGenerator(HelpGenerator):
         self.subcommand_definitions = subcommand_definitions
         super().__init__(terminal_size)
 
-    def _generate_usage_details(self) -> str:
+    def _generate_usage_details(self) -> List[str]:
         return '<SUBCOMMAND> [OPTIONS]'
 
     def _get_config_map(self) -> Dict[str, ConfigItemDefinition]:
@@ -306,8 +310,17 @@ class SubcommandHelpGenerator(HelpGenerator):
         self.base_config_map = base_config_map
         super().__init__(terminal_size)
 
-    def _generate_usage_details(self) -> str:
-        return f'{self.definition.name} {self.definition.usage}'
+    def _generate_usage_row(self, usage: str) -> str:
+        return f'{self.definition.name} {usage}'
+
+    def _generate_usage_details(self) -> List[str]:
+        lines = []
+        if isinstance(self.definition.usage, str):
+            lines.append(self._generate_usage_row(self.definition.usage))
+        else:
+            for usage in self.definition.usage:
+                lines.append(usage)
+        return lines
 
     def _get_config_map(self) -> Dict[str, ConfigItemDefinition]:
         return {**self.base_config_map, **self.definition.get_config_map()}

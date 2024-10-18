@@ -2,7 +2,7 @@ from typing import Union, Generator, List
 from wordfence.intel.database_rules import DatabaseRuleSet, DatabaseRule
 from wordfence.wordpress.database import WordpressDatabase, \
     WordpressDatabaseConnection
-from wordfence.logging import log
+from wordfence.logging import log, VERBOSE
 from wordfence.util.timing import Timer
 
 
@@ -80,10 +80,16 @@ class DatabaseScanner:
                 connection: WordpressDatabaseConnection
             ) -> Generator[DatabaseScanResult, None, None]:
         self.timer.resume()
-        log.debug(f'Scanning database: {connection.database.debug_string}...')
+        log.log(
+                VERBOSE,
+                f'Scanning database: {connection.database.debug_string}...'
+            )
         for table in self.rule_set.get_targeted_tables():
             yield from self._scan_table(connection, table)
-        log.debug(f'Scan completed for: {connection.database.debug_string}')
+        log.log(
+                VERBOSE,
+                f'Scan completed for: {connection.database.debug_string}'
+            )
         self.timer.stop()
 
     def scan(
@@ -94,9 +100,13 @@ class DatabaseScanner:
         if isinstance(database, WordpressDatabaseConnection):
             yield from self._scan_connection(database)
         else:
-            log.debug(f'Connecting to database: {database.debug_string}...')
+            log.log(
+                    VERBOSE,
+                    f'Connecting to database: {database.debug_string}...'
+                )
             with database.connect() as connection:
-                log.debug(
+                log.log(
+                        VERBOSE,
                         'Successfully connected to database: '
                         f'{database.debug_string}'
                     )

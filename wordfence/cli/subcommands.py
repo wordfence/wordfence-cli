@@ -1,7 +1,7 @@
 import importlib
 from collections import namedtuple
 from types import ModuleType
-from typing import Optional, Dict, Set, List
+from typing import Optional, Dict, Set, List, Union
 
 from .config.typing import ConfigDefinitions
 from .config.config_items import config_definitions_to_config_map, \
@@ -73,7 +73,7 @@ class SubcommandDefinition:
     def __init__(
                 self,
                 name: str,
-                usage: str,
+                usage: Union[str, List[str]],
                 description: str,
                 config_definitions: ConfigDefinitions,
                 config_section: str,
