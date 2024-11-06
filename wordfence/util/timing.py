@@ -44,9 +44,14 @@ class Timer:
                 )
         self.start()
 
-    def get_elapsed(self, unit=unit_seconds, total: bool = True) -> int:
-        previous_time = self.previous_time if total else 0
+    def _get_current_elapsed(self) -> int:
+        if self.start_time is None:
+            return 0
         end_time = \
             self.end_time if self.end_time is not None \
             else self._capture_time()
-        return unit(previous_time + end_time - self.start_time)
+        return end_time - self.start_time
+
+    def get_elapsed(self, unit=unit_seconds, total: bool = True) -> int:
+        previous_time = self.previous_time if total else 0
+        return unit(previous_time + self._get_current_elapsed())
