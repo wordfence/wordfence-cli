@@ -277,7 +277,7 @@ class BaseHelpGenerator(HelpGenerator):
         super().__init__(terminal_size)
 
     def _generate_usage_details(self) -> List[str]:
-        return '<SUBCOMMAND> [OPTIONS]'
+        return ['<SUBCOMMAND> [OPTIONS]']
 
     def _get_config_map(self) -> Dict[str, ConfigItemDefinition]:
         return self.config_map
