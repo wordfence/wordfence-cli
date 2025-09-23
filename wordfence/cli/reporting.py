@@ -614,7 +614,11 @@ class ReportManager:
 
     def open_output_file(self) -> Optional[IO]:
         mode = 'w+' if self.will_email() else 'w'
-        return open(resolve_path(self.config.output_path), mode) \
+        return open(
+                resolve_path(self.config.output_path),
+                mode,
+                encoding='utf-8'
+            ) \
             if self.config.output_path is not None \
             else nullcontext()
 
