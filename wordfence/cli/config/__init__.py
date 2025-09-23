@@ -1,17 +1,20 @@
-import os
+from __future__ import annotations
 
-from typing import List, Dict, Tuple
+import os
+from typing import TYPE_CHECKING, List, Dict, Tuple
 from dataclasses import dataclass
 
-from ..helper import Helper
 from .cli_parser import CliCanonicalValueExtractor, get_cli_values
 from .config_items import ConfigItemDefinition, \
     CanonicalValueExtractorInterface, not_set_token
 from .ini_parser import load_ini, get_ini_value_extractor, \
         get_default_ini_value_extractor
-from ..subcommands import SubcommandDefinition
 from .base_config_definitions import config_map as base_config_map
 from .config import Config
+
+if TYPE_CHECKING:
+    from ..helper import Helper
+    from ..subcommands import SubcommandDefinition
 
 
 value_extractors: List = []
@@ -80,7 +83,7 @@ def create_config_object(
 
 def _get_renamed_subcommand(
             subcommand: str,
-            definitions: Dict[str, SubcommandDefinition]
+            definitions: Dict[str, 'SubcommandDefinition']
         ) -> str:
     for definition in definitions.values():
         if subcommand in definition.previous_names:
@@ -90,7 +93,7 @@ def _get_renamed_subcommand(
         )
 
 
-def resolve_config_map(subcommand_definition: SubcommandDefinition):
+def resolve_config_map(subcommand_definition: 'SubcommandDefinition'):
     return {
             **base_config_map,
             **subcommand_definition.get_config_map()
@@ -103,11 +106,11 @@ class GlobalConfig:
 
 
 def load_config(
-            subcommand_definitions: Dict[str, SubcommandDefinition],
-            helper: Helper,
+            subcommand_definitions: Dict[str, 'SubcommandDefinition'],
+            helper: 'Helper',
             subcommand: str = None,
             global_config: GlobalConfig = None
-        ) -> Tuple[Config, SubcommandDefinition]:
+        ) -> Tuple[Config, 'SubcommandDefinition']:
     cli_values, trailing_arguments, parser = get_cli_values(
             subcommand_definitions,
             helper

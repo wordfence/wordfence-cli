@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import errno
 import json
 import os
+
 from argparse import Namespace
 from configparser import ConfigParser, NoSectionError
-from typing import List, Set, Any, Callable, Optional
+from typing import TYPE_CHECKING, List, Set, Any, Callable, Optional
 
 from wordfence.logging import log
 from .config_items import Context, ConfigItemDefinition, \
@@ -11,7 +14,9 @@ from .config_items import Context, ConfigItemDefinition, \
     ReferenceToken, merge_config_maps
 from .defaults import INI_DEFAULT_PATH
 from .base_config_definitions import config_map as base_config_map
-from ..subcommands import SubcommandDefinition
+
+if TYPE_CHECKING:
+    from ..subcommands import SubcommandDefinition
 
 
 valid_contexts: Set[Context] = {Context.ALL, Context.CONFIG}
@@ -114,7 +119,7 @@ class IniCanonicalValueExtractor(CanonicalValueExtractorInterface):
 
 
 def get_ini_value_extractor(
-            subcommand_definition: SubcommandDefinition
+            subcommand_definition: 'SubcommandDefinition'
         ) -> IniCanonicalValueExtractor:
     return IniCanonicalValueExtractor(
             subcommand_definition.config_section,
@@ -137,7 +142,7 @@ def get_ini_path(cli_values: Namespace) -> str:
 
 def load_ini(
             cli_values,
-            subcommand_definition: Optional[SubcommandDefinition]
+            subcommand_definition: Optional['SubcommandDefinition']
         ) -> (ConfigParser, Optional[str]):
     config = ConfigParser()
     try:

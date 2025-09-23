@@ -1,17 +1,21 @@
+from __future__ import annotations
+
 import argparse
 import json
 import os
 from argparse import ArgumentParser, Namespace
-from typing import Set, List, Dict, Any, Tuple
+from typing import TYPE_CHECKING, Set, List, Dict, Any, Tuple
 
 from wordfence.logging import log
-from ..helper import Helper
 from .config_items import ConfigItemDefinition, \
     CanonicalValueExtractorInterface, Context, ArgumentType, \
     not_set_token
 from .base_config_definitions \
         import config_map as base_config_map
-from ..subcommands import SubcommandDefinition
+
+if TYPE_CHECKING:
+    from ..helper import Helper
+    from ..subcommands import SubcommandDefinition
 
 NAME = "Wordfence CLI"
 DESCRIPTION = ("Multifunction commandline tool for Wordfence - "
@@ -147,8 +151,8 @@ def add_definitions_to_parser(
 
 
 def get_cli_values(
-            subcommand_definitions: Dict[str, SubcommandDefinition],
-            helper: Helper
+            subcommand_definitions: Dict[str, 'SubcommandDefinition'],
+            helper: 'Helper'
         ) -> Tuple[Namespace, List[str], ArgumentParser]:
     parser = ArgumentParser(
             prog=COMMAND,
