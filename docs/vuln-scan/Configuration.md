@@ -6,13 +6,13 @@ Configuration can be set through command line arguments, or configured globally 
 
 By default, `wordfence-cli.ini` will reside in `~/.config/wordfence/wordfence-cli.ini`. The INI file is best suited for global configuration options for Wordfence CLI. The license is typically all that's needed to be stored in the INI. You can optionally store the arguments that appear below in the INI if you choose. Keep in mind, that the examples in the documentation here may not work as expected when using scan options stored in the INI.
 
-In order to store vulnerability scan specific configuration in the INI file, you should use `[VULN-SCAN]` as the INI section. Here's basic example of an INI file that uses default configuration options along with vulnerability scan options:
+In order to store vulnerability scan specific configuration in the INI file, you should use `[VULN_SCAN]` as the INI section. Here's basic example of an INI file that uses default configuration options along with vulnerability scan options:
 
 	[DEFAULT]
 	license = xxx
 	cache-directory = /usr/local/wordfence-cli
 
-	[VULN-SCAN]
+	[VULN_SCAN]
 	feed = scanner
 	exclude-vulnerability = 99999
 
