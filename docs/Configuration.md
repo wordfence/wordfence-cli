@@ -51,7 +51,7 @@ These arguments apply to all subcommands.
 - `--cache`: Enable caching. Caching is enabled by default. (use `--no-cache` to disable)
 - `--purge-cache`: Purge any existing values from the cache.
 
-## [wordfence-cli.ini](#ini)
+## wordfence-cli.ini
 
 By default, the configuration file will reside at `~/.config/wordfence/wordfence-cli.ini`. This INI file is best suited for global configuration options for Wordfence CLI. The license is the only item that's typically configured here.
 
