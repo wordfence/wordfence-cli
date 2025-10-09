@@ -1,6 +1,6 @@
 # Site Counting Configuration
 
-Site counting can be configured using either command line arguments, the [INI file](../../Configuration.md), or a combination of both.
+Site counting can be configured using either command line arguments, the [INI file](../Configuration.md), or a combination of both.
 
 ## Command Line Arguments
 
