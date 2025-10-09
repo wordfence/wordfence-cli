@@ -1,6 +1,6 @@
 # Vulnerability Scan Configuration
 
-Vulnerability scanning can be configured using either command line arguments, the [INI file](../Configuration.md), or a combination of both.
+Vulnerability scanning can be configured using either command line arguments, the [INI file](../Configuration.md#ini), or a combination of both.
 
 ## Command Line Arguments
 
