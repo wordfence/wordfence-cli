@@ -1,5 +1,6 @@
 ## Vulnerability Scanning Contents
 
+Documentation for the `wordfence vuln-scan` subcommand
 
 - [Subcommand Configuration](Configuration.md)
 - [Examples](Examples.md)

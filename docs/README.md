@@ -37,5 +37,8 @@ Wordfence CLI is a high performance, multi-process, command-line malware scanner
 		- [Automatically locating WordPress installations](db-scan/Examples.md#automatically-locating-wordpress-installations)
 		- [Scanning databases listed in a JSON file](db-scan/Examples.md#scanning-databases-listed-in-a-json-file)
 		- [Writing database scan results to a CSV](db-scan/Examples.md#writing-database-scan-results-to-a-csv)
+- **Remediation**
+	- [Subcommand Configuration](remediate/Configuration.md)
+	- [Examples](remediate/Examples.md)
 - [Autocomplete of CLI's subcommands and parameters](Autocomplete.md)
 - [Frequently Asked Questions](FAQs.md)

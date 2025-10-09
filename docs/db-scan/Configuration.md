@@ -1,23 +1,8 @@
 # Database Scan Configuration
 
-Configuration can be set through command line arguments or configured globally in `wordfence-cli.ini`. After installing Wordfence CLI, run `./wordfence configure` to interactively create the global configuration file.
+Database scanning can be configured using either command line arguments, the [INI file](../../Configuration.md), or a combination of both.
 
-## wordfence-cli.ini
-
-The default configuration path is `~/.config/wordfence/wordfence-cli.ini`. Global options such as the license key or cache directory should live in the `[DEFAULT]` section, while database scan specific settings belong in `[DB_SCAN]`.
-
-	[DEFAULT]
-	license = xxx
-	cache-directory = /usr/local/wordfence-cli
-
-	[DB_SCAN]
-	host = db.example.com
-	user = wordpress
-	database-name = wordpress
-	prompt-for-password = true
-	output-format = human
-
-## Database Scan Command Line Arguments
+## Command Line Arguments
 
 - `-H`, `--host`: Database hostname. Defaults to `localhost`.
 - `-P`, `--port`: Database port. Defaults to `3306`.
@@ -44,6 +29,35 @@ The default configuration path is `~/.config/wordfence/wordfence-cli.ini`. Globa
 - `-m`, `--output-format`: Output format for results. Supported values: `human` (default), `csv`, `tsv`, `null-delimited`, `line-delimited`.
 - `--output-headers`: Include column headers in formats that support them (`csv`, `tsv`, `null-delimited`, `line-delimited`).
 
+# INI Options
+
+```ini
+[DB_SCAN]
+# The name of an environment variable containing the database password to use
+password_env = <variable>
+# Read paths from stdin
+read_stdin = [on|off]
+# Separator string when reading paths from stdin, defaults to null byte
+path_separator = <separator>
+# Controls whether or not output is written to stdout
+output = [on|off]
+output_path = <path to which to write results>
+# Comma-delimited list of columns to include in output (`table`, `rule_id`, `rule_description`, `row`)
+output_columns = <columns>
+output_format = [human|csv|tsv|null-delimited|line-delimited]
+# Whether to include headers in output
+output_headers = [on|off]
+allow_nested = [on|off]
+allow_io_errors = [on|off]
+use_remote_rules = [on|off]
+rules_file = <path>
+# Comma-delimited list of rule IDs
+exclude_rules = <rules>
+include_rules = <rules>
+```
+
+# JSON Configuration
+
 When `--locate-sites` is not used, each trailing argument should be a JSON file containing a list of database configurations in the following shape:
 
 	[
@@ -61,3 +75,4 @@ When `--locate-sites` is not used, each trailing argument should be a JSON file 
 Entries may omit `port`, `collation`, or `prefix`; defaults are applied automatically.
 
 When databases are discovered through `--locate-sites` or provided via JSON files, connection details from those sources override the command-line defaults for each database.
+

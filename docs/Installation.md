@@ -16,7 +16,7 @@ If run as root, the executable path should be:
 
 Verify the executable works correctly on your system:
 
-	./wordfence version
+	wordfence version
 
 You should see output similar to this:
 

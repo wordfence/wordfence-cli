@@ -1,22 +1,8 @@
 # Vulnerability Scan Configuration
 
-Configuration can be set through command line arguments, or configured globally through the wordfence-cli.ini file. Once Wordfence CLI is installed, we recommend running `./wordfence configure` to interactively setup Wordfence CLI's global configuration.
+Vulnerability scanning can be configured using either command line arguments, or the [INI file](../../Configuration.md).
 
-## wordfence-cli.ini
-
-By default, `wordfence-cli.ini` will reside in `~/.config/wordfence/wordfence-cli.ini`. The INI file is best suited for global configuration options for Wordfence CLI. The license is typically all that's needed to be stored in the INI. You can optionally store the arguments that appear below in the INI if you choose. Keep in mind, that the examples in the documentation here may not work as expected when using scan options stored in the INI.
-
-In order to store vulnerability scan specific configuration in the INI file, you should use `[VULN_SCAN]` as the INI section. Here's basic example of an INI file that uses default configuration options along with vulnerability scan options:
-
-	[DEFAULT]
-	license = xxx
-	cache-directory = /usr/local/wordfence-cli
-
-	[VULN_SCAN]
-	feed = scanner
-	exclude-vulnerability = 99999
-
-## Vulnerability Scan Command Line Arguments
+## Command Line Arguments
 
 - `--read-stdin`: Read WordPress base paths from stdin. If not specified, paths will automatically be read from stdin when input is not from a TTY.
 - `-s`, `--path-separator`: Separator used to delimit paths when reading from stdin. Defaults to the null byte.
@@ -36,3 +22,35 @@ In order to store vulnerability scan specific configuration in the INI file, you
 - `-I`, `--informational`: Include informational vulnerability records in results.
 - `-f`, `--feed`: The feed to use for vulnerability information. The production feed provides all available information fields. The scanner feed contains only the minimum fields necessary to conduct a scan and may be a better choice when detailed vulnerability information is not needed.
 - `--require-path`: When enabled, an error will be issued if at least one path to scan is not specified. This is the default behavior when running in a terminal.
+
+## INI Options
+
+```ini
+[VULN_SCAN]
+# Read WordPress paths from stdin
+read_stdin = [on|off]
+# Separator to use when reading paths from stdin, defaults to null byte
+path_separator = <separator>
+# Alternate relative path for wp-content
+relative_content_path = <path>
+# Alternate relative path for wp-content/plugins
+relative_plugins_path = <path>
+# Alternate relative path for wp-content/mu-plugins
+relative_mu_plugins_path = <path>
+# Controls whether or not output is written to stdout
+output = [on|off]
+output_path = <path to which to write results>
+# Comma-delimited list of columns to include in output (`software_type`, `slug`, `version`, `id`, `title`, `link`, `description`, `cve`, `cvss_vector`, `cvss_score`, `cvss_rating`, `cwe_id`, `cwe_name`, `cwe_description`, `patched`, `remediation`, `published`, `updated`, `scanned_path`)
+output_columns = <columns>
+output_format = [human|csv|tsv|null-delimited|line-delimited]
+# Whether to include headers in output
+output_headers = [on|off]
+# Comma-delimited list of vulnerability UUIDs or CVE IDs
+exclude_vulnerability = <ids>
+include_vulnerability = <ids>
+# Toggle informational vulnerabilities
+informations = [on|off]
+feed = [production|scanner]
+allow_nested = [on|off]
+allow_io_errors = [on|off]
+```

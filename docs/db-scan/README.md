@@ -1,5 +1,7 @@
 ## Database Scanning Contents
 
+Documentation for the `wordfence db-scan` subcommand
+
 - [Subcommand Configuration](Configuration.md)
 - [Examples](Examples.md)
 	- [Scanning a single WordPress database](Examples.md#scanning-a-single-wordpress-database)
