@@ -1,6 +1,6 @@
 # Database Scan Configuration
 
-Database scanning can be configured using either command line arguments, the [INI file](../Configuration.md#ini), or a combination of both.
+Database scanning can be configured using either command line arguments, the [INI file](../Configuration.md#wordfence-cliini), or a combination of both.
 
 ## Command Line Arguments
 
