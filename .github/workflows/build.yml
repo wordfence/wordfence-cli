@@ -100,7 +100,7 @@ jobs:
       - python_build
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Create checksums
         run: |
           touch checksums.txt
