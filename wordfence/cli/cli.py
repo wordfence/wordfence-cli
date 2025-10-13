@@ -92,7 +92,7 @@ class WordfenceCli:
         log.setLevel(logging.INFO)
 
     def _get_cacheable_types(self) -> Set[str]:
-        cacheable_types = set()
+        cacheable_types = {'builtins.getattr'}
         cacheable_types.update(licensing.CACHEABLE_TYPES)
         cacheable_types.update(terms_management.CACHEABLE_TYPES)
         for definition in self.subcommand_definitions.values():
