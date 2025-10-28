@@ -104,7 +104,7 @@ class Filter:
 
 class InvalidPatternException(Exception):
 
-    def __init__(self, pattern: bytes):
+    def __init__(self, pattern: bytes):  # noqa: B042
         self.pattern = pattern
 
 

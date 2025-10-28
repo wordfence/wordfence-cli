@@ -8,5 +8,5 @@ class ExtensionException(WordpressException):
 
 class WordpressDatabaseException(Exception):
 
-    def __init__(self, database, message):
+    def __init__(self, database, message):  # noqa: B042
         self.database = database

@@ -3,7 +3,7 @@ from typing import Optional
 
 class ApiException(Exception):
 
-    def __init__(
+    def __init__(  # noqa: B042
                 self,
                 internal_message: str,
                 public_message: Optional[str] = None

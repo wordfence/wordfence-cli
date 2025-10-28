@@ -39,7 +39,7 @@ USES_FORK = get_start_method() == 'fork'
 
 class ExceptionContainer(Exception):
 
-    def __init__(self, exception: BaseException, trace: str = None):
+    def __init__(self, exception: BaseException, trace: str = None):  # noqa: B042, E501
         self.exception = exception
         if trace is None:
             self.trace = traceback.format_exc()
