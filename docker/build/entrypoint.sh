@@ -10,7 +10,8 @@ if [ "$PACKAGE_TYPE" = 'deb' ]; then
   VERSION=$(python3 -c 'from wordfence import version; print(version.__version__)')
 
   # install build requirements
-  pip3 install -r requirements.txt --force-reinstall
+  python3 -m pip install --upgrade pip
+  python3 -m pip install -r requirements.txt --force-reinstall
 
   export DEBFULLNAME='Wordfence'
   export DEBEMAIL='opensource@wordfence.com'

@@ -23,3 +23,6 @@ Description: Command-line malware scanner powered by Wordfence
  cores for scanning large filesystems for malware. Wordfence CLI uses libpcre
  over Python's existing regex libraries for speed and compatibility with our
  signature set.
+
+override_dh_builddeb:
+    dh_builddeb -- -Zxz
