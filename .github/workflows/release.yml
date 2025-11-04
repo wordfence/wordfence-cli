@@ -28,7 +28,7 @@ jobs:
   pypi_release:
     if: ${{ inputs.release_pypi }}
     name: PyPI release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Download artifact
         uses: dawidd6/action-download-artifact@v2.27.0
@@ -63,7 +63,7 @@ jobs:
   github_release:
     if: ${{ inputs.release_github }}
     name: GitHub release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Download artifact
         uses: dawidd6/action-download-artifact@v2.27.0

@@ -222,7 +222,7 @@ class VectorscanErrorType(IntEnum):
 
 class VectorscanError(VectorscanException):
 
-    def __init__(self, error: VectorscanErrorType):
+    def __init__(self, error: VectorscanErrorType):  # noqa: B042
         self.error = error
 
 

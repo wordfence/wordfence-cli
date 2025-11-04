@@ -41,6 +41,9 @@ class SoftwareType(str, Enum):
     PLUGIN = 'plugin'
     THEME = 'theme'
 
+    def __reduce_ex__(self, proto):
+        return (SoftwareType, (self.value,))
+
 
 @dataclass
 class ScannableSoftware:

@@ -22,7 +22,7 @@ value_extractors: List = []
 
 class RenamedSubcommandException(Exception):
 
-    def __init__(self, old: str, new: str):
+    def __init__(self, old: str, new: str):  # noqa: B042
         self.old = old
         self.new = new
 

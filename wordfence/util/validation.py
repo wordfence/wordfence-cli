@@ -3,7 +3,7 @@ from typing import Optional, Any, Set
 
 class ValidationException(Exception):
 
-    def __init__(self, key: list, message: str, value=None):
+    def __init__(self, key: list, message: str, value=None):  # noqa: B042
         self.key = key
         self.value = value
         super().__init__(

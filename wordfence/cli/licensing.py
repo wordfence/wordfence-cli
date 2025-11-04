@@ -15,7 +15,7 @@ CACHEABLE_TYPES = {
 
 class LicenseValidationFailure(Exception):
 
-    def __init__(self, message: str):
+    def __init__(self, message: str):  # noqa: B042
         self.message = message
 
 

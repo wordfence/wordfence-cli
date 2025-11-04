@@ -25,7 +25,7 @@ if [ "$PACKAGE_TYPE" = 'deb' ]; then
     "${VERSION} release. See https://github.com/wordfence/wordfence-cli/releases/latest for release notes."
 
   # build the package
-  dpkg-buildpackage -us -uc -b
+  dpkg-buildpackage -us -uc -b -Zxz
 
   # copy to output volume
   pushd ..

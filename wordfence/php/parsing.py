@@ -1020,7 +1020,7 @@ class TokenStream:
 
 class TagStateChanged(Exception):
 
-    def __init__(self, state: bool):
+    def __init__(self, state: bool):  # noqa: B042
         self.state = state
 
 
