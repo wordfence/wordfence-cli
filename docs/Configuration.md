@@ -78,4 +78,4 @@ cache = [on|off]
 
 ### Subcommand INI Options
 
-See documentation for each [subcommand](Subcommands.md) for its respective INI options. Most command line options can also be set in the INI file. Generall, only settings that should be applied every time CLI is invoked should be stored in the config file. For example, don't store options specific to one site being scanned in the global config file. Global options may also be overwritten for each subcommand section.
+See documentation for each [subcommand](Subcommands.md) for its respective INI options. Most command line options can also be set in the INI file. Generally, only settings that should be applied every time CLI is invoked should be stored in the config file. For example, don't store options specific to one site being scanned in the global config file. Global options may also be overwritten for each subcommand section.
