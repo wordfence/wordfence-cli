@@ -12,7 +12,7 @@ config_definitions: ConfigDefinitions = {
     },
     "request-license": {
         "short_name": "r",
-        "description": "Automatically request a free licenses without "
+        "description": "Automatically request a free license without "
                        "prompting",
         "context": "CLI",
         "argument_type": "OPTIONAL_FLAG",

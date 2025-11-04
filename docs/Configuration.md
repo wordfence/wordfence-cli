@@ -1,11 +1,11 @@
 # Configuration
 
-Configuration can be set through command line arguments, or configured globally through the wordfence-cli.ini file. Once Wordfence CLI is installed, we recommend running `wordfence configure` to interactively configure Wordfence CLI's global options.
+Configuration can be set through command line arguments, or configured globally through the `wordfence-cli.ini` file. Once Wordfence CLI is installed, we recommend running `wordfence configure` to interactively configure Wordfence CLI's global options.
 
 ## `wordfence configure` Command Line Arguments
 
 - `-o`, `--overwrite`: Overwrite any existing configuration file without prompting
-- `-r`, `--request-license`: Automatically request a free licenses without prompting
+- `-r`, `--request-license`: Automatically request a free license without prompting
 - `-w`, `--workers`: Specify the number of worker processes to use for malware scanning
 - `-D`, `--default`: Automatically accept the default values for any options that are not explicitly specified. This will also result in a free license being requested when terms are accepted.
 
@@ -19,7 +19,7 @@ These arguments apply to all subcommands.
 - `-l`, `--license`: Specify the license to use.
 - `--version`: Display the version of Wordfence CLI.
 - `-h`, `--help`: Display help information.
-- `--accept-terms`: Automatically accept the terms required to invoke the specified command. The latest terms can be viewed using the wordfence terms command  and found at [https://www.wordfence.com/wordfence-cli-license-terms-and-conditions/](https://www.wordfence.com/wordfence-cli-license-terms-and-conditions/ "Wordfence CLI License Terms and Conditions - Wordfence"). Register to receive updated Wordfence CLI Terms of Service via email at [https://www.wordfence.com/products/wordfence-cli/#terms](https://www.wordfence.com/products/wordfence-cli/#terms "Wordfence CLI - Wordfence"). Join our WordPress Security mailing list at [https://www.wordfence.com/subscribe-to-the-wordfence-email-list/](https://www.wordfence.com/subscribe-to-the-wordfence-email-list/ "Get WordPress Security Alerts and Product Updates - Wordfence") to get security alerts, news, and research directly to your inbox.
+- `--accept-terms`: Automatically accept the terms required to invoke the specified command. The latest terms can be viewed using the `wordfence terms` command  and found at [https://www.wordfence.com/wordfence-cli-license-terms-and-conditions/](https://www.wordfence.com/wordfence-cli-license-terms-and-conditions/ "Wordfence CLI License Terms and Conditions - Wordfence"). Register to receive updated Wordfence CLI Terms of Service via email at [https://www.wordfence.com/products/wordfence-cli/#terms](https://www.wordfence.com/products/wordfence-cli/#terms "Wordfence CLI - Wordfence"). Join our WordPress Security mailing list at [https://www.wordfence.com/subscribe-to-the-wordfence-email-list/](https://www.wordfence.com/subscribe-to-the-wordfence-email-list/ "Get WordPress Security Alerts and Product Updates - Wordfence") to get security alerts, news, and research directly to your inbox.
 
 **Output Control:**
 
