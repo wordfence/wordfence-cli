@@ -50,10 +50,10 @@ class WordpressDatabaseConnection:
             for result in cursor:
                 yield result
             cursor.close()
-        except pymysql.MySQLError:
+        except pymysql.MySQLError as e:
             raise WordpressDatabaseException(
                     self.database,
-                    'Failed to execute query'
+                    f'Failed to execute query: {str(e)}'
                 )
 
     def query_literal(
