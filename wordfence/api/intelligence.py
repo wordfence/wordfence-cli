@@ -4,6 +4,8 @@ from enum import Enum
 from typing import Callable, Dict, Type, Optional
 
 from .exceptions import ApiException
+from .user_agent import get_user_agent
+from .licensing import License
 from ..util.validation import Validator, DictionaryValidator, ListValidator, \
         AllowedValueValidator, OptionalValueValidator, NumberValidator, \
         ValidationException
@@ -12,7 +14,7 @@ from ..intel.vulnerabilities import Vulnerability, ScannerVulnerability, \
         VersionRange, Cwe, Cvss, CopyrightInformation, Copyright
 
 
-DEFAULT_BASE_URL = 'https://www.wordfence.com/api/intelligence/v2'
+DEFAULT_BASE_URL = 'https://www.wordfence.com/api/intelligence/v3'
 DEFAULT_TIMEOUT = 30
 
 
@@ -260,9 +262,11 @@ class Client:
 
     def __init__(
                 self,
+                license: License,
                 base_url: Optional[str] = None,
                 timeout: int = DEFAULT_TIMEOUT
             ):
+        self.license = license
         self.base_url = base_url if base_url is not None else DEFAULT_BASE_URL
         self.timeout = timeout
 
@@ -275,7 +279,11 @@ class Client:
             ) -> Dict[str, Vulnerability]:
         url = self._build_url(f'/vulnerabilities/{variant.path}')
         try:
-            response = requests.get(url, timeout=self.timeout)
+            headers = {
+                'User-Agent': get_user_agent(),
+                'Authorization': f"Bearer cli-{self.license.key}"
+            }
+            response = requests.get(url, timeout=self.timeout, headers=headers)
             response.raise_for_status()
             data = response.json()
             variant.get_validator().validate(data)

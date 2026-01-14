@@ -148,6 +148,7 @@ class CliContext:
     def get_wfi_client(self) -> intelligence.Client:
         if self._wfi_client is None:
             self._wfi_client = intelligence.Client(
+                    self.require_license(),
                     self.config.wfi_url
                 )
         return self._wfi_client
