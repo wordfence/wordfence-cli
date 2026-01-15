@@ -1,1 +1,1 @@
-__all__ = ['licensing', 'exceptions', 'noc4', 'noc1', 'intelligence']
+__all__ = ['licensing', 'exceptions', 'noc1', 'intelligence']

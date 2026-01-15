@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 from .licensing import License
 from .exceptions import ApiException
+from .user_agent import get_user_agent
 from ..util.validation import Validator, ValidationException
 
 DEFAULT_TIMEOUT = 30
@@ -46,11 +47,23 @@ class NocClient:
             ):
         query = self.build_query(action, query)
         url = self.base_url + '?' + urlencode(query)
+        headers = {
+            'User-Agent': get_user_agent()
+        }
         try:
             if body is None:
-                response = requests.get(url, timeout=self.timeout)
+                response = requests.get(
+                        url,
+                        timeout=self.timeout,
+                        headers=headers
+                    )
             else:
-                response = requests.post(url, timeout=self.timeout, data=body)
+                response = requests.post(
+                        url,
+                        timeout=self.timeout,
+                        headers=headers,
+                        data=body
+                    )
             if json:
                 return response.json()
             else:
