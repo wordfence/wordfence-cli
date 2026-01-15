@@ -6,6 +6,7 @@ from . import caching
 from .caching import NoCachedValueException
 from ..version import __version__
 from ..logging import log
+from ..api.user_agent import get_user_agent
 
 API = 'https://api.github.com/repos/wordfence/wordfence-cli/releases/latest'
 
@@ -15,7 +16,10 @@ class Version:
     @staticmethod
     def get_latest() -> Optional[str]:
         try:
-            response = requests.get(API).json()
+            headers = {
+                'User-Agent': get_user_agent()
+            }
+            response = requests.get(API, headers=headers).json()
             if 'tag_name' in response.keys():
                 latest = response['tag_name']
                 if latest[0] == 'v':
