@@ -224,7 +224,7 @@ class CacheMessenger:
                 future: bool = False
             ) -> str:
         dt = self.age_to_timestamp(age, future)
-        return dt.strftime("%m/%d/%Y %H:%M")
+        return dt.strftime("%x %X")
 
     def max_age_to_human_readable_timestamp(
                 self,
