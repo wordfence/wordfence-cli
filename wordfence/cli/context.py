@@ -112,6 +112,12 @@ class CliContext:
             raise LicenseRequiredException()
         return license
 
+    def is_paid(self) -> bool:
+        license = self.get_license()
+        if license is not None:
+            return license.paid
+        return False
+
     def filter_cache_entry(self, value: Any) -> Any:
         if isinstance(value, LicenseSpecific):
             if not value.is_compatible_with_license(self.require_license()):
