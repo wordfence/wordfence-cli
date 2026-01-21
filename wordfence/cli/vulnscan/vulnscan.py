@@ -7,7 +7,7 @@ from ...intel.vulnerabilities import VulnerabilityIndex, \
         VulnerabilityScanner, VulnerabilityFilter, AlreadyScannedException, \
         is_cve_id
 from ...api.intelligence import VulnerabilityFeedVariant
-from ...util.caching import Cacheable, DURATION_ONE_DAY
+from ...util.caching import Cacheable, CacheMessenger, DURATION_ONE_DAY
 from ...util.versioning import version_to_str
 from ...wordpress.site import WordpressSite, WordpressStructureOptions, \
         WordpressLocator, WordpressException
@@ -17,6 +17,21 @@ from ...logging import log
 from ..subcommands import Subcommand
 from .reporting import VulnScanReportManager
 from .exceptions import VulnScanningConfigurationException
+
+
+class VulnerabilityCacheMessenger(CacheMessenger):
+
+    def log_event(self, previous: str, next: str, cached: bool) -> None:
+        if cached:
+            log.info(
+                    f"Vulnerability index last retrieved at {previous}. "
+                    f"Data will refresh at {next}."
+                )
+        else:
+            log.info(
+                    f"Vulnerability index refreshed at {previous}. "
+                    f"Data will refresh again at {next}."
+                )
 
 
 class VulnScanSubcommand(Subcommand):
@@ -32,7 +47,8 @@ class VulnScanSubcommand(Subcommand):
         vulnerability_index = Cacheable(
                 f'vulnerability_index_{variant.path}',
                 initialize_vulnerability_index,
-                DURATION_ONE_DAY
+                DURATION_ONE_DAY,
+                messenger=VulnerabilityCacheMessenger()
             )
         return vulnerability_index.get(self.cache)
 

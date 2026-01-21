@@ -22,6 +22,21 @@ from ..config import not_set_token
 from .reporting import DatabaseScanReportManager
 
 
+class DbScanCacheMessenger(caching.CacheMessenger):
+
+    def log_event(self, previous: str, next: str, cached: bool) -> None:
+        if cached:
+            log.info(
+                    f"Database rules last retrieved at {previous}. "
+                    f"Data will refresh at {next}."
+                )
+        else:
+            log.info(
+                    f"Database rules refreshed at {previous}. "
+                    f"Data will refresh at {next}."
+                )
+
+
 class DbScanSubcommand(Subcommand):
 
     def _resolve_password(self) -> Optional[str]:
@@ -163,7 +178,8 @@ class DbScanSubcommand(Subcommand):
         cacheable = caching.Cacheable(
                 'database_rules',
                 fetch_rules,
-                caching.DURATION_ONE_DAY
+                caching.DURATION_ONE_DAY,
+                messenger=DbScanCacheMessenger()
             )
 
         return cacheable.get(self.cache)
