@@ -70,3 +70,17 @@ If we are unable to find a path from either of those checks, CLI will return thi
 - `-C`, `--relative-content-path`: Alternate path of the wp-content directory relative to the WordPress root.
 - `-P`, `--relative-plugins-path`: Alternate path of the wp-content/plugins directory relative to the WordPress root.
 - `-M`, `--relative-mu-plugins-path`: Alternate path of the wp-content/plugins directory relative to the WordPress root.
+
+#### Why am I receiving a "Rate limit reached" error message?
+
+Some Wordfence API endpoints used by CLI have rate limits in place to prevent abuse. CLI has a built-in caching mechanism that should avoid rate limits when using the default configuration.
+
+If you encounter this error, ensure that caching is enabled.
+
+#### Do I need to enable caching? How does it work?
+
+Yes, caching is necessary to avoid API rate limits and ensure CLI performs as expected. It should only ever be disabled temporarily for debugging purposes.
+
+The cache utilizes filesystem storage, saving data to a directory configurable via the `--cache-directory` option on the command line or the `cache_directory` directive in the INI file. By default, this is set to `~/.cache/wordfence`.
+
+If using CLI with the same license across multiple hosts, consider using a shared cache via a network filesystem (it must support `flock`) or upgrading to a paid license for higher rate limits.
