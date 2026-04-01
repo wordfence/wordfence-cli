@@ -5,9 +5,9 @@ from ..api.exceptions import ApiException
 from ..api import noc1
 from ..util.caching import NoCachedValueException, InvalidCachedValueException
 from .context import CliContext
+from .cache_keys import LICENSE_CACHE_KEY
 
 
-CACHE_KEY = 'license'
 CACHEABLE_TYPES = {
         'wordfence.api.licensing.LicenseSpecific'
     }
@@ -53,13 +53,15 @@ class LicenseManager:
 
     def set_license(self, license: Union[License, str]) -> str:
         license = to_license(license)
-        self.context.cache.put(CACHE_KEY, LicenseSpecific(license))
+        self.context.cache.put(LICENSE_CACHE_KEY, LicenseSpecific(license))
 
-    def check_license(self) -> License:
-        current = self.context.get_license()
+    def check_license(self, current: Optional[License] = None) -> License:
+        current = current if current is not None \
+            else self.context.get_license(False)
         try:
-            cached = self.context.cache.get(CACHE_KEY)
-            if cached.is_compatible_with_license(current):
+            cached = self.context.cache.get(LICENSE_CACHE_KEY)
+            if (cached is not None and
+                cached.is_compatible_with_license(current)):
                 return cached.license
         except NoCachedValueException:
             pass

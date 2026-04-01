@@ -6,7 +6,8 @@ from ..util import pcre, vectorscan
 from ..util.text import yes_no
 from ..api import noc1, intelligence
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
-        InvalidCachedValueException, CacheException
+        InvalidCachedValueException, CacheException, Cacheable, \
+        DURATION_ONE_DAY
 from ..util.input import has_terminal_input, has_terminal_output
 from ..util.io import resolve_path
 from ..api.licensing import License, LicenseRequiredException, \
@@ -14,6 +15,7 @@ from ..api.licensing import License, LicenseRequiredException, \
 from ..logging import log, LogLevel, LogSettings
 from .config.config import Config
 from .email import Mailer
+from .cache_keys import LICENSE_CACHE_KEY
 
 
 class CliContext:
@@ -38,6 +40,7 @@ class CliContext:
         self._mailer = None
         self.configurer = None
         self._log_settings = None
+        self.license_manager = None
 
     def get_log_level(self) -> LogLevel:
         if self.config.log_level is not None:
@@ -101,9 +104,12 @@ class CliContext:
             ) -> None:
         self._license_update_hooks.append(callable)
 
-    def get_license(self) -> Optional[License]:
-        if self._license is None and self.config.license is not None:
-            self._license = License(self.config.license)
+    def get_license(self, check: bool = True) -> Optional[License]:
+        if self._license is None:
+            license = License(self.config.license)
+            if check and self.license_manager is not None:
+                license = self.license_manager.check_license(license)
+            self._license = license
         return self._license
 
     def require_license(self) -> License:
@@ -118,7 +124,9 @@ class CliContext:
             return license.paid
         return False
 
-    def filter_cache_entry(self, value: Any) -> Any:
+    def filter_cache_entry(self, key: str, value: Any) -> Any:
+        if (key == LICENSE_CACHE_KEY):
+            return value
         if isinstance(value, LicenseSpecific):
             if not value.is_compatible_with_license(self.require_license()):
                 raise InvalidCachedValueException(

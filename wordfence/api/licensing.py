@@ -40,7 +40,7 @@ class LicenseSpecific:
         self.license = license
 
     def is_compatible_with_license(self, license: License):
-        return self.license is None or self.license == license
+        return self.license is None or self.license.key == license.key
 
     def assign_license(self, license: Optional[License]):
         self.license = license

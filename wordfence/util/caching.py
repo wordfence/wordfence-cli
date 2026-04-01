@@ -26,7 +26,7 @@ class InvalidCachedValueException(CacheException):
     pass
 
 
-CacheFilter = Callable[[Any], Any]
+CacheFilter = Callable[[str, Any], Any]
 
 
 class Cache:
@@ -58,6 +58,7 @@ class Cache:
             ) -> Tuple[Any, Optional[int]]:
         value, age = self._load(key, max_age)
         value = self.filter_value(
+                key,
                 self._deserialize_value(value),
                 additional_filters
             )
@@ -83,14 +84,15 @@ class Cache:
 
     def filter_value(
                 self,
+                key: str,
                 value: Any,
                 additional_filters: Optional[Iterable[CacheFilter]] = None
             ) -> Any:
         for filter in self.filters:
-            value = filter(value)
+            value = filter(key, value)
         if additional_filters is not None:
             for filter in additional_filters:
-                value = filter(value)
+                value = filter(key, value)
         return value
 
 
