@@ -6,8 +6,7 @@ from ..util import pcre, vectorscan
 from ..util.text import yes_no
 from ..api import noc1, intelligence
 from ..util.caching import Cache, CacheDirectory, RuntimeCache, \
-        InvalidCachedValueException, CacheException, Cacheable, \
-        DURATION_ONE_DAY
+        InvalidCachedValueException, CacheException
 from ..util.input import has_terminal_input, has_terminal_output
 from ..util.io import resolve_path
 from ..api.licensing import License, LicenseRequiredException, \
