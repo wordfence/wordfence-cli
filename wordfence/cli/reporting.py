@@ -37,8 +37,7 @@ class ReportColumn:
         self.extractor = extractor
 
     def extract_value(self, record: Any) -> str:
-        value = self.extractor(record)
-        return value
+        return self.extractor(record)
 
 
 class ReportColumnEnum(ReportColumn, Enum):
