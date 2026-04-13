@@ -18,10 +18,10 @@ jobs:
           - arch: arm64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # Set up QEMU to support additional platforms
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7 # v2.2.0
       - name: Docker build
         run: ./docker/build/host-refresh.sh "$GITHUB_WORKSPACE" "$ARCHITECTURE" standalone
         env:
@@ -31,7 +31,7 @@ jobs:
         env:
           ARCHITECTURE: ${{ matrix.arch }}
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wordfence_cli_${{ matrix.arch }}
           path: ${{ github.workspace }}/docker/build/volumes/output/wordfence_*.tar.gz
@@ -40,13 +40,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Docker build
         run: ./docker/build/host-refresh.sh "$GITHUB_WORKSPACE" amd64 deb
       - name: Docker run
         run: ./docker/build/host-build.sh "$GITHUB_WORKSPACE" amd64 deb
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wordfence_cli_deb
           path: ${{ github.workspace }}/docker/build/volumes/output/wordfence.deb
@@ -55,13 +55,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Docker build
         run: ./docker/build/host-refresh.sh "$GITHUB_WORKSPACE" amd64 rpm
       - name: Docker run
         run: ./docker/build/host-build.sh "$GITHUB_WORKSPACE" amd64 rpm
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wordfence_cli_rpm_el9
           path: ${{ github.workspace }}/docker/build/volumes/output/wordfence-el9.rpm
@@ -70,9 +70,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4.9.1
         with:
           python-version: '3.8'
       - name: Transform readme
@@ -82,7 +82,7 @@ jobs:
           pip install build~=0.10
           python3 -m build
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wordfence_cli_python
           path: |
@@ -100,7 +100,7 @@ jobs:
       - python_build
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
       - name: Create checksums
         run: |
           touch checksums.txt
@@ -117,14 +117,14 @@ jobs:
           done
           cat checksums.txt
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v6.3.0
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
       - name: Sign checksums file
         run: gpg --detach-sign --armor --local-user '=Wordfence <opensource@wordfence.com>' checksums.txt
       - name: Upload checksums and signature
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wordfence_cli_checksums
           path: |
