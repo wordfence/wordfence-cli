@@ -1,6 +1,7 @@
 import csv
 import sys
 import os
+from io import TextIOBase
 from typing import IO, List, Any, Callable, Iterable, Type, Dict, Optional, \
         Union
 from enum import Enum
@@ -15,6 +16,7 @@ from wordfence.logging import log
 from wordfence.util.io import resolve_path
 from wordfence.util.html import Document, Tag, Stylesheet, Style, RawHtml, \
         HtmlContent
+from wordfence.util.encoding import force_encoding
 from .context import CliContext
 from .io import IoManager
 from .email import Mailer
@@ -70,12 +72,24 @@ class ReportWriter:
 
     def __init__(self, target: IO):
         self._target = target
+        self.encoding = None
+        if isinstance(target, TextIOBase) and hasattr(target, "encoding"):
+            self.encoding = target.encoding
         self.initialize()
 
     def initialize(self) -> None:
         pass
 
+    def _enforce_encoding(self, data: Optional[str]) -> Optional[str]:
+        if self.encoding is None or data is None:
+            return data
+        return force_encoding(self.encoding, str(data))
+
     def write_row(self, data: List[str]):
+        data = [self._enforce_encoding(column) for column in data]
+        self.write_encoded_row(data)
+
+    def write_encoded_row(self, data: List[str]):
         pass
 
     def allows_headers(self) -> bool:
@@ -96,7 +110,7 @@ class CsvReportWriter(ReportWriter):
     def get_delimiter(self) -> str:
         return ','
 
-    def write_row(self, data: List[str]) -> None:
+    def write_encoded_row(self, data: List[str]) -> None:
         self.writer.writerow(data)
 
 
@@ -112,7 +126,7 @@ class SingleColumnWriter(ReportWriter):
         super().__init__(target)
         self.delimiter = delimiter
 
-    def write_row(self, data: List[str]) -> None:
+    def write_encoded_row(self, data: List[str]) -> None:
         for index, value in enumerate(data):
             if index > 0:
                 break
@@ -132,7 +146,7 @@ class RowlessWriter(ReportWriter):
     def allows_column_customization(self) -> bool:
         return False
 
-    def write_row(self, data: List[str]) -> None:
+    def write_encoded_row(self, data: List[str]) -> None:
         pass
 
     def write_record(self, record) -> None:
@@ -145,7 +159,7 @@ class BaseHumanReadableWriter(RowlessWriter):
         raise NotImplementedError()
 
     def write_record(self, record) -> None:
-        self._target.write(self.format_record(record))
+        self._target.write(self._enforce_encoding(self.format_record(record)))
         self._target.write('\n')
 
 
@@ -614,7 +628,12 @@ class ReportManager:
 
     def open_output_file(self) -> Optional[IO]:
         mode = 'w+' if self.will_email() else 'w'
-        return open(resolve_path(self.config.output_path), mode) \
+        return open(
+                    resolve_path(self.config.output_path),
+                    mode,
+                    encoding="utf-8",
+                    errors="replace"
+                ) \
             if self.config.output_path is not None \
             else nullcontext()
 
