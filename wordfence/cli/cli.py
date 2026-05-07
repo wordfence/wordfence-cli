@@ -142,6 +142,7 @@ class WordfenceCli:
                 updater.Version.check(context.cache)
 
             license_manager = licensing.LicenseManager(context)
+            context.license_manager = license_manager
             context.register_license_update_hook(
                     license_manager.update_license
                 )
