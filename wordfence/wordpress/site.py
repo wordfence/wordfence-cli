@@ -3,8 +3,7 @@ import os.path
 from dataclasses import dataclass, field
 from typing import Optional, List, Generator, Dict, Callable, Any
 
-from ..php.parsing import parse_php_file, PhpException, PhpState, \
-    PhpEvaluationOptions
+from ..php.parsing import parse_php_file, PhpException, PhpEvaluationOptions
 from ..logging import log
 from ..util.io import is_symlink_loop, PathSet, resolve_path, \
     resolve_parent_path
@@ -13,6 +12,7 @@ from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
 from .database import WordpressDatabase, WordpressDatabaseServer, \
     DEFAULT_PORT, DEFAULT_COLLATION
+from .config import parse_wordpress_config, WordpressConfigState
 
 WP_BLOG_HEADER_NAME = b'wp-blog-header.php'
 WP_CONFIG_NAME = b'wp-config.php'
@@ -293,16 +293,19 @@ class WordpressSite(PathResolver):
                 return path
         return None
 
-    def _parse_config_file(self) -> Optional[PhpState]:
+    def _parse_config_file(self) -> Optional[WordpressConfigState]:
         config_path = self._locate_config_file()
+        if config_path is None:
+            return None
         try:
-            if config_path is not None:
-                context = parse_php_file(config_path)
-                return context.evaluate(
-                        options=EVALUATION_OPTIONS
-                    )
+            return parse_wordpress_config(config_path)
         except PhpException as exception:
-            # Ignore config files that cannot be parsed
+            log.debug(
+                    'Unable to parse WordPress config file at '
+                    + os.fsdecode(config_path)
+                    + f' : {exception}'
+                )
+        except WordpressException as exception:
             log.debug(
                     'Unable to parse WordPress config file at '
                     + os.fsdecode(config_path)
@@ -310,7 +313,7 @@ class WordpressSite(PathResolver):
                 )
         return None
 
-    def _get_parsed_config_state(self) -> PhpState:
+    def _get_parsed_config_state(self) -> WordpressConfigState:
         if not hasattr(self, 'config_state'):
             self.config_state = self._parse_config_file()
         return self.config_state
@@ -319,7 +322,7 @@ class WordpressSite(PathResolver):
                 self,
                 constant: bytes,
                 default: Optional[bytes],
-                extractor: Callable[[PhpState], Any]
+                extractor: Callable[[WordpressConfigState], Any]
             ) -> bytes:
         try:
             state = self._get_parsed_config_state()
@@ -340,7 +343,7 @@ class WordpressSite(PathResolver):
                 constant: bytes,
                 default: Optional[bytes] = None
             ):
-        def get_constant_value(state: PhpState):
+        def get_constant_value(state: WordpressConfigState):
             return state.get_constant_value(
                     name=constant,
                     default_to_name=False
@@ -356,7 +359,7 @@ class WordpressSite(PathResolver):
                 variable: bytes,
                 default: Optional[bytes] = None
             ):
-        def get_variable_value(state: PhpState):
+        def get_variable_value(state: WordpressConfigState):
             return state.get_variable_value(variable)
         return self._extract_string_from_config(
                 variable,

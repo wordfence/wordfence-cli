@@ -516,6 +516,11 @@ _register_unary_operator(
         lambda value: PhpValue(value.type, not value.value)
     )
 
+_register_unary_operator(
+        b'@',
+        lambda value: value
+    )
+
 
 class PhpBinaryOperator(PhpOperator):
 
