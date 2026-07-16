@@ -30,10 +30,6 @@ class LicenseManager:
             ) -> noc1.Client:
         return self.context.create_noc1_client(license)
 
-    def request_free_license(self, terms_accepted: bool = False) -> License:
-        client = self.context.create_noc1_client()
-        return License(client.get_cli_api_key(accept_terms=terms_accepted))
-
     def validate_license(self, license: Union[License, str]) -> License:
         license = to_license(license)
         client = self.context.create_noc1_client(license)

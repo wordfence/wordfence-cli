@@ -228,42 +228,7 @@ class Configurer:
                             'a valid license.'
                         )
 
-        request_free = self.default or self.request_license or prompt_yes_no(
-                'Would you like to automatically request a free Wordfence CLI'
-                ' license?',
-                default=True
-            )
-        if not request_free:
-            print(f'Please visit {LICENSE_URL} to obtain a license key.')
-
-        if request_free:
-            terms_accepted = self.config.accept_terms or prompt_yes_no(
-                    'Your access to and use of Wordfence CLI Free edition is '
-                    'subject to the Wordfence CLI License Terms and '
-                    f'Conditions set forth at {TERMS_URL}. By entering "y" '
-                    'and selecting Enter, you agree that you have read and '
-                    'accept the Wordfence CLI License Terms and Conditions.',
-                    default=False
-                )
-            if terms_accepted:
-                license = self.license_manager.request_free_license(
-                        terms_accepted
-                    )
-                self.terms_manager.record_acceptance(
-                        license=license,
-                        remote=False
-                    )
-                print(
-                        'Free Wordfence CLI license obtained successfully: '
-                        f'{license}'
-                    )
-                return license
-            else:
-                print(
-                        'A license cannot be obtained automatically without'
-                        ' agreeing to the Wordfence CLI License Terms and '
-                        'Conditions.'
-                    )
+        print(f'Please visit {LICENSE_URL} to obtain a license key.')
 
         license = prompt(
                 'License',

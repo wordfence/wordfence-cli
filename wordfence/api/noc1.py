@@ -192,17 +192,6 @@ class Client(NocClient):
     def ping_api_key(self) -> bool:
         return self.process_simple_request('ping_api_key')
 
-    def get_cli_api_key(self, accept_terms: bool = False) -> str:
-        response = self.request(
-                'get_cli_api_key',
-                {'accept_terms': int(accept_terms)}
-            )
-        validator = DictionaryValidator({
-                'apiKey': str
-            })
-        self.validate_response(response, validator)
-        return response['apiKey']
-
     def record_toupp(self) -> bool:
         success = self.process_simple_request('record_toupp')
         if success:
