@@ -9,13 +9,12 @@ from wordfence.util.input import prompt, prompt_yes_no, prompt_int, \
         InvalidInputException, InputException
 from wordfence.util.io import ensure_directory_is_writable, \
         ensure_file_is_writable, resolve_path, IoException
-from wordfence.api.licensing import License, LICENSE_URL
+from wordfence.api.licensing import License
 from wordfence.logging import log
 from .config import load_config
 from .context import CliContext
 from .subcommands import SubcommandDefinition
 from .licensing import LicenseManager, LicenseValidationFailure
-from .terms_management import TERMS_URL, TermsManager
 from .helper import Helper
 from .mailing_lists import EMAIL_SIGNUP_MESSAGE
 
@@ -137,7 +136,6 @@ class Configurer:
                 context: CliContext,
                 helper: Helper,
                 license_manager: LicenseManager,
-                terms_manager: TermsManager,
                 subcommand_definitions: Dict[str, SubcommandDefinition],
                 subcommand_definition: Optional[SubcommandDefinition] = None
             ):
@@ -148,11 +146,9 @@ class Configurer:
         self.all_config[context.config.subcommand] = context.config
         self.config_values = []
         self.license_manager = license_manager
-        self.terms_manager = terms_manager
         self.subcommand_definition = subcommand_definition
         self.subcommand_definitions = subcommand_definitions
         self.overwrite = None
-        self.request_license = None
         self.workers = None
         self.default = False
         self.written = False
@@ -209,9 +205,7 @@ class Configurer:
 
         if self.config.license is not None:
             print(f'Current license: {self.config.license}')
-            change_license = self.request_license \
-                or self.default \
-                or prompt_yes_no(
+            change_license = prompt_yes_no(
                     'An existing license was found, '
                     'would you like to change it?',
                     default=False
@@ -227,8 +221,6 @@ class Configurer:
                             'Your existing license is invalid. Please specify '
                             'a valid license.'
                         )
-
-        print(f'Please visit {LICENSE_URL} to obtain a license key.')
 
         license = prompt(
                 'License',

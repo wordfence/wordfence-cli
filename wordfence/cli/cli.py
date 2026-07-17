@@ -154,7 +154,6 @@ class WordfenceCli:
                     context,
                     self.helper,
                     license_manager,
-                    terms_manager,
                     self.subcommand_definitions,
                     self.subcommand_definition
                 )

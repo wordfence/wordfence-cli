@@ -5,9 +5,8 @@ Configuration can be set through command line arguments, or configured globally 
 ## `wordfence configure` Command Line Arguments
 
 - `-o`, `--overwrite`: Overwrite any existing configuration file without prompting
-- `-r`, `--request-license`: Automatically request a free license without prompting
 - `-w`, `--workers`: Specify the number of worker processes to use for malware scanning
-- `-D`, `--default`: Automatically accept the default values for any options that are not explicitly specified. This will also result in a free license being requested when terms are accepted.
+- `-D`, `--default`: Automatically accept the default values for any options that are not explicitly specified
 
 ## Global Command Line Arguments
 

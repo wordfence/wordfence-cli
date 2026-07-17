@@ -3,7 +3,7 @@
 > [!WARNING]
 > Wordfence CLI is no longer available for new Free or Premium licenses.
 > The Free version of WF-CLI will reach end-of-life on August 26th, 2026. After that date, the Free version will no longer be supported as a public offering.
-> Existing WF-CLI Premium licenses will remain active and supported until their current license term expires. Premium licenses will not be renewed after expiration, and no new Premium licenses willbe issued going forward.
+> Existing WF-CLI Premium licenses will remain active and supported until their current license term expires. Premium licenses will not be renewed after expiration, and no new Premium licenses will be issued going forward.
 > Current Premium customers may continue to access support, documentation, and applicable downloads through the end of their active license term.
 
  Wordfence CLI is an open source, high performance, multi-process security scanner, written in Python, that quickly scans network filesystems to detect PHP/other malware and WordPress vulnerabilities. CLI is parallelizable, can be scheduled, can accept input via pipe, and can pipe output to other commands.
@@ -31,10 +31,6 @@ If you'd like to install Wordfence CLI manually or use CLI for development, you 
 	- `packaging` >= 21.0 
 	- `requests` >= 2.3
 	- `mysql-connector-python` >= 8.0
-
-### Obtaining a license
-
-Visit [https://www.wordfence.com/products/wordfence-cli/](https://www.wordfence.com/products/wordfence-cli/) to obtain a license to download our signature set.
 
 ## Usage
 
