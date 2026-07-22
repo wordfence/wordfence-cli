@@ -19,6 +19,7 @@ class WordpressDatabaseConnection:
             self.connection = pymysql.connect(
                     host=database.server.host,
                     port=database.server.port,
+                    unix_socket=database.server.socket,
                     user=database.server.user,
                     password=database.server.password,
                     database=database.name
@@ -94,12 +95,14 @@ class WordpressDatabaseServer:
                 host: str = DEFAULT_HOST,
                 port: int = DEFAULT_PORT,
                 user: str = DEFAULT_USER,
-                password: Optional[str] = None
+                password: Optional[str] = None,
+                socket: Optional[str] = None
             ):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
+        self.socket = socket
 
 
 class WordpressDatabase:
@@ -115,12 +118,16 @@ class WordpressDatabase:
         self.server = server
         self.prefix = prefix
         self.collation = collation
-        self.debug_string = self._build_debug_string()
 
     def connect(self) -> WordpressDatabaseConnection:
         return WordpressDatabaseConnection(self)
 
-    def _build_debug_string(self) -> str:
+    @property
+    def debug_string(self) -> str:
+        if self.server.socket is not None:
+            return (
+                    f'{self.server.user}@{self.server.socket}/{self.name}'
+                )
         return (
                 f'{self.server.user}@{self.server.host}:'
                 f'{self.server.port}/{self.name}'

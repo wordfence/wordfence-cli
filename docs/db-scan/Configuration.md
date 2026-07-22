@@ -6,6 +6,7 @@ Database scanning can be configured using either command line arguments, the [IN
 
 - `-H`, `--host`: Database hostname. Defaults to `localhost`.
 - `-P`, `--port`: Database port. Defaults to `3306`.
+- `--socket`: Path to a unix socket to use when connecting to the database. Takes precedence over the host and port options and also applies to sites located using `--locate-sites`.
 - `-u`, `--user`: Database user. Defaults to `root`.
 - `--password`: Provide the database password via the command line. This is insecure and should be avoided in favor of prompting or environment variables.
 - `-p`, `--prompt-for-password`: Prompt for the database password on invocation.
