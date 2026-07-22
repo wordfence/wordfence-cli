@@ -505,10 +505,14 @@ class WordpressSite(PathResolver):
         config = self._extract_database_config()
         host_components = config['host'].split(':', 1)
         host = host_components[0]
-        try:
-            port = int(host_components[1])
-        except IndexError:
-            port = DEFAULT_PORT
+        port = DEFAULT_PORT
+        socket = None
+        if len(host_components) > 1:
+            # WordPress supports both "host:port" and "host:/path/to/socket"
+            try:
+                port = int(host_components[1])
+            except ValueError:
+                socket = host_components[1]
         try:
             collation = config['collation']
         except KeyError:
@@ -517,7 +521,8 @@ class WordpressSite(PathResolver):
                 host=host,
                 port=port,
                 user=config['user'],
-                password=config['password']
+                password=config['password'],
+                socket=socket
             )
         return WordpressDatabase(
                 name=config['name'],
