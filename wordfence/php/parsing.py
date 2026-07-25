@@ -1151,7 +1151,7 @@ class Parser:
                 self,
                 token_stream: TokenStream
             ):
-        token = token_stream.requir_token()
+        token = token_stream.require_token()
         if token.type is TokenType.STRING:
             preview = token_stream.require_preview_token()
             if preview.is_opening_parenthesis():
