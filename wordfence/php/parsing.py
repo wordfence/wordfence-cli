@@ -1621,13 +1621,14 @@ class Parser:
                 token_stream: TokenStream,
                 in_php_tag: bool = False
             ) -> (bool, Optional[PhpInstruction]):
-        try:
-            if in_php_tag:
-                return (True, self.parse_statement(token_stream))
-            else:
-                return (False, self.parse_output(token_stream))
-        except TagStateChanged as change:
-            return self.parse_any(token_stream, change.state)
+        while True:
+            try:
+                if in_php_tag:
+                    return (True, self.parse_statement(token_stream))
+                else:
+                    return (False, self.parse_output(token_stream))
+            except TagStateChanged as change:
+                in_php_tag = change.state
 
     def parse(self, context: PhpContext = None) -> PhpContext:
         if context is None:
