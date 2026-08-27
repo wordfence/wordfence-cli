@@ -2,7 +2,7 @@
 
 #### How do I get a license?
 
-Licenses can be obtained at [https://www.wordfence.com/products/wordfence-cli/](https://www.wordfence.com/products/wordfence-cli/).
+Licenses for Wordfence CLI are no longer available. Existing Premium licenses are valid until the end of their active license term and will not be renewed. Existing Free licenses will cease to be valid on August 26, 2026.
 
 #### The scanner has identified malware.  What do I do now?
 

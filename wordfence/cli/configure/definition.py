@@ -10,14 +10,6 @@ config_definitions: ConfigDefinitions = {
         "argument_type": "OPTIONAL_FLAG",
         "default": None
     },
-    "request-license": {
-        "short_name": "r",
-        "description": "Automatically request a free license without "
-                       "prompting",
-        "context": "CLI",
-        "argument_type": "OPTIONAL_FLAG",
-        "default": None
-    },
     "workers": {
         "short_name": "w",
         "description": "Specify the number of worker processes to "
@@ -32,9 +24,7 @@ config_definitions: ConfigDefinitions = {
     "default": {
         "short_name": "D",
         "description": "Automatically accept the default values for any "
-                       "options that are not explicitly specified. This will "
-                       "also result in a free license being requested when "
-                       "terms are accepted.",
+                       "options that are not explicitly specified",
         "context": "CLI",
         "argument_type": "FLAG",
         "default": False
@@ -51,8 +41,9 @@ examples = [
     UsageExample(
         'Non-interactively configure Wordfence CLI to use 4 worker processes '
         'and the default values for all other options, automatically '
-        'accepting the terms and requesting a free license',
-        'wordfence configure --default --workers 4 --accept-terms'
+        'accepting the terms and using an existing license',
+        'wordfence configure --default --workers 4 --accept-terms '
+        '--license {license}'
     )
 ]
 

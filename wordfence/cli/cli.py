@@ -154,7 +154,6 @@ class WordfenceCli:
                     context,
                     self.helper,
                     license_manager,
-                    terms_manager,
                     self.subcommand_definitions,
                     self.subcommand_definition
                 )
@@ -168,8 +167,16 @@ class WordfenceCli:
             if self.subcommand_definition.requires_config:
                 if not configurer.check_config():
                     return 0
-                if not self.subcommand_definition.uses_license:
-                    license_manager.check_license()
+                license = license_manager.check_license()
+                if not license.paid:
+                    log.warning(
+                        "The Free version of Wordfence CLI will reach "
+                        "end-of-life on September 30th, 2026. Existing free "
+                        "license holders may continue to use Wordfence CLI "
+                        "until that time. New free license keys may no longer "
+                        "be generated."
+                    )
+
                 terms_manager.prompt_acceptance_if_needed()
 
             subcommand = self.subcommand_definition.initialize_subcommand(
