@@ -205,7 +205,7 @@ class Configurer:
 
         if self.config.license is not None:
             print(f'Current license: {self.config.license}')
-            change_license = prompt_yes_no(
+            change_license = False if self.default else prompt_yes_no(
                     'An existing license was found, '
                     'would you like to change it?',
                     default=False
