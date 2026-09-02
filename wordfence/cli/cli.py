@@ -171,7 +171,7 @@ class WordfenceCli:
                 if license is not None and not license.paid:
                     log.warning(
                         "The Free version of Wordfence CLI will reach "
-                        "end-of-life on September 30th, 2026. Existing free "
+                        "end-of-life on October 14th, 2026. Existing free "
                         "license holders may continue to use Wordfence CLI "
                         "until that time. New free license keys may no longer "
                         "be generated."
