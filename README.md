@@ -2,7 +2,7 @@
 
 > [!WARNING]
 > Wordfence CLI is no longer available for new Free or Premium licenses.
-> The Free version of WF-CLI will reach end-of-life on September 30th, 2026. After that date, the Free version will no longer be supported.
+> The Free version of WF-CLI will reach end-of-life on October 14th, 2026. After that date, the Free version will no longer be supported.
 > Existing Wordfence CLI Premium licenses will remain active and supported until their current license term expires. Premium licenses will not be renewed after expiration, and no new Premium licenses will be issued going forward.
 > Current Premium customers may continue to access support, documentation, and applicable downloads through the end of their active license term.
 
