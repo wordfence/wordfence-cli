@@ -26,6 +26,19 @@ config_definitions: ConfigDefinitions = {
         },
         "category": "Database Connectivity"
     },
+    "socket": {
+        "description": "Path to a unix socket to use when connecting to "
+                       "the database. Takes precedence over the host and "
+                       "port options and also applies to sites located "
+                       "using the locate-sites option.",
+        "context": "CLI",
+        "argument_type": "OPTION",
+        "default": None,
+        "meta": {
+            "accepts_file": True
+        },
+        "category": "Database Connectivity"
+    },
     "user": {
         "short_name": "u",
         "description": "The database user",
