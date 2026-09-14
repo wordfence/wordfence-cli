@@ -1,6 +1,5 @@
 import re
 
-from collections import deque
 from enum import Enum, auto
 from typing import Generator, BinaryIO, Optional, Union, Set
 
@@ -422,9 +421,10 @@ class Token:
 class Lexer:
 
     def __init__(self, stream: BinaryIO, chunk_size: int = 4096):
-        self.chunks = deque()
+        self.chunks = []
         self.chunk_size = chunk_size
         self.chunk_offset = 0
+        self.current_chunk_index = 0
         self.read = 0
         self.stream = stream
         self.offset = 0
@@ -445,6 +445,7 @@ class Lexer:
         if self.position > self.read:
             if not self._read_chunk():
                 return False
+        self._update_current_byte()
         return True
 
     def get_current(self) -> bytes:
@@ -464,11 +465,32 @@ class Lexer:
             remaining -= chunk_length
         return b''.join(components)
 
+    def get_current_byte(self) -> bytes:
+        """Return the byte at the current position without rebuilding input."""
+        if self.position == 0 or not self.chunks:
+            return b''
+        chunk = self.chunks[self.current_chunk_index]
+        offset = self.position - self.chunk_offset - 1
+        return chunk[offset:offset + 1]
+
+    def _update_current_byte(self) -> None:
+        while self.current_chunk_index < len(self.chunks) - 1 and \
+                self.position > self.chunk_offset + \
+                len(self.chunks[self.current_chunk_index]):
+            self.chunk_offset += len(self.chunks[self.current_chunk_index])
+            self.current_chunk_index += 1
+        while self.current_chunk_index > 0 and \
+                self.position <= self.chunk_offset:
+            self.current_chunk_index -= 1
+            self.chunk_offset -= len(self.chunks[self.current_chunk_index])
+
     def step_backwards(self) -> None:
         self.position -= 1
+        self._update_current_byte()
 
     def reset(self) -> None:
         self.position = self.offset
+        self._update_current_byte()
 
     def consume_token(self, token_type: TokenType) -> Token:
         value = self.get_current()
@@ -514,9 +536,11 @@ class Lexer:
 
     def extract_inline_html_or_open_tag(self) -> Optional[Token]:
         partial_start = None
+        tag_length = len(b'<?php')
+        tag_suffix = b''
         while self.step():
-            current = self.get_current()
-            match_type = TokenType.OPEN_TAG.match_at_end(current)
+            tag_suffix = (tag_suffix + self.get_current_byte())[-tag_length:]
+            match_type = TokenType.OPEN_TAG.match(tag_suffix)
             if match_type == MatchType.PARTIAL_MATCH and partial_start is None:
                 partial_start = self.position
             elif match_type == MatchType.FINAL_MATCH:

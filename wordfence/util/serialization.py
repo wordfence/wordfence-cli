@@ -38,5 +38,5 @@ def limited_deserialize(
         allowed = set()
     result = LimitedDeserializer(data, allowed).load()
     if expected is not None and not isinstance(result, expected):
-        raise UnexpectedTypeException('Unexpected type: ' + type(expected))
+        raise UnexpectedTypeException(f'Unexpected type: {type(result)}')
     return result

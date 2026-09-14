@@ -76,10 +76,11 @@ class Client(NocClient):
     def validate_response(self, response, validator: Validator) -> None:
         if isinstance(response, dict):
             self._check_error_message(response)
-            paid = bool('_isPaidKey' in response and response['_isPaidKey'])
-            if paid != self.license.paid:
-                self.license.paid = paid
-                self._trigger_license_update_hooks(self.license)
+            if '_isPaidKey' in response:
+                paid = bool(response['_isPaidKey'])
+                if paid != self.license.paid:
+                    self.license.paid = paid
+                    self._trigger_license_update_hooks(self.license)
             terms_updated = '_termsUpdated' in response
             self._trigger_terms_update_hooks(terms_updated, self.license)
         return super().validate_response(response, validator)
@@ -191,17 +192,6 @@ class Client(NocClient):
 
     def ping_api_key(self) -> bool:
         return self.process_simple_request('ping_api_key')
-
-    def get_cli_api_key(self, accept_terms: bool = False) -> str:
-        response = self.request(
-                'get_cli_api_key',
-                {'accept_terms': int(accept_terms)}
-            )
-        validator = DictionaryValidator({
-                'apiKey': str
-            })
-        self.validate_response(response, validator)
-        return response['apiKey']
 
     def record_toupp(self) -> bool:
         success = self.process_simple_request('record_toupp')

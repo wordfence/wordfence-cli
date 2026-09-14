@@ -193,8 +193,17 @@ class FileLocator:
         self.allow_io_errors = allow_io_errors
         self.scanned_paths = scanned_paths if scanned_paths is not None \
             else PathSet()
+        self.root_path = None
         self.located_count = 0
         self.skipped_count = 0
+
+    def _is_within_root(self, path: bytes) -> bool:
+        """Return whether a resolved path is contained by the scan root."""
+        try:
+            return os.path.commonpath((self.root_path, path)) == self.root_path
+        except ValueError:
+            # Paths on different drives cannot be contained by one another.
+            return False
 
     def _is_loop(
                 self,
@@ -232,6 +241,12 @@ class FileLocator:
             try:
                 if item.is_symlink():
                     item_path = os.path.realpath(item.path)
+                    if not self._is_within_root(item_path):
+                        log.warning(
+                                'Skipping symlink outside scan root: '
+                                + os.fsdecode(item.path)
+                            )
+                        continue
                     if item_path in self.scanned_paths:
                         continue
                     # This intentionally uses the unresolved path
@@ -264,6 +279,7 @@ class FileLocator:
 
     def locate(self):
         real_path = os.path.realpath(self.path)
+        self.root_path = real_path
         if os.path.isdir(real_path):
             for path in self.search_directory(real_path):
                 self._push_file(path)
