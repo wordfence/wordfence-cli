@@ -10,10 +10,12 @@ class DatabaseScanResult:
 
     def __init__(
                 self,
+                database: WordpressDatabase,
                 rule: DatabaseRule,
                 table: str,
                 row: dict
             ):
+        self.database = database
         self.rule = rule
         self.table = table
         self.row = row
@@ -70,6 +72,7 @@ class DatabaseScanner:
             rule = self.rule_set.get_rule(result['rule_id'])
             del result['rule_id']
             yield DatabaseScanResult(
+                    database=connection.database.name,
                     rule=rule,
                     table=prefixed_table,
                     row=result

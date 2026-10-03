@@ -25,7 +25,7 @@ Database scanning can be configured using either command line arguments, the [IN
 - `-i`, `--include-rules`: Rule IDs to include when scanning. Accepts comma-delimited lists and repeated flags.
 - `--output`: Write results to stdout (default when `--output-path` is not set).
 - `--output-path`: Destination file for scan results.
-- `--output-columns`: Comma-delimited list of columns to include in the output. Available columns: `table`, `rule_id`, `rule_description`, `row`. Column customization is supported for `csv`, `tsv`, `null-delimited`, and `line-delimited` formats.
+- `--output-columns`: Comma-delimited list of columns to include in the output. Available columns: `database`, `table`, `rule_id`, `rule_description`, `row`. Column customization is supported for `csv`, `tsv`, `null-delimited`, and `line-delimited` formats.
 - `-m`, `--output-format`: Output format for results. Supported values: `human` (default), `csv`, `tsv`, `null-delimited`, `line-delimited`.
 - `--output-headers`: Include column headers in formats that support them (`csv`, `tsv`, `null-delimited`, `line-delimited`).
 
@@ -42,7 +42,7 @@ path_separator = <separator>
 # Controls whether or not output is written to stdout
 output = [on|off]
 output_path = <path to which to write results>
-# Comma-delimited list of columns to include in output (`table`, `rule_id`, `rule_description`, `row`)
+# Comma-delimited list of columns to include in output (`database`, `table`, `rule_id`, `rule_description`, `row`)
 output_columns = <columns>
 output_format = [human|csv|tsv|null-delimited|line-delimited]
 # Whether to include headers in output

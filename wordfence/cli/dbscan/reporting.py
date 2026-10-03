@@ -14,6 +14,7 @@ from ..email import Mailer
 
 
 class DatabaseScanReportColumn(ReportColumnEnum):
+    DATABASE = 'database', lambda record: record.result.database
     TABLE = 'table', lambda record: record.result.table
     RULE_ID = 'rule_id', lambda record: record.result.rule.identifier
     RULE_DESCRIPTION = 'rule_description', \
@@ -28,7 +29,7 @@ class HumanReadableWriter(BaseHumanReadableWriter):
         return (
                 escape(Color.YELLOW)
                 + 'Suspicious database record found in table '
-                f'"{result.table}" matching rule "{result.rule.description}"'
+                f'"{result.database}.{result.table}" matching rule "{result.rule.description}"'
                 ': ' + safe_json_encode(record.result.row) + RESET
             )
 
