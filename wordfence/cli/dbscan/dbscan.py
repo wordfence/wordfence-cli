@@ -58,7 +58,8 @@ class DbScanSubcommand(Subcommand):
                 host=self.config.host,
                 port=self.config.port,
                 user=self.config.user,
-                password=self._resolve_password()
+                password=self._resolve_password(),
+                socket=self.config.socket
             )
         return WordpressDatabase(
                 name=name,
@@ -97,6 +98,8 @@ class DbScanSubcommand(Subcommand):
                     )
                 try:
                     database = site.get_database()
+                    if self.config.socket is not None:
+                        database.server.socket = self.config.socket
                     yield database
                 except WordpressException:
                     if self.config.allow_io_errors:
@@ -115,9 +118,10 @@ class DbScanSubcommand(Subcommand):
                         'password': str,
                         'host': str,
                         'port': OptionalValueValidator(int),
+                        'socket': OptionalValueValidator(str),
                         'collation': OptionalValueValidator(str),
                         'prefix': OptionalValueValidator(str)
-                    }, optional_keys={'port', 'collation'})
+                    }, optional_keys={'port', 'socket', 'collation'})
             )
 
     def _parse_configured_databases(
@@ -135,6 +139,10 @@ class DbScanSubcommand(Subcommand):
                     except KeyError:
                         port = DEFAULT_PORT
                     try:
+                        socket = config['socket']
+                    except KeyError:
+                        socket = None
+                    try:
                         collation = config['collation']
                     except KeyError:
                         collation = DEFAULT_COLLATION
@@ -148,7 +156,8 @@ class DbScanSubcommand(Subcommand):
                                     host=config['host'],
                                     port=port,
                                     user=config['user'],
-                                    password=config['password']
+                                    password=config['password'],
+                                    socket=socket
                                 ),
                             prefix=prefix,
                             collation=collation
