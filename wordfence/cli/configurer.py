@@ -325,12 +325,12 @@ class Configurer:
         self.write_config()
         if has_existing_config:
             log.info(
-                    "The configuration for Wordfence CLI has been "
+                    "The configuration for FW Scanner has been "
                     "successfully updated."
                 )
         else:
             log.info(
-                    "Wordfence CLI has been successfully configured and is "
+                    "FW Scanner has been successfully configured and is "
                     "now ready for use."
                 )
         return True
@@ -353,7 +353,7 @@ class Configurer:
         if not has_legacy_config:
             return False
         should_convert = prompt_yes_no(
-                'A configuration file for an older version of Wordfence CLI '
+                'A configuration file for an older version of FW Scanner '
                 'was detected; would you like to update it now?',
                 default=True
             )
@@ -364,7 +364,7 @@ class Configurer:
 
     def prompt_for_missing_config(self) -> bool:
         should_configure = prompt_yes_no(
-                'Wordfence CLI cannot be used until it has been configured. '
+                'FW Scanner cannot be used until it has been configured. '
                 'Would you like to configure it now?',
                 default=False
             )

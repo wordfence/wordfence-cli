@@ -14,7 +14,8 @@ from .exceptions import ScanningException, ScanningIoException
 from .matching import Matcher, RegexMatcher
 from .filtering import FileFilter, filter_any
 from ..util import timing
-from ..util.io import StreamReader
+from ..util.io import StreamReader, get_site_paths, \
+    resolve_staging_paths
 from ..util.pcre import PcreOptions, PCRE_DEFAULT_OPTIONS, PcreJitStack
 from ..util.units import scale_byte_unit
 from ..intel.signatures import SignatureSet
@@ -109,6 +110,7 @@ class Options:
     pcre_options: PcreOptions = PCRE_DEFAULT_OPTIONS
     allow_io_errors: bool = False,
     debug: bool = False
+    include_staging: bool = False
 
 
 class Status(IntEnum):
@@ -123,10 +125,15 @@ class FileLocator:
     def __init__(self, path: str,
                  queue: Queue,
                  file_filter: FileFilter,
+                 include_staging: bool = False,
                  ):
         self.path = path
         self.queue = queue
         self.file_filter = file_filter
+        self.include_staging = include_staging
+        self.site_paths = get_site_paths(include_staging)
+        self.excluded_paths = set() if include_staging \
+            else resolve_staging_paths()
         self.located_count = 0
         self.skipped_count = 0
 
@@ -172,13 +179,19 @@ class FileLocator:
                     log.info(f"Skipping {item.path} directory")
                     continue
 
-                # Bypass symlink check for /www and /staging directories
-                if path not in ['/www', '/staging']:
+                # Bypass symlink check for the Flywheel site directories
+                if path not in self.site_paths:
                     if item.is_symlink() and self._is_loop(item.path, parents):
                         continue
 
                 target_path = os.path.realpath(item.path)  # Get the target path of the item
                 if item.is_dir():
+                    if target_path in self.excluded_paths:
+                        log.info(
+                            f'Skipping staging site at {target_path}'
+                            ' (use --staging to include it)'
+                            )
+                        continue
                     try:
                         yield from self.search_directory(
                             target_path,
@@ -219,7 +232,8 @@ class FileLocatorProcess(Process):
                 output_queue_size: int = MAX_PENDING_FILES,
                 file_filter: FileFilter = None,
                 use_log_events: bool = False,
-                event_queue: Optional[Queue] = None
+                event_queue: Optional[Queue] = None,
+                include_staging: bool = False
             ):
         self._input_queue = Queue(input_queue_size)
         self.output_queue = Queue(output_queue_size)
@@ -230,14 +244,13 @@ class FileLocatorProcess(Process):
             raise ValueError('Using log events requires an event queue')
         self._use_log_events = use_log_events
         self._event_queue = event_queue
+        self.include_staging = include_staging
         self._path_count = 0
         self._skipped_count = Value('i', 0)
         super().__init__(name='file-locator')
 
     def add_path(self, path: str):
-        base_directories = ["/www"]
-        if os.path.exists("/staging"):
-            base_directories.append("/staging")
+        base_directories = get_site_paths(self.include_staging)
 
         for base_dir in base_directories:
             full_path = os.path.join(base_dir, path)
@@ -271,7 +284,8 @@ class FileLocatorProcess(Process):
                 locator = FileLocator(
                         path=path,
                         file_filter=self.file_filter,
-                        queue=self.output_queue
+                        queue=self.output_queue,
+                        include_staging=self.include_staging
                     )
                 locator.locate()
                 skipped_count += locator.skipped_count
@@ -774,7 +788,8 @@ class Scanner:
         file_locator_process = FileLocatorProcess(
                 file_filter=self.options.file_filter,
                 use_log_events=use_log_events,
-                event_queue=event_queue if use_log_events else None
+                event_queue=event_queue if use_log_events else None,
+                include_staging=self.options.include_staging
             )
         self.active.append(file_locator_process)
         file_locator_process.start()

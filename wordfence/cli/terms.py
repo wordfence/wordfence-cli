@@ -48,6 +48,6 @@ class TermsManager:
         else:
             print(
                     'You must accept the terms in order to continue using'
-                    ' Wordfence CLI.'
+                    ' FW Scanner.'
                 )
             sys.exit(1)

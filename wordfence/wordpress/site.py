@@ -7,6 +7,7 @@ from typing import Optional, List, Generator
 from ..php.parsing import parse_php_file, PhpException, PhpState, \
     PhpEvaluationOptions
 from ..logging import log
+from ..util.io import get_site_paths, PRODUCTION_PATH, STAGING_PATH
 from .exceptions import WordpressException, ExtensionException
 from .plugin import Plugin, PluginLoader
 from .theme import Theme, ThemeLoader
@@ -18,18 +19,13 @@ EXPECTED_CORE_FILES = {
         WP_BLOG_HEADER_NAME
     }
 EXPECTED_CORE_DIRECTORIES = {
-        '/www',
-        '/staging'
+        PRODUCTION_PATH,
+        STAGING_PATH
     }
 
 EVALUATION_OPTIONS = PhpEvaluationOptions(
         allow_includes=False
     )
-
-ALTERNATE_RELATIVE_CONTENT_PATHS = [
-        '/www',
-        '/staging'
-    ]
 
 
 @dataclass
@@ -37,6 +33,10 @@ class WordpressStructureOptions:
     relative_content_paths: List[str] = field(default_factory=list)
     relative_plugins_paths: List[str] = field(default_factory=list)
     relative_mu_plugins_paths: List[str] = field(default_factory=list)
+    include_staging: bool = False
+
+    def get_alternate_content_paths(self) -> List[str]:
+        return get_site_paths(self.include_staging)
 
 
 class WordpressSite:
@@ -45,18 +45,22 @@ class WordpressSite:
                 self,
                 path: str,
                 structure_options: Optional[WordpressStructureOptions] = None,
+                include_staging: bool = False,
             ):
         self.path = path
         self.core_path = ''
         if structure_options is not None:
             self.structure_options = structure_options
         else:
-            self.structure_options = WordpressStructureOptions()
-            www_path = os.path.join(path, '/www')
-            staging_path = os.path.join(path, '/staging')
-            self.structure_options.relative_content_paths.append(www_path)
-            if os.path.isdir(staging_path):
-                self.structure_options.relative_content_paths.append(staging_path)
+            self.structure_options = WordpressStructureOptions(
+                    include_staging=include_staging
+                )
+            for site_path in \
+                    self.structure_options.get_alternate_content_paths():
+                site_path = os.path.join(path, site_path)
+                if os.path.isdir(site_path):
+                    self.structure_options.relative_content_paths.append(
+                            site_path)
 
     def _is_core_directory(self, path: str) -> bool:
         return True
@@ -135,7 +139,7 @@ class WordpressSite:
             yield configured
         for path in self.structure_options.relative_content_paths:
             yield self.resolve_core_path(os.path.join(path, 'wp-content'))
-        for path in ALTERNATE_RELATIVE_CONTENT_PATHS:
+        for path in self.structure_options.get_alternate_content_paths():
             yield self.resolve_core_path(os.path.join(path, 'wp-content'))
 
     def _locate_content_directory(self) -> List[str]:

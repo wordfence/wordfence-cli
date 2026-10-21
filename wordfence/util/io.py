@@ -1,7 +1,42 @@
 import fcntl
 import os
-from typing import Optional, IO, TextIO, Generator
+from typing import Optional, IO, TextIO, Generator, List, Set
 from enum import IntEnum
+
+
+PRODUCTION_PATH = '/www'
+STAGING_PATH = '/staging'
+
+
+def resolve_staging_paths() -> Set[str]:
+    """Every path that leads to the Flywheel staging site at /staging.
+
+    Resolving these once lets a directory walk recognize the staging site
+    without calling realpath() on everything it visits.
+    """
+    paths = {STAGING_PATH}
+    try:
+        paths.add(os.path.realpath(STAGING_PATH))
+    except OSError:
+        pass
+    return paths
+
+
+def is_staging_path(path: str) -> bool:
+    """Whether a path refers to the Flywheel staging site at /staging."""
+    if path == STAGING_PATH:
+        return True
+    try:
+        return os.path.realpath(path) in resolve_staging_paths()
+    except OSError:
+        return False
+
+
+def get_site_paths(include_staging: bool = False) -> List[str]:
+    """The Flywheel site directories that should be scanned."""
+    if include_staging:
+        return [PRODUCTION_PATH, STAGING_PATH]
+    return [PRODUCTION_PATH]
 
 
 class IoException(Exception):

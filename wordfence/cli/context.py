@@ -69,7 +69,7 @@ class CliContext:
         return self._wfi_client
 
     def display_version(self) -> None:
-        print(f"Wordfence CLI {__version__} \"{__version_name__}\"")
+        print(f"FW Scanner {__version__} \"{__version_name__}\"")
         jit_support_text = 'Yes' if pcre.HAS_JIT_SUPPORT else 'No'
         print(
                 f"PCRE Version: {pcre.VERSION} - "

@@ -12,8 +12,8 @@ from .base_config_definitions \
         import config_map as base_config_map
 from ..subcommands import SubcommandDefinition
 
-NAME = "Wordfence CLI"
-DESCRIPTION = ("Multifunction commandline tool for Wordfence - "
+NAME = "FW Scanner"
+DESCRIPTION = ("Multifunction commandline security scanner - "
                "use wordfence {subcommand} --help for additional"
                " information about subcommands"
                )

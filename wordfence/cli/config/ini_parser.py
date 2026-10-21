@@ -193,7 +193,7 @@ def load_ini(
                     continue
     if invalid_settings:
         log.warning(
-            "*** Invalid settings not known to wordfence-cli or that are not "
+            "*** Invalid settings not known to FW Scanner or that are not "
             "intended for use in INI config files were discarded. ***")
 
     return (config, ini_path)

@@ -7,7 +7,7 @@ from .exceptions import ApiException
 from .user_agent import get_user_agent
 from ..util.validation import Validator, ValidationException
 
-DEFAULT_TIMEOUT = 180
+DEFAULT_TIMEOUT = 30
 
 
 class NocClient:
@@ -41,9 +41,7 @@ class NocClient:
     def request(
                 self,
                 action: str,
-                query: Optional[dict] = None,
-                body: Optional[dict] = None,
-                json: bool = True,
+                query: dict = None,
                 raw_query: bool = False
             ):
         if raw_query:
@@ -62,23 +60,12 @@ class NocClient:
             'User-Agent': get_user_agent()
         }
         try:
-            if body is None:
-                response = requests.get(
-                        url,
-                        timeout=self.timeout,
-                        headers=headers
-                    )
-            else:
-                response = requests.post(
-                        url,
-                        timeout=self.timeout,
-                        headers=headers,
-                        data=body
-                    )
-            if json:
-                return response.json()
-            else:
-                return response.content
+            response = requests.get(
+                    url,
+                    timeout=self.timeout,
+                    headers=headers
+                )
+            return response.json()
         except Exception as error:
             raise ApiException('Request failed') from error
 
